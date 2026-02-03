@@ -1,0 +1,74 @@
+name: padoca_express
+description: App de delivery Padoca Express
+publish_to: 'none'
+version: 1.0.0+1
+
+
+environment:
+  sdk: ^3.8.1
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
+  # Navegação e Estado
+  go_router: ^14.6.0
+  flutter_riverpod: ^2.6.1
+  
+  # Supabase (Banco de dados e Auth)
+  supabase_flutter: ^2.8.0
+  
+  # Localização e Mapas
+  google_maps_flutter: ^2.10.0
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
+  
+  # HTTP para API Asaas
+  dio: ^5.7.0
+  
+  # Storage local
+  shared_preferences: ^2.3.3
+  flutter_secure_storage: ^9.2.2
+  
+  # Notificações
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
+  
+  # UI e Utilitários
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.16
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+  mask_text_input_formatter: ^2.9.0
+  image_picker: ^1.1.2
+  flutter_dotenv: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
