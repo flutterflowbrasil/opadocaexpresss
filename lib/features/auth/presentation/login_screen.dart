@@ -11,7 +11,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // bool _isRegistering = false; // Removed as we navigate to pre-cadastro
-  bool _acceptedTerms = false;
   bool _isPasswordVisible = false;
 
   // void _toggleMode() ... // Removed
@@ -137,63 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _acceptedTerms,
-                          activeColor: primaryColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          onChanged: (value) {
-                            setState(() {
-                              _acceptedTerms = value ?? false;
-                            });
-                          },
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => context.push('/privacy'),
-                            child: RichText(
-                              text: TextSpan(
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: isDark
-                                      ? const Color(0xFFD4D4D8)
-                                      : burgundyColor,
-                                ),
-                                children: [
-                                  const TextSpan(text: 'Aceito os '),
-                                  TextSpan(
-                                    text: 'termos e condições',
-                                    style: GoogleFonts.outfit(
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
                     const SizedBox(height: 32),
 
                     ElevatedButton(
                       onPressed: () {
                         // TODO: Implement login/register logic
-                        if (!_acceptedTerms) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Você precisa aceitar os termos.'),
-                            ),
-                          );
-                          return;
-                        }
                         context.go('/home'); // Placeholder navigation
                       },
                       style: ElevatedButton.styleFrom(

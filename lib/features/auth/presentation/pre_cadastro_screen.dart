@@ -139,7 +139,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Quero pedir rapidinho!',
                       icon: Icons.person_outline,
                       buttonText: 'Cadastrar como Cliente',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro_cliente');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,
@@ -169,7 +171,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Quero fazer entregas!',
                       icon: Icons.two_wheeler_outlined,
                       buttonText: 'Cadastrar como Entregador',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro_entregador');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,
@@ -189,7 +193,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Quero pedir rapidinho!',
                       icon: Icons.person_outline,
                       buttonText: 'Cadastrar como Cliente',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro_cliente');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,
@@ -215,7 +221,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Quero fazer entregas!',
                       icon: Icons.two_wheeler_outlined,
                       buttonText: 'Cadastrar como Entregador',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro_entregador');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,
