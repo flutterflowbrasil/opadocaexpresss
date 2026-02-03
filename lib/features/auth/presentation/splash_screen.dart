@@ -75,6 +75,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        const Spacer(),
         AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
