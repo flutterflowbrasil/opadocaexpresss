@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/core/router/app_router.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Carrega variáveis de ambiente
+  await dotenv.load(fileName: ".env");
+
+  // Inicializa Supabase
+  await SupabaseConfig.initialize();
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
