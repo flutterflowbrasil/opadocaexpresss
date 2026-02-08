@@ -37,7 +37,7 @@ dependencies:
   dio: ^5.7.0
   
   # Storage local
-  shared_preferences: ^2.3.3
+  shared_preferences: ^2.5.3
   flutter_secure_storage: ^9.2.2
   
   # Notificações

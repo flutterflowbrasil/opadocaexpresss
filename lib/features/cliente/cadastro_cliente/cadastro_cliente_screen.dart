@@ -91,7 +91,7 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
           ),
         );
         // Redireciona para login ou home (ajuste conforme fluxo)
-        context.go('/login');
+        context.go('/home');
       }
     });
 

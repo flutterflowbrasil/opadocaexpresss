@@ -5,6 +5,7 @@ import 'package:padoca_express/features/auth/presentation/politica_privacidade.d
 import 'package:padoca_express/features/auth/presentation/pre_cadastro_screen.dart';
 import 'package:padoca_express/features/cliente/cadastro_cliente/cadastro_cliente_screen.dart';
 import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_entregador_screen.dart';
+import 'package:padoca_express/features/cliente/home/home_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -27,5 +28,6 @@ final appRouter = GoRouter(
       path: '/cadastro_entregador',
       builder: (context, state) => const CadastroEntregadorScreen(),
     ),
+    GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
   ],
 );

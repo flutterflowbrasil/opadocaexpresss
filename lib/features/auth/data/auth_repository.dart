@@ -17,9 +17,7 @@ class AuthRepository {
     final authResponse = await _supabase.auth.signUp(
       email: email,
       password: password,
-      data: {
-        'nome': nome, // Metadados opcionais
-      },
+      data: {'nome': nome},
     );
 
     if (authResponse.user == null) {
@@ -34,14 +32,59 @@ class AuthRepository {
       'email': email,
       'telefone': telefone,
       'tipo_usuario': 'cliente',
+      'nome_completo_fantasia': nome,
     });
 
     // 3. Inserir na tabela public.clientes
     await _supabase.from('clientes').insert({
       'usuario_id': userId,
-      'nome_completo': nome,
-      // Outros campos opcionais podem ser adicionados depois
+      // 'nome_completo': nome, // Removido pois não existe na tabela clientes
     });
+  }
+
+  Future<AuthResponse> signIn({
+    required String email,
+    required String password,
+  }) async {
+    return await _supabase.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<String?> getUserType(String userId) async {
+    final response = await _supabase
+        .from('usuarios')
+        .select('tipo_usuario')
+        .eq('id', userId)
+        .single();
+
+    return response['tipo_usuario'] as String?;
+  }
+
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
+  Future<Map<String, dynamic>?> getProfile(String userId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final response = await _supabase
+          .from('usuarios')
+          .select('nome_completo_fantasia')
+          .eq('id', userId)
+          .maybeSingle();
+
+      return {
+        'nome': response?['nome_completo_fantasia'] ?? 'Usuário',
+        'email': user.email,
+        'id': userId,
+      };
+    } catch (e) {
+      return null;
+    }
   }
 }
 

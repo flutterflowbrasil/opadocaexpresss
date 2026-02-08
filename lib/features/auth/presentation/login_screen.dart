@@ -1,22 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/auth/presentation/login_controller.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  // bool _isRegistering = false; // Removed as we navigate to pre-cadastro
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _senhaController = TextEditingController();
   bool _isPasswordVisible = false;
 
-  // void _toggleMode() ... // Removed
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
+
+  void _login() async {
+    final email = _emailController.text.trim();
+    final senha = _senhaController.text;
+
+    if (email.isEmpty || senha.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, preencha todos os campos')),
+      );
+      return;
+    }
+
+    await ref.read(loginControllerProvider.notifier).login(email, senha);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(loginControllerProvider);
+
+    // Listen for state changes
+    ref.listen(loginControllerProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+      } else if (next.success) {
+        if (next.userType == 'cliente') {
+          context.go('/home');
+        } else {
+          // Handle other user types or show a message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login realizado com sucesso!')),
+          );
+        }
+      }
+    });
+
     final primaryColor = const Color(0xFFFF7034);
     final burgundyColor = const Color(0xFF7D2D35);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -85,6 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildLabel('E-mail', isDark, burgundyColor),
                     const SizedBox(height: 6),
                     _buildTextField(
+                      controller: _emailController,
                       icon: Icons.email_outlined,
                       hint: 'exemplo@dominio.com',
                       isDark: isDark,
@@ -115,6 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 6),
                     _buildTextField(
+                      controller: _senhaController,
                       icon: Icons.lock_outline,
                       hint: '••••••••',
                       isDark: isDark,
@@ -139,10 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 32),
 
                     ElevatedButton(
-                      onPressed: () {
-                        // TODO: Implement login/register logic
-                        context.go('/home'); // Placeholder navigation
-                      },
+                      onPressed: state.isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
@@ -153,13 +194,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         elevation: 4,
                         shadowColor: primaryColor.withValues(alpha: 0.3),
                       ),
-                      child: Text(
-                        'Entrar',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: state.isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Entrar',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
 
                     const SizedBox(height: 24),
@@ -215,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.g_mobiledata,
                         size: 28,
                         color: Colors.blue,
@@ -242,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : Colors.grey[500],
                             ),
                             children: [
-                              TextSpan(text: 'Ainda não tem conta? '),
+                              const TextSpan(text: 'Ainda não tem conta? '),
                               TextSpan(
                                 text: 'Cadastre-se',
                                 style: GoogleFonts.outfit(
@@ -280,6 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildTextField({
+    required TextEditingController controller,
     required IconData icon,
     required String hint,
     required bool isDark,
@@ -302,6 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       child: TextField(
+        controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         style: GoogleFonts.outfit(color: isDark ? Colors.white : burgundyColor),
