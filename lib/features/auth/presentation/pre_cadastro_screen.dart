@@ -156,7 +156,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Sou parceiro, quero me cadastrar.',
                       icon: Icons.storefront_outlined,
                       buttonText: 'Cadastrar Estabelecimento',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro-estabelecimento/step1');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,
@@ -208,7 +210,9 @@ class PreCadastroScreen extends StatelessWidget {
                       description: 'Sou parceiro, quero me cadastrar.',
                       icon: Icons.storefront_outlined,
                       buttonText: 'Cadastrar Estabelecimento',
-                      onTap: () {},
+                      onTap: () {
+                        context.push('/cadastro-estabelecimento/step1');
+                      },
                       isDark: isDark,
                       cardColor: cardColor,
                       textColor: textColor,

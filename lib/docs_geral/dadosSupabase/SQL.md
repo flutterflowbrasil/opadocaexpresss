@@ -119,6 +119,9 @@ CREATE TABLE public.estabelecimentos (
   config_avancada jsonb DEFAULT '{"aceita_agendamento": false, "tempo_maximo_entrega_min": 60, "tempo_minimo_entrega_min": 15, "intervalo_atualizacao_estoque_min": 5, "tempo_antecedencia_agendamento_min": 60}'::jsonb,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  responsavel_nome text,
+  responsavel_cpf text,
+  dados_bancarios jsonb DEFAULT '{"banco": null, "conta": null, "agencia": null, "titular": null, "tipo_conta": null, "conta_digito": null}'::jsonb,
   CONSTRAINT estabelecimentos_pkey PRIMARY KEY (id),
   CONSTRAINT estabelecimentos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
 );

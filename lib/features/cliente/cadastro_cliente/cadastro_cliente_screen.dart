@@ -108,6 +108,73 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
+      appBar: AppBar(
+        backgroundColor: isDark ? bgDark : bgLight,
+        elevation: 0,
+        scrolledUnderElevation: 0, // Mantém a cor sólida ao rolar
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        centerTitle: true,
+        title: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF292524) : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF44403C)
+                              : Colors.grey[200]!,
+                        ),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: isDark ? Colors.grey[200] : Colors.grey[700],
+                          size: 20,
+                        ),
+                        onPressed: () => context.pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.bakery_dining,
+                        color: isDark ? primaryColor : burgundyColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ÔPADOCA EXPRESS',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: isDark ? Colors.grey[100] : burgundyColor,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: ResponsiveLayout(
           mobile: (context) => _buildContent(
@@ -155,52 +222,6 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header with Back Button
-                Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF292524) : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF44403C)
-                              : Colors.grey[200]!,
-                        ),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back,
-                          color: isDark ? Colors.grey[200] : Colors.grey[700],
-                        ),
-                        onPressed: () => context.pop(),
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.bakery_dining,
-                            color: isDark ? primaryColor : burgundyColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'ÔPADOCA EXPRESS',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: isDark ? Colors.grey[100] : burgundyColor,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 40), // Spacer to balance back button
-                  ],
-                ),
-
                 const SizedBox(height: 32),
 
                 // Title Section
