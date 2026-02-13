@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -28,8 +29,13 @@ class _CadastroEstabelecimentoStep1ScreenState
   final _senhaController = TextEditingController();
   final _confirmSenhaController = TextEditingController();
 
-  File? _imageFile;
+  String? _imagePath;
+  String _tipoPessoa = 'juridica'; // 'fisica' ou 'juridica'
 
+  final _cpfFormatter = MaskTextInputFormatter(
+    mask: '###.###.###-##',
+    filter: {'#': RegExp(r'[0-9]')},
+  );
   final _cnpjFormatter = MaskTextInputFormatter(
     mask: '##.###.###/####-##',
     filter: {'#': RegExp(r'[0-9]')},
@@ -52,7 +58,8 @@ class _CadastroEstabelecimentoStep1ScreenState
     if (state.telefone != null) _telefoneController.text = state.telefone!;
     if (state.email != null) _emailController.text = state.email!;
 
-    _imageFile = state.imagemCapa;
+    _imagePath = state.imagemCapaPath;
+    _tipoPessoa = state.tipoPessoa ?? 'juridica';
   }
 
   Future<void> _pickImage() async {
@@ -77,12 +84,23 @@ class _CadastroEstabelecimentoStep1ScreenState
           lockAspectRatio: true,
         ),
         IOSUiSettings(title: 'Recortar Capa'),
+        WebUiSettings(
+          context: context,
+          size: const CropperSize(width: 400, height: 400),
+          translations: const WebTranslations(
+            title: 'Recortar Capa',
+            rotateLeftTooltip: 'Girar para esquerda',
+            rotateRightTooltip: 'Girar para direita',
+            cancelButton: 'Cancelar',
+            cropButton: 'Salvar',
+          ),
+        ),
       ],
     );
 
     if (croppedFile != null) {
       setState(() {
-        _imageFile = File(croppedFile.path);
+        _imagePath = croppedFile.path;
       });
     }
   }
@@ -105,7 +123,8 @@ class _CadastroEstabelecimentoStep1ScreenState
             email: _emailController.text,
             senha: _senhaController.text,
 
-            imagemCapa: _imageFile,
+            imagemCapaPath: _imagePath,
+            tipoPessoa: _tipoPessoa,
           );
 
       context.push('/cadastro-estabelecimento/step2');
@@ -119,6 +138,16 @@ class _CadastroEstabelecimentoStep1ScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFFff7033);
     final burgundyColor = const Color(0xFF7d2d35);
+
+    // Determine image provider based on platform
+    ImageProvider? imageProvider;
+    if (_imagePath != null) {
+      if (kIsWeb) {
+        imageProvider = NetworkImage(_imagePath!);
+      } else {
+        imageProvider = FileImage(File(_imagePath!));
+      }
+    }
 
     return Scaffold(
       backgroundColor: isDark
@@ -170,14 +199,14 @@ class _CadastroEstabelecimentoStep1ScreenState
                           style: BorderStyle.solid,
                           width: 2,
                         ),
-                        image: _imageFile != null
+                        image: imageProvider != null
                             ? DecorationImage(
-                                image: FileImage(_imageFile!),
+                                image: imageProvider,
                                 fit: BoxFit.cover,
                               )
                             : null,
                       ),
-                      child: _imageFile == null
+                      child: _imagePath == null
                           ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -246,17 +275,116 @@ class _CadastroEstabelecimentoStep1ScreenState
                         v == null || v.isEmpty ? 'Campo obrigatório' : null,
                   ),
                   const SizedBox(height: 12),
+
+                  // Toggle Pessoa Física / Jurídica
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _tipoPessoa = 'fisica';
+                              _cnpjController.clear();
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _tipoPessoa == 'fisica'
+                                ? primaryColor.withOpacity(0.1)
+                                : Colors.transparent,
+                            side: BorderSide(
+                              color: _tipoPessoa == 'fisica'
+                                  ? primaryColor
+                                  : (isDark
+                                        ? Colors.grey[700]!
+                                        : Colors.grey[300]!),
+                              width: 2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'Pessoa Física',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: _tipoPessoa == 'fisica'
+                                    ? primaryColor
+                                    : (isDark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600]),
+                                fontWeight: _tipoPessoa == 'fisica'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _tipoPessoa = 'juridica';
+                              _cnpjController.clear();
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _tipoPessoa == 'juridica'
+                                ? primaryColor.withOpacity(0.1)
+                                : Colors.transparent,
+                            side: BorderSide(
+                              color: _tipoPessoa == 'juridica'
+                                  ? primaryColor
+                                  : (isDark
+                                        ? Colors.grey[700]!
+                                        : Colors.grey[300]!),
+                              width: 2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'Pessoa Jurídica',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: _tipoPessoa == 'juridica'
+                                    ? primaryColor
+                                    : (isDark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600]),
+                                fontWeight: _tipoPessoa == 'juridica'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
                   Row(
                     children: [
                       Expanded(
                         child: _buildTextField(
                           controller: _cnpjController,
-                          label: 'CNPJ',
+                          label: _tipoPessoa == 'fisica' ? 'CPF' : 'CNPJ',
                           icon: Icons.badge,
                           isDark: isDark,
-                          hintText: '00.000.000/0000-00',
+                          hintText: _tipoPessoa == 'fisica'
+                              ? '000.000.000-00'
+                              : '00.000.000/0000-00',
                           keyboardType: TextInputType.number,
-                          inputFormatters: [_cnpjFormatter],
+                          inputFormatters: [
+                            _tipoPessoa == 'fisica'
+                                ? _cpfFormatter
+                                : _cnpjFormatter,
+                          ],
                           validator: (v) => v == null || v.isEmpty
                               ? 'Campo obrigatório'
                               : null,

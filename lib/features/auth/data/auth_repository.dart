@@ -59,9 +59,9 @@ class AuthRepository {
     String? imageUrl;
 
     // 2. Upload da Imagem (se houver)
-    if (dadosCadastro.imagemCapa != null) {
+    if (dadosCadastro.imagemCapaPath != null) {
       imageUrl = await storageService.uploadCoverImage(
-        dadosCadastro.imagemCapa!,
+        dadosCadastro.imagemCapaPath!,
         userId,
       );
     }

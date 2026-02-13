@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
 // Estado do formulário de cadastro
 class CadastroClienteState {
@@ -49,7 +50,10 @@ class CadastroClienteController extends StateNotifier<CadastroClienteState> {
       );
       state = state.copyWith(isLoading: false, success: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: SupabaseErrorHandler.parseError(e),
+      );
     }
   }
 }

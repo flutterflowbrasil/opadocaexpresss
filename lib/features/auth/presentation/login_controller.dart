@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
 class LoginState {
   final bool isLoading;
@@ -50,7 +51,10 @@ class LoginController extends StateNotifier<LoginState> {
         state = state.copyWith(isLoading: false, error: 'Erro ao fazer login');
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: SupabaseErrorHandler.parseError(e),
+      );
     }
   }
 }

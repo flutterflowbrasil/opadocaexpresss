@@ -80,17 +80,26 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
     // Observa o estado do cadastro para feedback
     ref.listen(cadastroClienteControllerProvider, (previous, next) {
       if (next.error != null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       } else if (next.success) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Cadastro realizado com sucesso!'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
-        // Redireciona para login ou home (ajuste conforme fluxo)
+        // Redireciona para home
         context.go('/home');
       }
     });

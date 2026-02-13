@@ -44,16 +44,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Listen for state changes
     ref.listen(loginControllerProvider, (previous, next) {
       if (next.error != null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       } else if (next.success) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         if (next.userType == 'cliente') {
           context.go('/home');
         } else {
           // Handle other user types or show a message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login realizado com sucesso!')),
+            const SnackBar(
+              content: Text('Login realizado com sucesso!'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       }

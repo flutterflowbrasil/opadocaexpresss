@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_state.dart';
@@ -14,7 +13,8 @@ class CadastroEstabelecimentoController
     required String telefone,
     required String email,
     required String senha,
-    File? imagemCapa,
+    String? imagemCapaPath,
+    String? tipoPessoa,
   }) {
     state = state.copyWith(
       nomeFantasia: nomeFantasia,
@@ -22,7 +22,8 @@ class CadastroEstabelecimentoController
       telefone: telefone,
       email: email,
       senha: senha,
-      imagemCapa: imagemCapa,
+      imagemCapaPath: imagemCapaPath,
+      tipoPessoa: tipoPessoa,
     );
   }
 

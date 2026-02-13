@@ -1,5 +1,3 @@
-import 'dart:io';
-
 class CadastroEstabelecimentoState {
   final String? nomeFantasia;
   final String? cnpj;
@@ -7,7 +5,9 @@ class CadastroEstabelecimentoState {
   final String? email;
   final String? senha;
 
-  final File? imagemCapa;
+  final String? imagemCapaPath;
+
+  final String? tipoPessoa; // 'fisica' ou 'juridica'
 
   final String? cep;
   final String? logradouro;
@@ -35,7 +35,8 @@ class CadastroEstabelecimentoState {
     this.email,
     this.senha,
 
-    this.imagemCapa,
+    this.imagemCapaPath,
+    this.tipoPessoa = 'juridica',
     this.cep,
     this.logradouro,
     this.numero,
@@ -61,7 +62,8 @@ class CadastroEstabelecimentoState {
     String? email,
     String? senha,
 
-    File? imagemCapa,
+    String? imagemCapaPath,
+    String? tipoPessoa,
     String? cep,
     String? logradouro,
     String? numero,
@@ -86,7 +88,8 @@ class CadastroEstabelecimentoState {
       email: email ?? this.email,
       senha: senha ?? this.senha,
 
-      imagemCapa: imagemCapa ?? this.imagemCapa,
+      imagemCapaPath: imagemCapaPath ?? this.imagemCapaPath,
+      tipoPessoa: tipoPessoa ?? this.tipoPessoa,
       cep: cep ?? this.cep,
       logradouro: logradouro ?? this.logradouro,
       numero: numero ?? this.numero,
