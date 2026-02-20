@@ -48,8 +48,10 @@ class CadastroClienteController extends StateNotifier<CadastroClienteState> {
         nome: nome,
         telefone: telefone,
       );
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, success: true);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: SupabaseErrorHandler.parseError(e),

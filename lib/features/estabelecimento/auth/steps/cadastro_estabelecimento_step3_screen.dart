@@ -8,6 +8,7 @@ import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_controller.dart';
 import 'package:padoca_express/features/estabelecimento/data/storage_service.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
 class CadastroEstabelecimentoStep3Screen extends ConsumerStatefulWidget {
   const CadastroEstabelecimentoStep3Screen({super.key});
@@ -85,9 +86,12 @@ class _CadastroEstabelecimentoStep3ScreenState
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erro no cadastro: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(SupabaseErrorHandler.parseError(e)),
+              backgroundColor: Colors.red[700],
+            ),
+          );
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);

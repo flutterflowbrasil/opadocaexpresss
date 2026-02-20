@@ -44,13 +44,17 @@ class LoginController extends StateNotifier<LoginState> {
         password: password,
       );
 
+      if (!mounted) return;
+
       if (response.user != null) {
         final type = await _authRepository.getUserType(response.user!.id);
+        if (!mounted) return;
         state = state.copyWith(isLoading: false, success: true, userType: type);
       } else {
         state = state.copyWith(isLoading: false, error: 'Erro ao fazer login');
       }
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: SupabaseErrorHandler.parseError(e),

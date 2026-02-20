@@ -72,4 +72,6 @@ flutter:
   
   assets:
     - assets/imagens/
-    - .env
+    # NOTA: .env NUNCA deve ser listado aqui!
+    # Em Flutter Web, assets são publicamente acessíveis via URL.
+    # Use --dart-define no build ou carregue via flutter_dotenv apenas em dev.

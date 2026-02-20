@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,8 +9,11 @@ import 'package:padoca_express/core/theme/theme_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Carrega variáveis de ambiente
-  await dotenv.load(fileName: ".env");
+  // Carrega variáveis de ambiente apenas em plataformas não-web
+  // Na Web em produção, use variáveis de ambiente da Vercel via --dart-define
+  if (!kIsWeb) {
+    await dotenv.load(fileName: '.env');
+  }
 
   // Inicializa Supabase
   await SupabaseConfig.initialize();
