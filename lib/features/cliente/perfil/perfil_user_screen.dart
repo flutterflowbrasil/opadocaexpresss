@@ -266,7 +266,7 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                                     .read(themeProvider.notifier)
                                     .toggleTheme(val);
                               },
-                              activeColor: primaryColor,
+                              activeThumbColor: primaryColor,
                             ),
                           ],
                         ),

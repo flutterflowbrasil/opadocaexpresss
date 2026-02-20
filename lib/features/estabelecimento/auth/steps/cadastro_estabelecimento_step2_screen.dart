@@ -32,7 +32,7 @@ class _CadastroEstabelecimentoStep2ScreenState
 
   // Estado dos horários (simplificado para Seg-Sex, Sab, Dom)
   // Estrutura: {'aberto': bool, 'inicio': String, 'fim': String}
-  Map<String, Map<String, dynamic>> _horarios = {
+  final Map<String, Map<String, dynamic>> _horarios = {
     'seg': {'aberto': true, 'inicio': '07:00', 'fim': '20:00'},
     'ter': {'aberto': true, 'inicio': '07:00', 'fim': '20:00'},
     'qua': {'aberto': true, 'inicio': '07:00', 'fim': '20:00'},
