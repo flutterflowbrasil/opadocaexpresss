@@ -129,7 +129,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: burgundyColor.withOpacity(0.6),
+                          color: burgundyColor.withValues(alpha: 0.6),
                           letterSpacing: 1,
                         ),
                       ),
@@ -138,7 +138,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: burgundyColor.withOpacity(0.6),
+                          color: burgundyColor.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -148,7 +148,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: 1.0,
-                      backgroundColor: burgundyColor.withOpacity(0.1),
+                      backgroundColor: burgundyColor.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation(primaryColor),
                       minHeight: 6,
                     ),
@@ -168,7 +168,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                     style: GoogleFonts.plusJakartaSans(
                       color: isDark
                           ? Colors.grey[400]
-                          : burgundyColor.withOpacity(0.7),
+                          : burgundyColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -276,7 +276,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                     style: GoogleFonts.plusJakartaSans(
                       color: isDark
                           ? Colors.grey[400]
-                          : burgundyColor.withOpacity(0.6),
+                          : burgundyColor.withValues(alpha: 0.6),
                       fontSize: 11,
                     ),
                   ),
@@ -285,9 +285,11 @@ class _CadastroEstabelecimentoStep3ScreenState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: primaryColor.withOpacity(0.2)),
+                      border: Border.all(
+                        color: primaryColor.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -311,7 +313,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                                   fontSize: 11,
                                   color: isDark
                                       ? Colors.grey[300]
-                                      : burgundyColor.withOpacity(0.7),
+                                      : burgundyColor.withValues(alpha: 0.7),
                                 ),
                               ),
                             ],
@@ -336,8 +338,8 @@ class _CadastroEstabelecimentoStep3ScreenState
             colors: [
               isDark ? const Color(0xFF23150f) : const Color(0xFFf9f5f0),
               isDark
-                  ? const Color(0xFF23150f).withOpacity(0)
-                  : const Color(0xFFf9f5f0).withOpacity(0),
+                  ? const Color(0xFF23150f).withValues(alpha: 0)
+                  : const Color(0xFFf9f5f0).withValues(alpha: 0),
             ],
           ),
         ),
@@ -409,7 +411,7 @@ class _CadastroEstabelecimentoStep3ScreenState
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
@@ -433,7 +435,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                 icon,
                 color: isDark
                     ? Colors.grey[600]
-                    : burgundyColor.withOpacity(0.4),
+                    : burgundyColor.withValues(alpha: 0.4),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -480,7 +482,9 @@ class _CadastroEstabelecimentoStep3ScreenState
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? primaryColor : Colors.grey.withOpacity(0.3),
+            color: isSelected
+                ? primaryColor
+                : Colors.grey.withValues(alpha: 0.3),
           ),
           boxShadow: isSelected
               ? [
@@ -500,7 +504,7 @@ class _CadastroEstabelecimentoStep3ScreenState
                   ? primaryColor
                   : (isDark
                         ? Colors.white
-                        : const Color(0xFF7d2d35).withOpacity(0.6)),
+                        : const Color(0xFF7d2d35).withValues(alpha: 0.6)),
               fontWeight: FontWeight.bold,
             ),
           ),

@@ -110,7 +110,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: burgundyColor.withOpacity(0.6),
+                          color: burgundyColor.withValues(alpha: 0.6),
                           letterSpacing: 1,
                         ),
                       ),
@@ -119,7 +119,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: burgundyColor.withOpacity(0.6),
+                          color: burgundyColor.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -129,7 +129,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: 0.66,
-                      backgroundColor: burgundyColor.withOpacity(0.1),
+                      backgroundColor: burgundyColor.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation(primaryColor),
                       minHeight: 6,
                     ),
@@ -149,7 +149,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                     style: GoogleFonts.plusJakartaSans(
                       color: isDark
                           ? Colors.grey[400]
-                          : burgundyColor.withOpacity(0.7),
+                          : burgundyColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -417,7 +417,7 @@ class _CadastroEstabelecimentoStep2ScreenState
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
@@ -443,7 +443,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                       icon,
                       color: isDark
                           ? Colors.grey[600]
-                          : burgundyColor.withOpacity(0.4),
+                          : burgundyColor.withValues(alpha: 0.4),
                     )
                   : null,
               border: OutlineInputBorder(
@@ -542,9 +542,9 @@ class _CadastroEstabelecimentoStep2ScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: burgundyColor.withOpacity(0.05)),
+        border: Border.all(color: burgundyColor.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -561,7 +561,16 @@ class _CadastroEstabelecimentoStep2ScreenState
               Switch(
                 value: value,
                 onChanged: onChanged,
-                activeColor: const Color(0xFFff7033),
+                thumbColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? const Color(0xFFff7033)
+                      : null,
+                ),
+                trackColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? const Color(0xFFff7033).withValues(alpha: 0.5)
+                      : null,
+                ),
               ),
             ],
           ),
@@ -613,7 +622,7 @@ class _CadastroEstabelecimentoStep2ScreenState
             style: GoogleFonts.plusJakartaSans(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: burgundyColor.withOpacity(0.6),
+              color: burgundyColor.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 4),
@@ -622,11 +631,13 @@ class _CadastroEstabelecimentoStep2ScreenState
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.black.withOpacity(0.2)
-                  : const Color(0xFFF9F5F0).withOpacity(0.5),
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : const Color(0xFFF9F5F0).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isDark ? Colors.white24 : burgundyColor.withOpacity(0.1),
+                color: isDark
+                    ? Colors.white24
+                    : burgundyColor.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -644,7 +655,7 @@ class _CadastroEstabelecimentoStep2ScreenState
                   size: 16,
                   color: isDark
                       ? Colors.white54
-                      : burgundyColor.withOpacity(0.4),
+                      : burgundyColor.withValues(alpha: 0.4),
                 ),
               ],
             ),

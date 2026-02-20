@@ -180,7 +180,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                     style: GoogleFonts.plusJakartaSans(
                       color: isDark
                           ? Colors.grey[400]
-                          : burgundyColor.withOpacity(0.7),
+                          : burgundyColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -192,10 +192,10 @@ class _CadastroEstabelecimentoStep1ScreenState
                     child: Container(
                       height: 200,
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.05),
+                        color: primaryColor.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: primaryColor.withOpacity(0.3),
+                          color: primaryColor.withValues(alpha: 0.3),
                           style: BorderStyle.solid,
                           width: 2,
                         ),
@@ -217,7 +217,9 @@ class _CadastroEstabelecimentoStep1ScreenState
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: primaryColor.withOpacity(0.2),
+                                        color: primaryColor.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -244,7 +246,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                                   style: GoogleFonts.plusJakartaSans(
                                     color: isDark
                                         ? Colors.grey[400]
-                                        : burgundyColor.withOpacity(0.6),
+                                        : burgundyColor.withValues(alpha: 0.6),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -289,7 +291,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                           },
                           style: OutlinedButton.styleFrom(
                             backgroundColor: _tipoPessoa == 'fisica'
-                                ? primaryColor.withOpacity(0.1)
+                                ? primaryColor.withValues(alpha: 0.1)
                                 : Colors.transparent,
                             side: BorderSide(
                               color: _tipoPessoa == 'fisica'
@@ -332,7 +334,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                           },
                           style: OutlinedButton.styleFrom(
                             backgroundColor: _tipoPessoa == 'juridica'
-                                ? primaryColor.withOpacity(0.1)
+                                ? primaryColor.withValues(alpha: 0.1)
                                 : Colors.transparent,
                             side: BorderSide(
                               color: _tipoPessoa == 'juridica'
@@ -487,7 +489,11 @@ class _CadastroEstabelecimentoStep1ScreenState
                         child: Checkbox(
                           value: true,
                           onChanged: (v) {},
-                          activeColor: primaryColor,
+                          fillColor: WidgetStateProperty.resolveWith(
+                            (states) => states.contains(WidgetState.selected)
+                                ? primaryColor
+                                : Colors.transparent,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -497,7 +503,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                           style: GoogleFonts.plusJakartaSans(
                             color: isDark
                                 ? Colors.grey[400]
-                                : burgundyColor.withOpacity(0.7),
+                                : burgundyColor.withValues(alpha: 0.7),
                             fontSize: 12,
                           ),
                         ),
@@ -604,7 +610,7 @@ class _CadastroEstabelecimentoStep1ScreenState
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
@@ -629,7 +635,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                 icon,
                 color: isDark
                     ? Colors.grey[600]
-                    : burgundyColor.withOpacity(0.4),
+                    : burgundyColor.withValues(alpha: 0.4),
               ),
               suffixIcon: suffixIcon,
               border: OutlineInputBorder(
