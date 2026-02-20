@@ -9,27 +9,41 @@ class SupabaseConfig {
   /// - Web (produção): injetada via --dart-define=SUPABASE_URL=...
   static String get url {
     if (kIsWeb) {
-      // Na Web, usa --dart-define (variáveis de ambiente de build da Vercel)
       const webUrl = String.fromEnvironment('SUPABASE_URL');
       if (webUrl.isNotEmpty) return webUrl;
     }
     return dotenv.get('SUPABASE_URL', fallback: '');
   }
 
-  /// Chave Anon do Supabase
+  /// Publishable Key do Supabase (substitui a antiga anon key JWT)
+  /// Formato novo: sb_publishable_...
   /// - Mobile/Desktop: lida do .env via flutter_dotenv
-  /// - Web (produção): injetada via --dart-define=SUPABASE_ANON_KEY=...
+  /// - Web (produção): injetada via --dart-define=SUPABASE_PUBLISHABLE_KEY=...
   static String get anonKey {
     if (kIsWeb) {
-      const webKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-      if (webKey.isNotEmpty) return webKey;
+      // Tenta a nova publishable key primeiro
+      const publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+      if (publishableKey.isNotEmpty) return publishableKey;
+
+      // Fallback para variável legada (compatibilidade)
+      const legacyKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+      if (legacyKey.isNotEmpty) return legacyKey;
+    }
+
+    // Mobile/Desktop: tenta nova chave, depois legada
+    final publishableKey = dotenv.maybeGet('SUPABASE_PUBLISHABLE_KEY');
+    if (publishableKey != null && publishableKey.isNotEmpty) {
+      return publishableKey;
     }
     return dotenv.get('SUPABASE_ANON_KEY', fallback: '');
   }
 
   static Future<void> initialize() async {
     assert(url.isNotEmpty, 'SUPABASE_URL não configurada!');
-    assert(anonKey.isNotEmpty, 'SUPABASE_ANON_KEY não configurada!');
+    assert(
+      anonKey.isNotEmpty,
+      'SUPABASE_PUBLISHABLE_KEY (ou SUPABASE_ANON_KEY) não configurada!',
+    );
 
     await Supabase.initialize(url: url, anonKey: anonKey);
   }
