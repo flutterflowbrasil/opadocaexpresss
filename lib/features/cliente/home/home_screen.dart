@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:padoca_express/features/cliente/componentes/custom_bottom_navigation_bar.dart';
+import 'package:padoca_express/features/cliente/componentes/home_header.dart';
 import 'package:padoca_express/features/cliente/home/home_content.dart';
 import 'package:padoca_express/features/cliente/perfil/perfil_user_screen.dart';
 
@@ -27,7 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
-      body: SafeArea(child: screens[_currentIndex]),
+      appBar: ClienteAppBar(isDark: isDark),
+      body: screens[_currentIndex],
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

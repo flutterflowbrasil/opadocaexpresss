@@ -17,6 +17,35 @@ CREATE TABLE public.administradores_estabelecimento (
   CONSTRAINT administradores_estabelecimento_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
   CONSTRAINT administradores_estabelecimento_convidado_por_fkey FOREIGN KEY (convidado_por) REFERENCES public.usuarios(id)
 );
+CREATE TABLE public.carrinhos (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  cliente_id uuid NOT NULL,
+  estabelecimento_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT carrinhos_pkey PRIMARY KEY (id),
+  CONSTRAINT carrinhos_cliente_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id),
+  CONSTRAINT carrinhos_estabelecimento_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id)
+);
+CREATE TABLE public.categorias (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  nome text NOT NULL UNIQUE,
+  icone text,
+  ativa boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT categorias_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.categorias_estabelecimento (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  nome text NOT NULL UNIQUE,
+  icone text,
+  ativa boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  slug text NOT NULL UNIQUE,
+  ordem_exibicao integer NOT NULL DEFAULT 0,
+  imagem_url text,
+  CONSTRAINT categorias_estabelecimento_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.clientes (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   usuario_id uuid UNIQUE,
@@ -84,6 +113,8 @@ CREATE TABLE public.entregadores (
   ganhos_disponiveis numeric DEFAULT 0,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  latitude numeric,
+  longitude numeric,
   CONSTRAINT entregadores_pkey PRIMARY KEY (id),
   CONSTRAINT entregadores_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
 );
@@ -94,8 +125,6 @@ CREATE TABLE public.estabelecimentos (
   cnpj text UNIQUE,
   inscricao_estadual text,
   inscricao_municipal text,
-  categoria text NOT NULL,
-  subcategorias ARRAY,
   descricao text,
   logo_url text,
   banner_url text,
@@ -121,9 +150,13 @@ CREATE TABLE public.estabelecimentos (
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   responsavel_nome text,
   responsavel_cpf text,
-  dados_bancarios jsonb DEFAULT '{"banco": null, "conta": null, "agencia": null, "titular": null, "tipo_conta": null, "conta_digito": null}'::jsonb,
+  dados_bancarios jsonb DEFAULT '{"banco": null, "conta": null, "agencia": null, "titular": null, "tipo_conta": null, "conta_digito": null, "cpf_cnpj_titular": null}'::jsonb,
+  latitude numeric,
+  longitude numeric,
+  categoria_estabelecimento_id uuid,
   CONSTRAINT estabelecimentos_pkey PRIMARY KEY (id),
-  CONSTRAINT estabelecimentos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+  CONSTRAINT estabelecimentos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
+  CONSTRAINT estabelecimentos_categoria_estabelecimento_id_fkey FOREIGN KEY (categoria_estabelecimento_id) REFERENCES public.categorias_estabelecimento(id)
 );
 CREATE TABLE public.historico_status_pedido (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -183,7 +216,6 @@ CREATE TABLE public.produtos (
   estabelecimento_id uuid,
   nome text NOT NULL,
   descricao text,
-  categoria text NOT NULL,
   preco numeric NOT NULL,
   preco_promocional numeric,
   custo_estimado numeric,
@@ -198,8 +230,10 @@ CREATE TABLE public.produtos (
   total_vendidos integer DEFAULT 0,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  categoria_id uuid,
   CONSTRAINT produtos_pkey PRIMARY KEY (id),
-  CONSTRAINT produtos_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id)
+  CONSTRAINT produtos_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
+  CONSTRAINT produtos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias(id)
 );
 CREATE TABLE public.splits_pagamento (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

@@ -56,6 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else if (next.success) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        FocusScope.of(context).unfocus();
         if (next.userType == 'cliente') {
           context.go('/home');
         } else {
@@ -239,9 +240,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? Colors.grey[500]
-                                  : Colors.grey[400],
+                              color:
+                                  isDark ? Colors.grey[500] : Colors.grey[400],
                               letterSpacing: 1,
                             ),
                           ),
@@ -262,12 +262,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // TODO: Google Sign In
                       },
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: isDark
-                            ? const Color(0xFF27272A)
-                            : Colors.white,
-                        foregroundColor: isDark
-                            ? Colors.white
-                            : Colors.grey[800],
+                        backgroundColor:
+                            isDark ? const Color(0xFF27272A) : Colors.white,
+                        foregroundColor:
+                            isDark ? Colors.white : Colors.grey[800],
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(
                           color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
@@ -298,9 +296,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           text: TextSpan(
                             style: GoogleFonts.outfit(
                               fontSize: 14,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[500],
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[500],
                             ),
                             children: [
                               const TextSpan(text: 'Ainda não tem conta? '),

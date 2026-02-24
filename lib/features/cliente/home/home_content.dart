@@ -1,36 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/categorias/repositories/categoria_estabelecimento_repository.dart';
 import 'package:padoca_express/features/cliente/componentes/bakery_card.dart';
 import 'package:padoca_express/features/cliente/componentes/category_item.dart';
-import 'package:padoca_express/features/cliente/componentes/home_header.dart';
 import 'package:padoca_express/features/cliente/componentes/promo_banner.dart';
+import 'package:padoca_express/features/cliente/padarias/models/padaria_model.dart';
+import 'package:padoca_express/core/services/localizacao_service.dart';
+import 'package:padoca_express/features/cliente/padarias/providers/padaria_proxima_provider.dart';
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends ConsumerWidget {
   const HomeContent({super.key});
 
+  static const _primaryColor = Color(0xFFFF7034);
+  static const _secondaryColor = Color(0xFF7D2D35);
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const primaryColor = Color(0xFFFF7034);
-    const secondaryColor = Color(0xFF7D2D35);
     final cardColor = isDark ? const Color(0xFF27272A) : Colors.white;
+
+    final asyncCategorias = ref.watch(categoriasEstabelecimentoProvider);
+    final asyncPadarias = ref.watch(padariaProximaProvider);
 
     return CustomScrollView(
       slivers: [
-        // Header
+        // ─── Banner ────────────────────────────────────────────────────────────
         SliverToBoxAdapter(
-          child: HomeHeader(
-            isDark: isDark,
-            primaryColor: primaryColor,
-            secondaryColor: secondaryColor,
-            cardColor: cardColor,
-          ),
+          child: PromoBanner(secondaryColor: _secondaryColor),
         ),
 
-        // Banner Section
-        SliverToBoxAdapter(child: PromoBanner(secondaryColor: secondaryColor)),
-
-        // Categories
+        // ─── Título Categorias ─────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
@@ -39,125 +40,434 @@ class HomeContent extends StatelessWidget {
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : secondaryColor,
+                color: isDark ? Colors.white : _secondaryColor,
               ),
             ),
           ),
         ),
+
+        // ─── Lista horizontal de categorias ────────────────────────────────────
         SliverToBoxAdapter(
           child: SizedBox(
             height: 110,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: asyncCategorias.when(
+              loading: () => _CategoriasSkeletonList(isDark: isDark),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (categorias) {
+                if (categorias.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Sem categorias disponíveis',
+                      style: GoogleFonts.outfit(
+                        color: Colors.grey,
+                        fontSize: 13,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: categorias.length,
+                  itemBuilder: (context, index) {
+                    final cat = categorias[index];
+                    return CategoryItem(
+                      title: cat.nome,
+                      imageUrl: cat.imagemUrl ?? '',
+                      isDark: isDark,
+                      onTap: () => context.push(
+                        '/categoria/${cat.slug}',
+                        extra: cat,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+
+        // ─── Título "Padarias próximas" / "Mais bem avaliadas" ────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                CategoryItem(
-                  title: 'Padarias',
-                  imageUrl:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuDjtt2qwFaLUYEfmchTvz39KIAFEoyJUnrCJilxLSJS3NTx0KgIU4pp_2MMy0Zz4b2Avf_6wfx0qTBiaCaTf3H1Cj__tt3KPMKCXgs6SABvORidCc_PDdDRSBsunNbkHrT751eox3f9meyDuRpMZ9cZ_Cfk-Y0ubu1vEeRVfO4ciEVFZ7UYRrUad1k7M9ymeAC8RSU05QcndrLNO1IpeLqA_FgooOmX_bfldZm8hqSkYYYppIvHAV5e-Kv6h8q1Izjr1l32tVph',
-                  isDark: isDark,
+                asyncPadarias.when(
+                  loading: () => Text(
+                    'Padarias próximas',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : _secondaryColor,
+                    ),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (result) => Text(
+                    result.temLocalizacao
+                        ? 'Padarias próximas'
+                        : 'Outras padarias',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : _secondaryColor,
+                    ),
+                  ),
                 ),
-                CategoryItem(
-                  title: 'Doces',
-                  imageUrl:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuC4v9rSpUpQ6T31Sz0GMm_83pd7MC_xwrEgVfD1tWeiqe0zceuMMv4HdX_Zv4EaqwK-VAdB2lK9UQpqQTKHDPWlq7Qwj8id9ub5GhXAJUGFWhY62DrDZ-pnRcQYK2upBnfftcy01vI8_IDR18llkUeX90jd5C3VHwd6E3-Bisr_HMvnoo9WLVLlc6fYOyQduIvNLRheBVhCCEFem3Pd5zVedx9hM_rwLKmXEQpwwyz4h5drwClszzx8whMcpbwMiwqY_2-5yenU',
-                  isDark: isDark,
-                ),
-                CategoryItem(
-                  title: 'Salgados',
-                  imageUrl:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuCzxBlT15a4JOMztOu31625DtXRaueeQHmAiIBoS8EnPkrKGTrn78eNk8TJIYEibFfh7QFzOkYSMr6u-JBh9J7Lfj420QrHhVtmTReP2zE_Yz5RHR21zSCcqwVBy2yI3DUgX3RWT1qa2guagw5g0511ptLumZhl740RuAomC5F3zUYgzZe3ealm2PBbMuZqpXJH39oACUV-0cA85fJDbG-_WBiDlmtubup9QI1HBQm9NCZHxdgg4lasnrLa2gvBwSEuOoMbl3wb',
-                  isDark: isDark,
-                ),
-                CategoryItem(
-                  title: 'Lanches',
-                  imageUrl:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuAbxe2MZFtuE28MdZSt6FGc6fJXL9k5BtNBMjCCMlLZdpd6TZPX6rHVc-8fdvM6BLbA8N6EPEKFuXFuMLpglMGet3xOAZMAiB47YIRtc_YY8J31I4lLEMCJLs-DQSajJQVD8EpCZXqgEE2ceSoFXcBINhDrolgiidaoMBq1uFStGvNKu6A0nOa7sHLyLyQGjdc-v2EuPiJwysQ9y8GaK4knoa8CmbLnSvG0YBoKz3-ytwxXbqEZytlr695XPzKW3Q7G5nd0zsSK',
-                  isDark: isDark,
-                ),
-                CategoryItem(
-                  title: 'Bolos',
-                  imageUrl:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuC_ccsew0LHKbHPRbG4Jt9ps-abWTKAA9p5msprnRdy_TG16yHH1pd7nJuoifY_vJ8en-KXdraevk2DJoIByyE4W8NwkkG078jKrj4UO8Y6X05yJRx8RGm6PWYxwWxfqOsru9Kl395IlTLxT_JPFHp82IFRRer6qEK6pY0C9TocWZmHDpYFIBEZvWbSySKvU1lm0MHMmwYUQO7gHEoZt15DlYHFKX1aYza8-2XDGZWIH2x0MBLzMtmlS_GNbtc8FIvLdLQpYzK-',
-                  isDark: isDark,
+                GestureDetector(
+                  onTap: () => context.push('/padarias'),
+                  child: Text(
+                    'Ver todas',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryColor,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
 
-        // Nearby Bakeries
+        // ─── Banner: "Permitir localização" (Opção 2) ─────────────────────────
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Padarias próximas',
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : secondaryColor,
-                  ),
-                ),
-                Text(
-                  'Ver todas',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
+          child: asyncPadarias.maybeWhen(
+            data: (result) => result.temLocalizacao
+                ? const SizedBox.shrink()
+                : _BannerLocalizacao(isDark: isDark),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ),
+
+        // ─── Lista de padarias ─────────────────────────────────────────────────
+        asyncPadarias.when(
+          loading: () => SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                List.generate(3, (_) => _PadariaCardSkeleton(isDark: isDark))
+                    .expand((w) => [w, const SizedBox(height: 16)])
+                    .toList(),
+              ),
             ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              BakeryCard(
-                name: 'Padaria do João',
-                description: 'Pães, doces e salgados fresquinhos',
-                rating: '4.8',
-                time: '25-35 min',
-                fee: 'R\$ 3,99',
-                imageUrl:
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBIAJFQpRQccuw6kIO7ILI1W0VnQwn88c0Thxrlik-oHE4xiGop6G7k3hAKan6LdiLCxZL1gP2jdhFcN2gOiekXOr-ZuKg7Vr1pxMvOeBEUo4w-3JxQnHlnPV95Eh4XGoTILppoPbPVqjNNh85F7o_JHccU0f5IMNkui01it90JF2HZg7Ua4Rgjy-OuBKxdjFZEFCprd8RdmwQgic85jHDpIJ8RG5OQ3J-6yzpLnb1tApzoLqsnK5EcdssTCRXgaUfvMYXqa9MF',
-                isDark: isDark,
-                cardColor: cardColor,
+          error: (_, __) => SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Text(
+                  'Não foi possível carregar as padarias.',
+                  style: GoogleFonts.outfit(color: Colors.grey),
+                ),
               ),
-              const SizedBox(height: 16),
-              BakeryCard(
-                name: 'Central do Trigo',
-                description: 'O melhor pão de queijo da região',
-                rating: '4.9',
-                time: '15-25 min',
-                fee: 'Grátis',
-                imageUrl:
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuC_82VztcAbUqnSx11UGKx5KKkpLtIaSqxHz_SjGoOP-CxVG3AQQ8Q98SbIuyhwoHaehz8nyOb-Wo3oiEp3WTcWuDqsbh3UytlXFQYSA3mw7rm-ZYCuXK76ZD-VMeryKG3NhxTGaoWyw8Ns_aJQ3c6ffJt-N4kdLdAaNvL_vFPCb_eP203Bt1tTPlu5imk9u3L7yzmjuqJOb39-cqUyc7pQkmnwrks8jVUkZrzSYuCDScXgAfirHAOmc8cCg50oJCnMWADvGx9_',
-                isDark: isDark,
-                cardColor: cardColor,
-              ),
-              const SizedBox(height: 16),
-              BakeryCard(
-                name: 'Bella Massa',
-                description: 'Tortas, quiches e cafés gourmets',
-                rating: '4.5',
-                time: 'Fechado',
-                fee: '',
-                imageUrl:
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuDEElaS7MvXl55YpMWEUzN6rzVF1XrwDUKkFzj7QEsE7vTwccUxbgulx-2s9SFF-Xd2AO_mBkiwrJtpeYnwfoUsKlhmlx-7AAl1Oo3j4EMyf8rOw05q4IZjy1IrnGDWotClv1u5LsNk0rFusflR4HVg10q-kIbxi0jh_DptNWUQBjaa9Fn3Oc2u6kbjrdkV79-mzySIknFN0R0Mza95A9XzSspPkyfCOsujMsaP8rkDSc2qPct_EeNBfvbaDy63o6uBV-EJKlNI',
-                isDark: isDark,
-                cardColor: cardColor,
-                isClosed: true,
-              ),
-              const SizedBox(height: 24),
-            ]),
+            ),
           ),
+          data: (result) {
+            if (result.padarias.isEmpty) {
+              return SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.store_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Nenhuma padaria encontrada por aqui.',
+                        style: GoogleFonts.outfit(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index.isOdd) return const SizedBox(height: 16);
+                    final padaria = result.padarias[index ~/ 2];
+                    return _PadariaCardFromModel(
+                      padaria: padaria,
+                      isDark: isDark,
+                      cardColor: cardColor,
+                      temLocalizacao: result.temLocalizacao,
+                    );
+                  },
+                  childCount: result.padarias.length * 2 - 1,
+                ),
+              ),
+            );
+          },
         ),
       ],
+    );
+  }
+}
+
+// ─── Banner: solicitar localização (Opção 2) ──────────────────────────────────
+class _BannerLocalizacao extends ConsumerStatefulWidget {
+  final bool isDark;
+  const _BannerLocalizacao({required this.isDark});
+
+  @override
+  ConsumerState<_BannerLocalizacao> createState() => _BannerLocalizacaoState();
+}
+
+class _BannerLocalizacaoState extends ConsumerState<_BannerLocalizacao> {
+  bool _isLoading = false;
+
+  Future<void> _solicitar() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final pos = await obterLocalizacao();
+      if (pos != null) {
+        // Obteve localização! Recarregar a lista da Home.
+        ref.invalidate(padariaProximaProvider);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Não foi possível obter a localização. Permissão negada ou desativada.'),
+              backgroundColor: Color(0xFFFF7034),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _isLoading ? null : _solicitar,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color:
+              widget.isDark ? const Color(0xFF2A2018) : const Color(0xFFFFF3EE),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFFFF7034).withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on_rounded,
+                color: Color(0xFFFF7034), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Permitir localização para ver padarias perto de você',
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color:
+                      widget.isDark ? Colors.white70 : const Color(0xFF7D2D35),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFFF7034),
+                    ),
+                  )
+                : Icon(Icons.arrow_forward_ios_rounded,
+                    color: const Color(0xFFFF7034).withValues(alpha: 0.5),
+                    size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Card de padaria construído a partir do PadariaModel ─────────────────────
+class _PadariaCardFromModel extends StatelessWidget {
+  final PadariaModel padaria;
+  final bool isDark;
+  final Color cardColor;
+  final bool temLocalizacao;
+
+  const _PadariaCardFromModel({
+    required this.padaria,
+    required this.isDark,
+    required this.cardColor,
+    required this.temLocalizacao,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    String feeLabel;
+    final taxa = padaria.configEntrega?['taxa_entrega_fixa'];
+    if (taxa == null) {
+      feeLabel = 'Consultar';
+    } else {
+      final valor = double.tryParse(taxa.toString()) ?? 0.0;
+      feeLabel = valor == 0
+          ? 'Grátis'
+          : 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
+    }
+
+    return BakeryCard(
+      name: padaria.nome,
+      description: padaria.descricao ?? '',
+      rating: padaria.avaliacaoMedia.toStringAsFixed(1),
+      time: padaria.statusAberto ? padaria.tempoMedioFormatado : 'Fechado',
+      fee: padaria.statusAberto ? feeLabel : '',
+      imageUrl: padaria.logoUrl ?? '',
+      isDark: isDark,
+      cardColor: cardColor,
+      isClosed: !padaria.statusAberto,
+    );
+  }
+}
+
+// ─── Skeleton loader do card ──────────────────────────────────────────────────
+class _PadariaCardSkeleton extends StatefulWidget {
+  final bool isDark;
+  const _PadariaCardSkeleton({required this.isDark});
+
+  @override
+  State<_PadariaCardSkeleton> createState() => _PadariaCardSkeletonState();
+}
+
+class _PadariaCardSkeletonState extends State<_PadariaCardSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.4, end: 0.9).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = widget.isDark ? Colors.white : const Color(0xFF7D2D35);
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        height: 90,
+        decoration: BoxDecoration(
+          color: baseColor.withValues(alpha: _anim.value * 0.08),
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Skeleton loader para categorias ─────────────────────────────────────────
+class _CategoriasSkeletonList extends StatefulWidget {
+  final bool isDark;
+  const _CategoriasSkeletonList({required this.isDark});
+
+  @override
+  State<_CategoriasSkeletonList> createState() =>
+      _CategoriasSkeletonListState();
+}
+
+class _CategoriasSkeletonListState extends State<_CategoriasSkeletonList>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _shimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _shimmer = Tween<double>(begin: 0.4, end: 0.9).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shimmer,
+      builder: (context, _) {
+        return ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          itemCount: 5,
+          itemBuilder: (context, _) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: (widget.isDark
+                              ? Colors.white
+                              : const Color(0xFF7D2D35))
+                          .withValues(alpha: _shimmer.value * 0.15),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 52,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      color: (widget.isDark
+                              ? Colors.white
+                              : const Color(0xFF7D2D35))
+                          .withValues(alpha: _shimmer.value * 0.12),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

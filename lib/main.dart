@@ -9,11 +9,10 @@ import 'package:padoca_express/core/theme/theme_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Carrega variáveis de ambiente apenas em plataformas não-web
-  // Na Web em produção, use variáveis de ambiente da Vercel via --dart-define
-  if (!kIsWeb) {
-    await dotenv.load(fileName: '.env');
-  }
+  // Carrega variáveis de ambiente do .env
+  // Em produção (Web/Vercel), as variáveis --dart-define sobrescrevem os valores do .env
+  // Em desenvolvimento web, o .env local é usado como fallback
+  await dotenv.load(fileName: '.env');
 
   // Inicializa Supabase
   await SupabaseConfig.initialize();

@@ -57,11 +57,11 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         child: ResponsiveLayout(
           mobile: (context) =>
-              _buildContent(context, logoSize: 200, fontSize: 28),
+              _buildContent(context, logoFraction: 0.30, fontSize: 28),
           tablet: (context) =>
-              _buildContent(context, logoSize: 280, fontSize: 32),
+              _buildContent(context, logoFraction: 0.22, fontSize: 32),
           desktop: (context) =>
-              _buildContent(context, logoSize: 320, fontSize: 36),
+              _buildContent(context, logoFraction: 0.18, fontSize: 36),
         ),
       ),
     );
@@ -69,9 +69,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   Widget _buildContent(
     BuildContext context, {
-    required double logoSize,
+    required double logoFraction,
     required double fontSize,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final logoSize = (screenWidth * logoFraction).clamp(100.0, 260.0);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
