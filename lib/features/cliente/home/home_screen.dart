@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/cliente/componentes/custom_bottom_navigation_bar.dart';
 import 'package:padoca_express/features/cliente/componentes/home_header.dart';
 import 'package:padoca_express/features/cliente/home/home_content.dart';
@@ -28,7 +29,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
-      appBar: ClienteAppBar(isDark: isDark),
+      appBar: _currentIndex == 2
+          ? AppBar(
+              backgroundColor: isDark ? bgDark : bgLight,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new,
+                    color: isDark ? Colors.white : Colors.black87, size: 20),
+                onPressed: () {
+                  setState(() => _currentIndex = 0);
+                },
+              ),
+              title: Text(
+                'Perfil',
+                style: GoogleFonts.outfit(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          : ClienteAppBar(isDark: isDark),
       body: screens[_currentIndex],
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,

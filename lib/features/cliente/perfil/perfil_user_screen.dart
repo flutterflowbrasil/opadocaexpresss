@@ -37,28 +37,6 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Row(
-              children: [
-                const SizedBox(width: 40),
-                Expanded(
-                  child: Text(
-                    'Perfil',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : secondaryColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 40),
-              ],
-            ),
-          ),
-
           const SizedBox(height: 24),
 
           // Avatar & Info

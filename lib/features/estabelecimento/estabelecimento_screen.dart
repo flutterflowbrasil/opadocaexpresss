@@ -42,8 +42,10 @@ class EstabelecimentoScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: ClienteAppBar(
-          isDark: isDark,
-          showBackButton: true), // Mantendo a barra do app requisitada
+        isDark: isDark,
+        showBackButton: true,
+        showSearch: false,
+      ),
       bottomNavigationBar: const CarrinhoResumoBottomBar(),
       body: CustomScrollView(
         slivers: [

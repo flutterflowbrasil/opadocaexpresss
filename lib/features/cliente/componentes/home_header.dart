@@ -13,6 +13,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final VoidCallback? onCartTap;
   final VoidCallback? onAddressTap;
   final bool showBackButton;
+  final bool showSearch;
 
   static const _primaryColor = Color(0xFFFF7034);
   static const _secondaryColor = Color(0xFF7D2D35);
@@ -24,6 +25,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
     this.onCartTap,
     this.onAddressTap,
     this.showBackButton = false,
+    this.showSearch = true,
   });
 
   @override
@@ -100,7 +102,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              'Rua das Flores, 123',
+                              'Adicionar endereço',
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -126,48 +128,13 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
         const SizedBox(width: 8),
 
-        // Campo de busca compacto (read-only → navega)
-        Flexible(
-          child: GestureDetector(
+        // Ícone de busca compacto
+        if (showSearch)
+          _ActionButton(
+            icon: Icons.search_rounded,
+            isDark: isDark,
             onTap: () => context.push('/busca'),
-            child: Container(
-              height: 36,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(width: 8),
-                  Icon(Icons.search_rounded, size: 16, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      'Buscar...',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-            ),
           ),
-        ),
 
         const SizedBox(width: 8),
 
@@ -227,7 +194,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
               Icon(Icons.location_on_outlined, color: _primaryColor, size: 16),
               const SizedBox(width: 4),
               Text(
-                'Rua das Flores, 123',
+                'Adicionar endereço',
                 style: GoogleFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -243,43 +210,48 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
         const SizedBox(width: 16),
 
         // Busca expandida (centro)
-        Expanded(
-          child: GestureDetector(
-            onTap: () => context.push('/busca'),
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF3A3A3A) : cardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 14),
-                  Icon(Icons.search_rounded, color: Colors.grey[400], size: 20),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Busque por produtos ou padarias...',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: Colors.grey[400],
-                      ),
-                      overflow: TextOverflow.ellipsis,
+        if (showSearch)
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.push('/busca'),
+              child: Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3A3A3A) : cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    Icon(Icons.search_rounded,
+                        color: Colors.grey[400], size: 20),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Busque por produtos ou padarias...',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          color: Colors.grey[400],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ),
+          )
+        else
+          const Spacer(),
 
         const SizedBox(width: 16),
 
