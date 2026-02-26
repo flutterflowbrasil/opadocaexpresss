@@ -17,6 +17,27 @@ CREATE TABLE public.administradores_estabelecimento (
   CONSTRAINT administradores_estabelecimento_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
   CONSTRAINT administradores_estabelecimento_convidado_por_fkey FOREIGN KEY (convidado_por) REFERENCES public.usuarios(id)
 );
+CREATE TABLE public.avaliacoes (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  pedido_id uuid NOT NULL UNIQUE,
+  cliente_id uuid NOT NULL,
+  estabelecimento_id uuid NOT NULL,
+  entregador_id uuid,
+  nota_estabelecimento numeric CHECK (nota_estabelecimento >= 1::numeric AND nota_estabelecimento <= 5::numeric),
+  comentario_estabelecimento text,
+  nota_entregador numeric CHECK (nota_entregador >= 1::numeric AND nota_entregador <= 5::numeric),
+  comentario_entregador text,
+  resposta_estabelecimento text,
+  respondido_em timestamp with time zone,
+  tags ARRAY DEFAULT '{}'::text[],
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT avaliacoes_pkey PRIMARY KEY (id),
+  CONSTRAINT avaliacoes_pedido_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id),
+  CONSTRAINT avaliacoes_cliente_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id),
+  CONSTRAINT avaliacoes_estabelecimento_fk FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
+  CONSTRAINT avaliacoes_entregador_fkey FOREIGN KEY (entregador_id) REFERENCES public.entregadores(id)
+);
 CREATE TABLE public.carrinhos (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   cliente_id uuid NOT NULL,
@@ -34,6 +55,18 @@ CREATE TABLE public.categorias (
   ativa boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   CONSTRAINT categorias_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.categorias_cardapio (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  estabelecimento_id uuid NOT NULL,
+  nome text NOT NULL,
+  descricao text,
+  ordem_exibicao integer NOT NULL DEFAULT 0,
+  ativa boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT categorias_cardapio_pkey PRIMARY KEY (id),
+  CONSTRAINT categorias_cardapio_estabelecimento_fk FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id)
 );
 CREATE TABLE public.categorias_estabelecimento (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -57,8 +90,93 @@ CREATE TABLE public.clientes (
   valor_total_gasto numeric DEFAULT 0,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  indicado_por_cliente_id uuid,
+  pontos_fidelidade integer DEFAULT 0,
   CONSTRAINT clientes_pkey PRIMARY KEY (id),
-  CONSTRAINT clientes_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+  CONSTRAINT clientes_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
+  CONSTRAINT clientes_indicado_por_cliente_id_fkey FOREIGN KEY (indicado_por_cliente_id) REFERENCES public.clientes(id)
+);
+CREATE TABLE public.config_despacho (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  estabelecimento_id uuid NOT NULL UNIQUE,
+  tempo_resposta_seg integer NOT NULL DEFAULT 30,
+  max_tentativas integer NOT NULL DEFAULT 10,
+  raio_busca_inicial_km numeric NOT NULL DEFAULT 3.0,
+  raio_busca_expansao_km numeric NOT NULL DEFAULT 1.5,
+  raio_busca_maximo_km numeric NOT NULL DEFAULT 10.0,
+  modo_despacho text NOT NULL DEFAULT 'automatico'::text CHECK (modo_despacho = ANY (ARRAY['automatico'::text, 'broadcast'::text, 'manual'::text])),
+  prioridade_criterio text NOT NULL DEFAULT 'hibrido'::text CHECK (prioridade_criterio = ANY (ARRAY['distancia'::text, 'avaliacao'::text, 'score_fila'::text, 'hibrido'::text])),
+  ativo boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT config_despacho_pkey PRIMARY KEY (id),
+  CONSTRAINT config_despacho_estabelecimento_fk FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id)
+);
+CREATE TABLE public.cupons (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  estabelecimento_id uuid,
+  codigo text NOT NULL UNIQUE,
+  descricao text,
+  tipo text NOT NULL CHECK (tipo = ANY (ARRAY['percentual'::text, 'valor_fixo'::text, 'entrega_gratis'::text])),
+  valor numeric NOT NULL CHECK (valor >= 0::numeric),
+  valor_minimo_pedido numeric DEFAULT 0,
+  limite_usos integer,
+  usos_atuais integer DEFAULT 0,
+  limite_usos_por_cliente integer DEFAULT 1,
+  data_inicio timestamp with time zone DEFAULT now(),
+  data_fim timestamp with time zone,
+  ativo boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT cupons_pkey PRIMARY KEY (id),
+  CONSTRAINT cupons_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id)
+);
+CREATE TABLE public.cupons_usos (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  cupom_id uuid NOT NULL,
+  cliente_id uuid NOT NULL,
+  pedido_id uuid NOT NULL,
+  usado_em timestamp with time zone DEFAULT now(),
+  CONSTRAINT cupons_usos_pkey PRIMARY KEY (id),
+  CONSTRAINT cupons_usos_cupom_fkey FOREIGN KEY (cupom_id) REFERENCES public.cupons(id),
+  CONSTRAINT cupons_usos_cliente_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id),
+  CONSTRAINT cupons_usos_pedido_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id)
+);
+CREATE TABLE public.despacho_pedidos (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  pedido_id uuid NOT NULL,
+  entregador_id uuid NOT NULL,
+  tentativa integer NOT NULL DEFAULT 1,
+  status text NOT NULL DEFAULT 'aguardando'::text CHECK (status = ANY (ARRAY['aguardando'::text, 'aceito'::text, 'rejeitado'::text, 'expirado'::text, 'cancelado'::text])),
+  distancia_km numeric,
+  score_no_momento numeric,
+  ofertado_em timestamp with time zone NOT NULL DEFAULT now(),
+  expira_em timestamp with time zone NOT NULL,
+  respondido_em timestamp with time zone,
+  motivo_rejeicao text,
+  push_enviado boolean DEFAULT false,
+  push_enviado_em timestamp with time zone,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  CONSTRAINT despacho_pedidos_pkey PRIMARY KEY (id),
+  CONSTRAINT despacho_pedidos_pedido_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id),
+  CONSTRAINT despacho_pedidos_entregador_fk FOREIGN KEY (entregador_id) REFERENCES public.entregadores(id)
+);
+CREATE TABLE public.dispositivos_push (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  usuario_id uuid NOT NULL,
+  token text NOT NULL UNIQUE,
+  plataforma text NOT NULL CHECK (plataforma = ANY (ARRAY['android'::text, 'ios'::text, 'expo'::text])),
+  app_version text,
+  device_model text,
+  ativo boolean DEFAULT true,
+  invalido boolean DEFAULT false,
+  invalido_em timestamp with time zone,
+  motivo_invalido text,
+  ultimo_uso_em timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT dispositivos_push_pkey PRIMARY KEY (id),
+  CONSTRAINT dispositivos_push_usuario_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
 );
 CREATE TABLE public.enderecos_clientes (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -78,6 +196,7 @@ CREATE TABLE public.enderecos_clientes (
   is_padrao boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  geo USER-DEFINED,
   CONSTRAINT enderecos_clientes_pkey PRIMARY KEY (id),
   CONSTRAINT enderecos_clientes_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id)
 );
@@ -115,8 +234,14 @@ CREATE TABLE public.entregadores (
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   latitude numeric,
   longitude numeric,
+  status_despacho text NOT NULL DEFAULT 'livre'::text CHECK (status_despacho = ANY (ARRAY['livre'::text, 'aguardando_aceite'::text, 'em_pedido'::text])),
+  pedido_atual_id uuid,
+  ultima_entrega_em timestamp with time zone,
+  score_fila numeric DEFAULT 0,
+  geo USER-DEFINED,
   CONSTRAINT entregadores_pkey PRIMARY KEY (id),
-  CONSTRAINT entregadores_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+  CONSTRAINT entregadores_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
+  CONSTRAINT entregadores_pedido_atual_id_fkey FOREIGN KEY (pedido_atual_id) REFERENCES public.pedidos(id)
 );
 CREATE TABLE public.estabelecimentos (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -154,6 +279,12 @@ CREATE TABLE public.estabelecimentos (
   latitude numeric,
   longitude numeric,
   categoria_estabelecimento_id uuid,
+  geo USER-DEFINED,
+  nome_fantasia text,
+  slug text UNIQUE,
+  tempo_medio_entrega_min integer DEFAULT 40,
+  destaque boolean DEFAULT false,
+  tags ARRAY DEFAULT '{}'::text[],
   CONSTRAINT estabelecimentos_pkey PRIMARY KEY (id),
   CONSTRAINT estabelecimentos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
   CONSTRAINT estabelecimentos_categoria_estabelecimento_id_fkey FOREIGN KEY (categoria_estabelecimento_id) REFERENCES public.categorias_estabelecimento(id)
@@ -170,6 +301,120 @@ CREATE TABLE public.historico_status_pedido (
   CONSTRAINT historico_status_pedido_pkey PRIMARY KEY (id),
   CONSTRAINT historico_status_pedido_pedido_id_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id),
   CONSTRAINT historico_status_pedido_alterado_por_fkey FOREIGN KEY (alterado_por) REFERENCES public.usuarios(id)
+);
+CREATE TABLE public.itens_carrinho (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  carrinho_id uuid NOT NULL,
+  produto_id uuid NOT NULL,
+  quantidade integer NOT NULL DEFAULT 1 CHECK (quantidade > 0),
+  preco_unitario numeric NOT NULL,
+  opcoes_selecionadas jsonb DEFAULT '[]'::jsonb,
+  observacao text,
+  subtotal numeric DEFAULT ((quantidade)::numeric * preco_unitario),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT itens_carrinho_pkey PRIMARY KEY (id),
+  CONSTRAINT itens_carrinho_carrinho_fkey FOREIGN KEY (carrinho_id) REFERENCES public.carrinhos(id),
+  CONSTRAINT itens_carrinho_produto_fkey FOREIGN KEY (produto_id) REFERENCES public.produtos(id)
+);
+CREATE TABLE public.movimentacao_estoque (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  produto_id uuid NOT NULL,
+  estabelecimento_id uuid NOT NULL,
+  tipo_movimento text NOT NULL CHECK (tipo_movimento = ANY (ARRAY['entrada'::text, 'saida'::text, 'ajuste'::text, 'venda'::text, 'cancelamento'::text, 'desperdicio'::text])),
+  quantidade integer NOT NULL,
+  estoque_anterior integer,
+  estoque_posterior integer,
+  motivo text,
+  pedido_id uuid,
+  registrado_por uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT movimentacao_estoque_pkey PRIMARY KEY (id),
+  CONSTRAINT movimentacao_estoque_produto_fkey FOREIGN KEY (produto_id) REFERENCES public.produtos(id),
+  CONSTRAINT movimentacao_estoque_estabelecimento_fk FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
+  CONSTRAINT movimentacao_estoque_pedido_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id),
+  CONSTRAINT movimentacao_estoque_usuario_fkey FOREIGN KEY (registrado_por) REFERENCES public.usuarios(id)
+);
+CREATE TABLE public.notificacao_preferencias (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  usuario_id uuid NOT NULL UNIQUE,
+  push_ativo boolean DEFAULT true,
+  push_pedidos boolean DEFAULT true,
+  push_entregas boolean DEFAULT true,
+  push_promocoes boolean DEFAULT true,
+  silencioso_ativo boolean DEFAULT false,
+  silencioso_inicio time without time zone DEFAULT '22:00:00'::time without time zone,
+  silencioso_fim time without time zone DEFAULT '07:00:00'::time without time zone,
+  silencioso_timezone text DEFAULT 'America/Sao_Paulo'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notificacao_preferencias_pkey PRIMARY KEY (id),
+  CONSTRAINT notificacao_preferencias_usuario_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+);
+CREATE TABLE public.notificacao_templates (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  evento text NOT NULL UNIQUE,
+  titulo text NOT NULL,
+  corpo text NOT NULL,
+  icone text DEFAULT 'default'::text,
+  som text DEFAULT 'default'::text,
+  canal_android text DEFAULT 'geral'::text,
+  dados_extras jsonb DEFAULT '{}'::jsonb,
+  ativo boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notificacao_templates_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.notificacoes_fila (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  usuario_id uuid NOT NULL,
+  dispositivo_id uuid,
+  evento text NOT NULL,
+  titulo text NOT NULL,
+  corpo text NOT NULL,
+  dados jsonb DEFAULT '{}'::jsonb,
+  entidade_tipo text,
+  entidade_id uuid,
+  status text NOT NULL DEFAULT 'pendente'::text CHECK (status = ANY (ARRAY['pendente'::text, 'processando'::text, 'enviado'::text, 'falhou'::text, 'ignorado'::text])),
+  tentativas integer DEFAULT 0,
+  max_tentativas integer DEFAULT 3,
+  proxima_tentativa_em timestamp with time zone DEFAULT now(),
+  provedor_response jsonb,
+  provedor_message_id text,
+  created_at timestamp with time zone DEFAULT now(),
+  processado_em timestamp with time zone,
+  enviado_em timestamp with time zone,
+  falhou_em timestamp with time zone,
+  erro_codigo text,
+  erro_detalhe text,
+  CONSTRAINT notificacoes_fila_pkey PRIMARY KEY (id),
+  CONSTRAINT notificacoes_fila_dispositivo_fk FOREIGN KEY (dispositivo_id) REFERENCES public.dispositivos_push(id),
+  CONSTRAINT notificacoes_fila_usuario_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+);
+CREATE TABLE public.notificacoes_historico (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  usuario_id uuid NOT NULL,
+  dispositivo_id uuid,
+  evento text NOT NULL,
+  titulo text NOT NULL,
+  corpo text NOT NULL,
+  dados jsonb DEFAULT '{}'::jsonb,
+  entidade_tipo text,
+  entidade_id uuid,
+  status text NOT NULL DEFAULT 'pendente'::text CHECK (status = ANY (ARRAY['pendente'::text, 'processando'::text, 'enviado'::text, 'falhou'::text, 'ignorado'::text])),
+  tentativas integer DEFAULT 0,
+  max_tentativas integer DEFAULT 3,
+  proxima_tentativa_em timestamp with time zone DEFAULT now(),
+  provedor_response jsonb,
+  provedor_message_id text,
+  created_at timestamp with time zone DEFAULT now(),
+  processado_em timestamp with time zone,
+  enviado_em timestamp with time zone,
+  falhou_em timestamp with time zone,
+  erro_codigo text,
+  erro_detalhe text,
+  arquivado_em timestamp with time zone DEFAULT now(),
+  CONSTRAINT notificacoes_historico_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.pedidos (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -205,11 +450,14 @@ CREATE TABLE public.pedidos (
   avaliacao_cliente jsonb,
   avaliacao_entregador jsonb,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  cupom_id uuid,
+  numero_pedido bigint,
   CONSTRAINT pedidos_pkey PRIMARY KEY (id),
   CONSTRAINT pedidos_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id),
   CONSTRAINT pedidos_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
   CONSTRAINT pedidos_entregador_id_fkey FOREIGN KEY (entregador_id) REFERENCES public.entregadores(id),
-  CONSTRAINT pedidos_endereco_entrega_id_fkey FOREIGN KEY (endereco_entrega_id) REFERENCES public.enderecos_clientes(id)
+  CONSTRAINT pedidos_endereco_entrega_id_fkey FOREIGN KEY (endereco_entrega_id) REFERENCES public.enderecos_clientes(id),
+  CONSTRAINT pedidos_cupom_id_fkey FOREIGN KEY (cupom_id) REFERENCES public.cupons(id)
 );
 CREATE TABLE public.produtos (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -231,9 +479,39 @@ CREATE TABLE public.produtos (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   categoria_id uuid,
+  categoria_cardapio_id uuid,
+  tipo_produto text NOT NULL DEFAULT 'simples'::text CHECK (tipo_produto = ANY (ARRAY['simples'::text, 'variavel'::text])),
+  ativo boolean NOT NULL DEFAULT true,
+  ordem_exibicao integer DEFAULT 0,
+  slug text,
+  peso_gramas integer,
+  permite_observacao boolean NOT NULL DEFAULT true,
   CONSTRAINT produtos_pkey PRIMARY KEY (id),
   CONSTRAINT produtos_estabelecimento_id_fkey FOREIGN KEY (estabelecimento_id) REFERENCES public.estabelecimentos(id),
-  CONSTRAINT produtos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias(id)
+  CONSTRAINT produtos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias(id),
+  CONSTRAINT produtos_categoria_cardapio_id_fkey FOREIGN KEY (categoria_cardapio_id) REFERENCES public.categorias_cardapio(id)
+);
+CREATE TABLE public.rastreamento_entregadores (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  entregador_id uuid NOT NULL,
+  pedido_id uuid,
+  latitude numeric NOT NULL,
+  longitude numeric NOT NULL,
+  geo USER-DEFINED,
+  velocidade_kmh numeric,
+  bateria_pct integer,
+  registrado_em timestamp with time zone DEFAULT now(),
+  CONSTRAINT rastreamento_entregadores_pkey PRIMARY KEY (id),
+  CONSTRAINT rastreamento_entregadores_entregador_fk FOREIGN KEY (entregador_id) REFERENCES public.entregadores(id),
+  CONSTRAINT rastreamento_entregadores_pedido_fkey FOREIGN KEY (pedido_id) REFERENCES public.pedidos(id)
+);
+CREATE TABLE public.spatial_ref_sys (
+  srid integer NOT NULL CHECK (srid > 0 AND srid <= 998999),
+  auth_name character varying,
+  auth_srid integer,
+  srtext character varying,
+  proj4text character varying,
+  CONSTRAINT spatial_ref_sys_pkey PRIMARY KEY (srid)
 );
 CREATE TABLE public.splits_pagamento (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -271,7 +549,7 @@ CREATE TABLE public.usuarios (
   id uuid NOT NULL,
   email text NOT NULL UNIQUE,
   telefone text,
-  tipo_usuario text NOT NULL CHECK (tipo_usuario = ANY (ARRAY['cliente'::text, 'entregador'::text, 'estabelecimento'::text, 'admin'::text])),
+  tipo_usuario text NOT NULL DEFAULT 'cliente'::text CHECK (tipo_usuario = ANY (ARRAY['cliente'::text, 'entregador'::text, 'estabelecimento'::text, 'admin'::text])),
   status text DEFAULT 'ativo'::text,
   email_verificado boolean DEFAULT false,
   telefone_verificado boolean DEFAULT false,

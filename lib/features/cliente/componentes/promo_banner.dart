@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 class PromoBanner extends StatelessWidget {
   final Color secondaryColor;
+  final VoidCallback? onTap;
 
-  const PromoBanner({super.key, required this.secondaryColor});
+  const PromoBanner({super.key, required this.secondaryColor, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +49,6 @@ class PromoBanner extends StatelessWidget {
                 style: GoogleFonts.outfit(
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: secondaryColor,
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                ),
-                child: Text(
-                  'Peça agora',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                 ),
               ),
             ],

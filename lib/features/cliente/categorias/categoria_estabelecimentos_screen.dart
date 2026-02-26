@@ -5,12 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:padoca_express/core/services/localizacao_service.dart';
-import 'package:padoca_express/features/cliente/padarias/models/padaria_model.dart';
+import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 import 'package:padoca_express/features/cliente/componentes/home_header.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_card.dart';
 
 // ─── Provider de estabelecimentos por categoria ───────────────────────────────
 final estabelecimentosPorCategoriaProvider =
-    FutureProvider.family<List<PadariaModel>, String>((ref, categoriaId) async {
+    FutureProvider.family<List<EstabelecimentoModel>, String>(
+        (ref, categoriaId) async {
   try {
     final response = await Supabase.instance.client
         .from('estabelecimentos')
@@ -23,7 +25,8 @@ final estabelecimentosPorCategoriaProvider =
         .order('avaliacao_media', ascending: false);
 
     return (response as List)
-        .map((json) => PadariaModel.fromJson(json as Map<String, dynamic>))
+        .map((json) =>
+            EstabelecimentoModel.fromJson(json as Map<String, dynamic>))
         .toList();
   } catch (_) {
     return [];
@@ -31,13 +34,15 @@ final estabelecimentosPorCategoriaProvider =
 });
 
 class CategoriaEstabelecimentosScreen extends ConsumerStatefulWidget {
-  final String categoriaId;
+  final String? categoriaId;
+  final String categoriaSlug;
   final String categoriaNome;
   final String categoriaImagemUrl;
 
   const CategoriaEstabelecimentosScreen({
     super.key,
-    required this.categoriaId,
+    this.categoriaId,
+    required this.categoriaSlug,
     required this.categoriaNome,
     required this.categoriaImagemUrl,
   });
@@ -55,6 +60,11 @@ class _CategoriaEstabelecimentosScreenState
   bool _filtroProximos = false;
   double? _userLat;
   double? _userLng;
+
+  late String _categoriaNome;
+  late String _categoriaImagemUrl;
+  String? _categoriaIdResolved;
+  bool _carregandoCategoria = false;
 
   static const _primaryColor = Color(0xFFFF7034);
   static const _secondaryColor = Color(0xFF7D2D35);
@@ -95,10 +105,45 @@ class _CategoriaEstabelecimentosScreenState
   @override
   void initState() {
     super.initState();
+    _categoriaNome = widget.categoriaNome;
+    _categoriaImagemUrl = widget.categoriaImagemUrl;
+    _categoriaIdResolved = widget.categoriaId;
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..forward();
+
+    // Se viemos por link direto (ex: recarregar a página ou usar o botão voltar do navegador)
+    // a rota no app_router.dart passa 'Categoria' e sem ID definido. Vamos buscar os dados reais via slug.
+    if (_categoriaIdResolved == null ||
+        _categoriaIdResolved!.isEmpty ||
+        _categoriaNome == 'Categoria') {
+      _carregarCategoriaDetalhes();
+    }
+  }
+
+  Future<void> _carregarCategoriaDetalhes() async {
+    setState(() => _carregandoCategoria = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('categorias_estabelecimento')
+          .select('id, nome, imagem_url')
+          .eq('slug', widget.categoriaSlug)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _categoriaIdResolved = response['id'] as String;
+          _categoriaNome = response['nome'] as String;
+          _categoriaImagemUrl = (response['imagem_url'] as String?) ?? '';
+        });
+      }
+    } catch (_) {
+      // Falha silenciosa: usa os fallbacks
+    } finally {
+      if (mounted) setState(() => _carregandoCategoria = false);
+    }
   }
 
   @override
@@ -120,40 +165,39 @@ class _CategoriaEstabelecimentosScreenState
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: ClienteAppBar(isDark: isDark),
+      appBar: ClienteAppBar(isDark: isDark, showBackButton: true),
       body: CustomScrollView(
         slivers: [
           // ─── AppBar com imagem da categoria ──────────────────────────────
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
+            automaticallyImplyLeading: false,
             backgroundColor: isDark ? const Color(0xFF1C1917) : _secondaryColor,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
             flexibleSpace: FlexibleSpaceBar(
               background: _CategoriaAppBarBackground(
                 isDark: isDark,
-                imagemUrl: widget.categoriaImagemUrl,
-                nome: widget.categoriaNome,
+                imagemUrl: _categoriaImagemUrl,
+                nome: _categoriaNome,
               ),
               titlePadding: const EdgeInsets.only(left: 20, bottom: 56),
-              title: Text(
-                widget.categoriaNome,
-                style: GoogleFonts.outfit(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  shadows: [
-                    const Shadow(
-                      color: Colors.black54,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+              title: _carregandoCategoria
+                  ? const SizedBox()
+                  : Text(
+                      _categoriaNome,
+                      style: GoogleFonts.outfit(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          const Shadow(
+                            color: Colors.black54,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
 
@@ -226,143 +270,193 @@ class _CategoriaEstabelecimentosScreenState
           ),
 
           // ─── Lista de estabelecimentos ────────────────────────────────────
-          Consumer(
-            builder: (context, ref, _) {
-              final asyncData = ref.watch(
-                  estabelecimentosPorCategoriaProvider(widget.categoriaId));
+          if (_carregandoCategoria || _categoriaIdResolved == null)
+            const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(color: _primaryColor),
+              ),
+            )
+          else
+            Consumer(
+              builder: (context, ref, _) {
+                final asyncData = ref.watch(
+                    estabelecimentosPorCategoriaProvider(
+                        _categoriaIdResolved!));
 
-              return asyncData.when(
-                loading: () => const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: _primaryColor,
+                return asyncData.when(
+                  loading: () => const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryColor,
+                      ),
                     ),
                   ),
-                ),
-                error: (err, _) => SliverFillRemaining(
-                  child: _CategoriaErrorWidget(
-                    onRetry: () => ref.refresh(
-                      estabelecimentosPorCategoriaProvider(widget.categoriaId),
+                  error: (err, _) => SliverFillRemaining(
+                    child: _CategoriaErrorWidget(
+                      onRetry: () => ref.refresh(
+                        estabelecimentosPorCategoriaProvider(
+                            _categoriaIdResolved!),
+                      ),
                     ),
                   ),
-                ),
-                data: (estabelecimentos) {
-                  // ── Aplicar filtros ──────────────────────────────────────
-                  var filtered = estabelecimentos;
+                  data: (estabelecimentos) {
+                    // ── Aplicar filtros ──────────────────────────────────────
+                    var filtered = estabelecimentos;
 
-                  if (_filtroAberto) {
-                    filtered = filtered.where((e) => e.statusAberto).toList();
-                  }
+                    if (_filtroAberto) {
+                      filtered = filtered.where((e) => e.statusAberto).toList();
+                    }
 
-                  if (_filtroProximos && _userLat != null && _userLng != null) {
-                    filtered = [...filtered];
-                    filtered.sort((a, b) {
-                      double distA = double.maxFinite;
-                      double distB = double.maxFinite;
-                      if (a.latitude != null && a.longitude != null) {
-                        final dlat = a.latitude! - _userLat!;
-                        final dlng = a.longitude! - _userLng!;
-                        distA = dlat * dlat + dlng * dlng;
-                      }
-                      if (b.latitude != null && b.longitude != null) {
-                        final dlat = b.latitude! - _userLat!;
-                        final dlng = b.longitude! - _userLng!;
-                        distB = dlat * dlat + dlng * dlng;
-                      }
-                      return distA.compareTo(distB);
-                    });
+                    if (_filtroProximos &&
+                        _userLat != null &&
+                        _userLng != null) {
+                      filtered = [...filtered];
+                      filtered.sort((a, b) {
+                        double distA = double.maxFinite;
+                        double distB = double.maxFinite;
+                        if (a.latitude != null && a.longitude != null) {
+                          final dlat = a.latitude! - _userLat!;
+                          final dlng = a.longitude! - _userLng!;
+                          distA = dlat * dlat + dlng * dlng;
+                        }
+                        if (b.latitude != null && b.longitude != null) {
+                          final dlat = b.latitude! - _userLat!;
+                          final dlng = b.longitude! - _userLng!;
+                          distB = dlat * dlat + dlng * dlng;
+                        }
+                        return distA.compareTo(distB);
+                      });
 
-                    // Extra limitando raio (5km), usando Geolocator built-in utility
-                    filtered.removeWhere((e) {
-                      if (e.latitude == null || e.longitude == null)
-                        return true;
+                      // Extra limitando raio (5km), usando Geolocator built-in utility
+                      filtered.removeWhere((e) {
+                        if (e.latitude == null || e.longitude == null) {
+                          return true;
+                        }
 
-                      final distanceInMeters = Geolocator.distanceBetween(
-                        _userLat!,
-                        _userLng!,
-                        e.latitude!,
-                        e.longitude!,
-                      );
+                        final distanceInMeters = Geolocator.distanceBetween(
+                          _userLat!,
+                          _userLng!,
+                          e.latitude!,
+                          e.longitude!,
+                        );
 
-                      return distanceInMeters > 5000.0; // raio de 5km = 5000m
-                    });
-                  }
+                        return distanceInMeters > 5000.0; // raio de 5km = 5000m
+                      });
+                    }
 
-                  if (estabelecimentos.isEmpty) {
-                    return SliverList(
-                      delegate: SliverChildListDelegate([
-                        _CategoriaEmptyWidget(
-                          isDark: isDark,
-                          nome: widget.categoriaNome,
-                        ),
-                        if (_filtroProximos && _userLat == null)
-                          _BannerLocalizacao(
+                    if (estabelecimentos.isEmpty) {
+                      return SliverList(
+                        delegate: SliverChildListDelegate([
+                          _CategoriaEmptyWidget(
                             isDark: isDark,
-                            onLocationGranted: (lat, lng) {
-                              setState(() {
-                                _userLat = lat;
-                                _userLng = lng;
-                              });
-                            },
-                          )
-                      ]),
-                    );
-                  }
+                            nome: _categoriaNome,
+                          ),
+                          if (_filtroProximos && _userLat == null)
+                            _BannerLocalizacao(
+                              isDark: isDark,
+                              onLocationGranted: (lat, lng) {
+                                setState(() {
+                                  _userLat = lat;
+                                  _userLng = lng;
+                                });
+                              },
+                            )
+                        ]),
+                      );
+                    }
 
-                  if (filtered.isEmpty && _filtroProximos) {
-                    return SliverList(
-                      delegate: SliverChildListDelegate([
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 40, horizontal: 20),
-                          child: Center(
-                            child: Text(
-                              'Nenhum estabelecimento num raio de 5km.',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                color: Colors.grey,
+                    if (filtered.isEmpty && _filtroProximos) {
+                      return SliverList(
+                        delegate: SliverChildListDelegate([
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 40, horizontal: 20),
+                            child: Center(
+                              child: Text(
+                                'Nenhum estabelecimento num raio de 5km.',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ),
-                        ),
-                        if (_userLat == null)
-                          _BannerLocalizacao(
-                            isDark: isDark,
-                            onLocationGranted: (lat, lng) {
-                              setState(() {
-                                _userLat = lat;
-                                _userLng = lng;
-                              });
-                            },
-                          ),
-                      ]),
+                          if (_userLat == null)
+                            _BannerLocalizacao(
+                              isDark: isDark,
+                              onLocationGranted: (lat, lng) {
+                                setState(() {
+                                  _userLat = lat;
+                                  _userLng = lng;
+                                });
+                              },
+                            ),
+                        ]),
+                      );
+                    }
+
+                    final gap = 16.0;
+                    final hPad = 20.0;
+                    const maxCardWidth = 340.0;
+                    final totalWidth = MediaQuery.of(context).size.width;
+                    final cardWidth = min(
+                      (totalWidth - hPad * 2 - gap * (crossAxisCount - 1)) /
+                          crossAxisCount,
+                      maxCardWidth,
                     );
-                  }
 
-                  final gap = 16.0;
-                  final hPad = 20.0;
-                  const maxCardWidth = 340.0;
-                  final totalWidth = MediaQuery.of(context).size.width;
-                  final cardWidth = min(
-                    (totalWidth - hPad * 2 - gap * (crossAxisCount - 1)) /
-                        crossAxisCount,
-                    maxCardWidth,
-                  );
-
-                  return useGrid
-                      // ── Grade (tablet / desktop) — altura pelo conteúdo ──
-                      ? SliverToBoxAdapter(
-                          child: Padding(
+                    return useGrid
+                        // ── Grade (tablet / desktop) — altura pelo conteúdo ──
+                        ? SliverToBoxAdapter(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                              child: Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children:
+                                    List.generate(filtered.length, (index) {
+                                  final estabelecimento = filtered[index];
+                                  return SizedBox(
+                                    width: cardWidth,
+                                    child: AnimatedBuilder(
+                                      animation: _animController,
+                                      builder: (context, child) {
+                                        final delay = index * 0.10;
+                                        final t =
+                                            (_animController.value - delay)
+                                                .clamp(0.0, 1.0);
+                                        final curved =
+                                            Curves.easeOutCubic.transform(t);
+                                        return Opacity(
+                                          opacity: curved,
+                                          child: Transform.translate(
+                                            offset:
+                                                Offset(0, 30 * (1 - curved)),
+                                            child: child,
+                                          ),
+                                        );
+                                      },
+                                      child: EstabelecimentoCard(
+                                        estabelecimento: estabelecimento,
+                                        isDark: isDark,
+                                        cardColor: cardColor,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          )
+                        // ── Lista (mobile) ─────────────────────────────────────
+                        : SliverPadding(
                             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                            child: Wrap(
-                              spacing: gap,
-                              runSpacing: gap,
-                              children: List.generate(filtered.length, (index) {
-                                final estabelecimento = filtered[index];
-                                return SizedBox(
-                                  width: cardWidth,
-                                  child: AnimatedBuilder(
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final estabelecimento = filtered[index];
+                                  return AnimatedBuilder(
                                     animation: _animController,
                                     builder: (context, child) {
                                       final delay = index * 0.10;
@@ -378,58 +472,25 @@ class _CategoriaEstabelecimentosScreenState
                                         ),
                                       );
                                     },
-                                    child: _EstabelecimentoCard(
-                                      estabelecimento: estabelecimento,
-                                      isDark: isDark,
-                                      cardColor: cardColor,
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                          ),
-                        )
-                      // ── Lista (mobile) ─────────────────────────────────────
-                      : SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final estabelecimento = filtered[index];
-                                return AnimatedBuilder(
-                                  animation: _animController,
-                                  builder: (context, child) {
-                                    final delay = index * 0.10;
-                                    final t = (_animController.value - delay)
-                                        .clamp(0.0, 1.0);
-                                    final curved =
-                                        Curves.easeOutCubic.transform(t);
-                                    return Opacity(
-                                      opacity: curved,
-                                      child: Transform.translate(
-                                        offset: Offset(0, 30 * (1 - curved)),
-                                        child: child,
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 16),
+                                      child: EstabelecimentoCard(
+                                        estabelecimento: estabelecimento,
+                                        isDark: isDark,
+                                        cardColor: cardColor,
                                       ),
-                                    );
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _EstabelecimentoCard(
-                                      estabelecimento: estabelecimento,
-                                      isDark: isDark,
-                                      cardColor: cardColor,
                                     ),
-                                  ),
-                                );
-                              },
-                              childCount: filtered.length,
+                                  );
+                                },
+                                childCount: filtered.length,
+                              ),
                             ),
-                          ),
-                        );
-                },
-              );
-            },
-          ),
+                          );
+                  },
+                );
+              },
+            ),
         ],
       ),
     );
@@ -446,7 +507,7 @@ class _FiltroChip extends StatelessWidget {
 
   static const _primaryColor = Color(0xFFFF7034);
 
-  _FiltroChip({
+  const _FiltroChip({
     required this.label,
     required this.icon,
     required this.ativo,
@@ -536,15 +597,15 @@ class _CategoriaAppBarBackground extends StatelessWidget {
         else
           _gradientFallback(isDark),
 
-        // Overlay escuro para legibilidade do título
-        DecoratedBox(
+        // ─── Nome e Overlay ──────────────────────────────────────
+        Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
                 Colors.black.withValues(alpha: 0.2),
-                Colors.black.withValues(alpha: 0.6),
+                Colors.black.withValues(alpha: 0.8),
               ],
             ),
           ),
@@ -659,328 +720,6 @@ class _BannerLocalizacaoState extends ConsumerState<_BannerLocalizacao> {
                   color: const Color(0xFFFF7034).withValues(alpha: 0.5),
                   size: 14),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Card do estabelecimento ──────────────────────────────────────────────────
-class _EstabelecimentoCard extends StatelessWidget {
-  final PadariaModel estabelecimento;
-  final bool isDark;
-  final Color cardColor;
-
-  static const _primaryColor = Color(0xFFFF7034);
-  static const _secondaryColor = Color(0xFF7D2D35);
-
-  const _EstabelecimentoCard({
-    required this.estabelecimento,
-    required this.isDark,
-    required this.cardColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          // TODO: navegar para detalhes do estabelecimento
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Em breve: detalhes de ${estabelecimento.nome}'),
-              backgroundColor: _primaryColor,
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Banner
-              ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                child: Stack(
-                  children: [
-                    Container(
-                      height: 90,
-                      width: double.infinity,
-                      color: isDark
-                          ? const Color(0xFF3A3A3A)
-                          : const Color(0xFFEDE8E3),
-                      child: estabelecimento.bannerUrl != null
-                          ? Image.network(
-                              estabelecimento.bannerUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _PlaceholderBanner(isDark: isDark),
-                            )
-                          : estabelecimento.logoUrl != null
-                              ? Image.network(
-                                  estabelecimento.logoUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      _PlaceholderBanner(isDark: isDark),
-                                )
-                              : _PlaceholderBanner(isDark: isDark),
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: _StatusBadge(isOpen: estabelecimento.statusAberto),
-                    ),
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.15),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Infos
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (estabelecimento.logoUrl != null)
-                      Container(
-                        width: 48,
-                        height: 48,
-                        margin: const EdgeInsets.only(right: 12, top: 2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _primaryColor.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            estabelecimento.logoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFFEDE8E3),
-                              child: const Icon(Icons.store_rounded,
-                                  size: 24, color: Color(0x337D2D35)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            estabelecimento.nome,
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : _secondaryColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (estabelecimento.descricao != null &&
-                              estabelecimento.descricao!.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                estabelecimento.descricao!,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              const Icon(Icons.star_rounded,
-                                  size: 15, color: Colors.amber),
-                              const SizedBox(width: 3),
-                              Text(
-                                estabelecimento.avaliacaoMedia
-                                    .toStringAsFixed(1),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber[700],
-                                ),
-                              ),
-                              _dot(),
-                              const Icon(Icons.access_time_rounded,
-                                  size: 13, color: Colors.grey),
-                              const SizedBox(width: 3),
-                              Text(
-                                estabelecimento.statusAberto
-                                    ? estabelecimento.tempoMedioFormatado
-                                    : 'Fechado',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: estabelecimento.statusAberto
-                                      ? Colors.grey[500]
-                                      : Colors.red[400],
-                                  fontWeight: estabelecimento.statusAberto
-                                      ? FontWeight.normal
-                                      : FontWeight.bold,
-                                ),
-                              ),
-                              _dot(),
-                              const Icon(Icons.delivery_dining_rounded,
-                                  size: 13, color: Colors.grey),
-                              const SizedBox(width: 3),
-                              Text(
-                                estabelecimento.taxaEntregaFormatada,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: estabelecimento.taxaEntregaFormatada ==
-                                          'Grátis'
-                                      ? Colors.green[600]
-                                      : Colors.grey[500],
-                                  fontWeight:
-                                      estabelecimento.taxaEntregaFormatada ==
-                                              'Grátis'
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (estabelecimento.bairro.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.location_on_rounded,
-                                      size: 13,
-                                      color:
-                                          _primaryColor.withValues(alpha: 0.7)),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      '${estabelecimento.bairro}'
-                                      '${estabelecimento.cidade.isNotEmpty ? ' - ${estabelecimento.cidade}' : ''}',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 11,
-                                        color: Colors.grey[500],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.grey,
-                        size: 22,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _dot() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Container(
-        width: 3,
-        height: 3,
-        decoration: BoxDecoration(
-          color: Colors.grey[400],
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final bool isOpen;
-  const _StatusBadge({required this.isOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isOpen ? Colors.green[600] : Colors.red[700],
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: (isOpen ? Colors.green : Colors.red).withValues(alpha: 0.3),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Text(
-        isOpen ? '● Aberto' : '● Fechado',
-        style: GoogleFonts.outfit(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderBanner extends StatelessWidget {
-  final bool isDark;
-  const _PlaceholderBanner({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEDE8E3),
-      child: Center(
-        child: Icon(
-          Icons.store_rounded,
-          size: 56,
-          color: isDark
-              ? Colors.white24
-              : const Color(0xFF7D2D35).withValues(alpha: 0.2),
         ),
       ),
     );

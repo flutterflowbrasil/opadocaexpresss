@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:padoca_express/core/services/web_geolocation_helper.dart'
+    if (dart.library.io) 'package:padoca_express/core/services/mobile_geolocation_helper.dart';
 
 /// Tenta obter a localização atual do dispositivo.
 ///
@@ -12,20 +15,20 @@ Future<Position?> obterLocalizacao() async {
     // 1. Verifica se o serviço está ligado
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print(
+      debugPrint(
           '[Localizacao] Erro: Serviço de localização (GPS) do aparelho está desativado.');
       return null;
     }
 
     // 2. Verifica permissão atual
     var permission = await Geolocator.checkPermission();
-    print('[Localizacao] Status da permissão atual: $permission');
+    debugPrint('[Localizacao] Status da permissão atual: $permission');
 
     // 3. Pede permissão apenas se ainda não foi solicitada
     if (permission == LocationPermission.denied) {
-      print('[Localizacao] Solicitando permissão ao usuário...');
+      debugPrint('[Localizacao] Solicitando permissão ao usuário...');
       permission = await Geolocator.requestPermission();
-      print('[Localizacao] Resposta da solicitação: $permission');
+      debugPrint('[Localizacao] Resposta da solicitação: $permission');
       if (permission == LocationPermission.denied) {
         return null;
       }
@@ -33,23 +36,33 @@ Future<Position?> obterLocalizacao() async {
 
     // 4. Bloqueado permanentemente — não pode pedir novamente
     if (permission == LocationPermission.deniedForever) {
-      print('[Localizacao] Erro: Permissão negada permanentemente.');
+      debugPrint('[Localizacao] Erro: Permissão negada permanentemente.');
       return null;
     }
 
-    // 5. Obtém a posição com timeout garantido pelo Dart
-    print('[Localizacao] Obtendo posição atual...');
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        timeLimit: Duration(seconds: 10),
-      ),
-    ).timeout(const Duration(seconds: 10));
-    print(
-        '[Localizacao] Posição obtida: ${position.latitude}, ${position.longitude}');
+    // 5. Obtém a posição usando o utilitário seguro para a plataforma
+    debugPrint(
+        '[Localizacao] Obtendo posição com utilitário específico da plataforma...');
+    Position? position;
+    try {
+      position = await getWebSafePosition();
+    } catch (e) {
+      debugPrint('[Localizacao] Erro em getWebSafePosition: $e');
+      if (!kIsWeb) {
+        debugPrint('[Localizacao] Tentando getLastKnownPosition...');
+        try {
+          position = await Geolocator.getLastKnownPosition();
+        } catch (e2) {
+          debugPrint('[Localizacao] Erro em getLastKnownPosition: $e2');
+        }
+      }
+    }
+    debugPrint(
+        '[Localizacao] Posição obtida: ${position?.latitude}, ${position?.longitude}');
     return position;
   } catch (e, stack) {
-    print('[Localizacao] Exception capturada em obterLocalizacao: $e\n$stack');
+    debugPrint(
+        '[Localizacao] Exception capturada em obterLocalizacao: $e\n$stack');
     return null;
   }
 }
@@ -61,7 +74,7 @@ Future<bool> temPermissaoLocalizacao() async {
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
   } catch (e) {
-    print('[Localizacao] Erro ao checar permissão previa: $e');
+    debugPrint('[Localizacao] Erro ao checar permissão previa: $e');
     return false;
   }
 }

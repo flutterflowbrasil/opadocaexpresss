@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/cliente/busca/busca_repository.dart';
 import 'package:padoca_express/features/cliente/busca/models/resultado_busca_model.dart';
+import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 class BuscaResultadosScreen extends ConsumerStatefulWidget {
   final String termoInicial;
@@ -19,7 +20,6 @@ class _BuscaResultadosScreenState extends ConsumerState<BuscaResultadosScreen> {
   late final TextEditingController _controller;
   String _termo = '';
 
-  static const _primaryColor = Color(0xFFFF7034);
   static const _secondaryColor = Color(0xFF7D2D35);
 
   @override
@@ -276,13 +276,20 @@ class _ResultadoCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: Navegar para detalhes do estabelecimento
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Em breve: detalhes de ${item.nome}'),
-              backgroundColor: _primaryColor,
-            ),
+          final estabelecimento = EstabelecimentoModel(
+            id: item.id,
+            nome: item.nome,
+            descricao: item.descricao,
+            logoUrl: item.logoUrl,
+            bannerUrl: item.bannerUrl,
+            avaliacaoMedia: item.avaliacaoMedia,
+            totalAvaliacoes: 0,
+            statusAberto: item.statusAberto,
+            configEntrega: item.configEntrega,
+            endereco: item.endereco,
           );
+
+          context.push('/estabelecimento/${item.id}', extra: estabelecimento);
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 
 /// AppBar reutilizável do cliente.
 /// - Mobile: endereço | busca compacta | ícones
 /// - Desktop: endereço | busca expandida | ícones (estilo iFood)
-class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
+class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final bool isDark;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onCartTap;
   final VoidCallback? onAddressTap;
+  final bool showBackButton;
 
   static const _primaryColor = Color(0xFFFF7034);
   static const _secondaryColor = Color(0xFF7D2D35);
@@ -20,16 +23,19 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onNotificationTap,
     this.onCartTap,
     this.onAddressTap,
+    this.showBackButton = false,
   });
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 900;
     final isTablet = screenWidth >= 600 && screenWidth < 900;
+
+    final cartCount = ref.watch(carrinhoControllerProvider).quantidadeTotal;
 
     final cardBg = isDark ? const Color(0xFF27272A) : Colors.white;
     final bgColor = isDark ? const Color(0xFF1C1917) : const Color(0xFFF9F5F0);
@@ -43,16 +49,30 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: SafeArea(
         bottom: false,
         child: isDesktop || isTablet
-            ? _buildDesktopBar(context, cardBg)
-            : _buildMobileBar(context, cardBg),
+            ? _buildDesktopBar(context, cardBg, cartCount)
+            : _buildMobileBar(context, cardBg, cartCount),
       ),
     );
   }
 
   // ─── Mobile ───────────────────────────────────────────────────────────────
-  Widget _buildMobileBar(BuildContext context, Color cardBg) {
+  Widget _buildMobileBar(BuildContext context, Color cardBg, int cartCount) {
     return Row(
       children: [
+        if (showBackButton) ...[
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios_new,
+                color: isDark ? Colors.white : Colors.black87, size: 20),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+        ],
         // Endereço
         Expanded(
           child: GestureDetector(
@@ -107,38 +127,44 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
         const SizedBox(width: 8),
 
         // Campo de busca compacto (read-only → navega)
-        GestureDetector(
-          onTap: () => context.push('/busca'),
-          child: Container(
-            width: 120,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+        Flexible(
+          child: GestureDetector(
+            onTap: () => context.push('/busca'),
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.grey.withValues(alpha: 0.2),
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.search_rounded, size: 16, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(
-                  'Buscar...',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: Colors.grey[500],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(width: 8),
+                  Icon(Icons.search_rounded, size: 16, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      'Buscar...',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -152,26 +178,42 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
           onTap: onNotificationTap,
         ),
         const SizedBox(width: 8),
-        _ActionButton(
-          icon: Icons.shopping_bag_outlined,
-          isDark: isDark,
-          onTap: onCartTap,
-        ),
+        _buildCartButton(context, cartCount),
       ],
     );
   }
 
   // ─── Desktop / Tablet ─────────────────────────────────────────────────────
-  Widget _buildDesktopBar(BuildContext context, Color cardBg) {
+  Widget _buildDesktopBar(BuildContext context, Color cardBg, int cartCount) {
     return Row(
       children: [
+        if (showBackButton) ...[
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios_new,
+                color: isDark ? Colors.white : Colors.black87, size: 20),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+          const SizedBox(width: 16),
+        ],
         // Logo / Brand
-        Text(
-          'ÔPadoca',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: _primaryColor,
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => context.go('/home'),
+            child: Text(
+              'ÔPadoca',
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: _primaryColor,
+              ),
+            ),
           ),
         ),
 
@@ -223,11 +265,14 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
                   const SizedBox(width: 14),
                   Icon(Icons.search_rounded, color: Colors.grey[400], size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    'Busque por produtos ou padarias...',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: Colors.grey[400],
+                  Flexible(
+                    child: Text(
+                      'Busque por produtos ou padarias...',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -245,12 +290,26 @@ class ClienteAppBar extends StatelessWidget implements PreferredSizeWidget {
           onTap: onNotificationTap,
         ),
         const SizedBox(width: 10),
-        _ActionButton(
-          icon: Icons.shopping_bag_outlined,
-          isDark: isDark,
-          onTap: onCartTap,
-        ),
+        _buildCartButton(context, cartCount),
       ],
+    );
+  }
+
+  Widget _buildCartButton(BuildContext context, int cartCount) {
+    final btn = _ActionButton(
+      icon: Icons.shopping_bag_outlined,
+      isDark: isDark,
+      onTap: onCartTap ?? () => context.push('/carrinho'),
+    );
+
+    if (cartCount == 0) return btn;
+
+    return Badge(
+      label: Text(cartCount.toString()),
+      backgroundColor: _primaryColor,
+      textColor: Colors.white,
+      offset: const Offset(-4, 4),
+      child: btn,
     );
   }
 }
