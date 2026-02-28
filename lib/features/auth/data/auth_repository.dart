@@ -130,21 +130,30 @@ class AuthRepository {
       final user = _supabase.auth.currentUser;
       if (user == null) return null;
 
-      final response = await _supabase
+      final userResponse = await _supabase
           .from('usuarios')
           .select('nome_completo_fantasia')
           .eq('id', userId)
           .maybeSingle();
 
+      final clientResponse = await _supabase
+          .from('clientes')
+          .select('foto_perfil_url')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
       return {
-        'nome': response?['nome_completo_fantasia'] ?? 'Usuário',
+        'nome': userResponse?['nome_completo_fantasia'] ?? 'Usuário',
         'email': user.email,
         'id': userId,
+        'foto_perfil_url': clientResponse?['foto_perfil_url'],
       };
     } catch (e) {
       return null;
     }
   }
+
+  User? get currentUser => _supabase.auth.currentUser;
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

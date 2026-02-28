@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ôpadoca Express - Painel do Estabelecimento</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                        "burgundy": "#4b2038",
+                        "cream": "#fdf8f5",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<!-- Layout Container -->
+<div class="flex min-h-screen">
+<!-- Sidebar (Hidden on Mobile, Visible on Tablet/Desktop) -->
+<aside class="hidden md:flex w-64 flex-col bg-burgundy text-white p-4 fixed h-full">
+<div class="flex items-center gap-3 mb-10 px-2">
+<div class="bg-primary p-2 rounded-lg">
+<span class="material-symbols-outlined text-white" style="">bakery_dining</span>
+</div>
+<h1 class="text-xl font-bold leading-tight" style="">Ôpadoca <span class="text-primary" style="">Express</span></h1>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 bg-primary/20 text-primary p-3 rounded-xl border border-primary/30" href="#" style="">
+<span class="material-symbols-outlined" style="">dashboard</span>
+<span class="font-semibold" style="">Painel Inicial</span>
+</a>
+<a class="flex items-center gap-3 hover:bg-white/10 p-3 rounded-xl transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">receipt_long</span>
+<span class="" style="">Pedidos<br/></span>
+</a>
+<a class="flex items-center gap-3 hover:bg-white/10 p-3 rounded-xl transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">inventory_2</span>
+<span class="" style="">Produtos</span>
+</a>
+<a class="flex items-center gap-3 hover:bg-white/10 p-3 rounded-xl transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">monitoring</span>
+<span class="" style="">Status</span>
+</a>
+<a class="flex items-center gap-3 hover:bg-white/10 p-3 rounded-xl transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">settings</span>
+<span class="" style="">Configurações</span>
+</a>
+</nav>
+<div class="mt-4 pt-4 border-t border-white/10 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+<img alt="Carlos Padoca" class="w-full h-full object-cover" src="{{DATA:IMAGE:IMAGE_82}}"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-white">Carlos Padoca</span>
+<span class="text-xs text-white/50">Gerente</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 pb-24 md:pb-8">
+<!-- Top Header -->
+<header class="sticky top-0 z-30 flex items-center justify-between p-4 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-burgundy dark:text-white" style="">
+<span class="material-symbols-outlined" style="">menu</span>
+</button>
+<h2 class="text-lg font-bold" style="">Resumo do Dia</h2>
+</div>
+<div class="flex items-center gap-3"><div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+<span class="text-xs font-bold text-slate-600 dark:text-slate-300">Loja Aberta</span>
+<button aria-checked="true" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-green-500" role="switch">
+<span aria-hidden="true" class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-4"></span>
+</button>
+</div><button class="relative p-2 text-burgundy dark:text-cream hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border border-white dark:border-slate-800"></span>
+</button>
+<div class="hidden sm:flex flex-col text-right">
+<span class="text-sm font-bold" style="">Admin Ôpadoca</span>
+<span class="text-xs text-slate-500" style="">Gerente</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-burgundy flex items-center justify-center text-white font-bold" style="">
+                        A
+                    </div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-4 space-y-6">
+<!-- Quick Actions -->
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform" style="">
+<span class="material-symbols-outlined text-3xl" style="">add_circle</span>
+<span class="font-bold text-sm text-center" style="">Novo Produto</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-burgundy text-white rounded-xl shadow-lg shadow-burgundy/20 hover:scale-[1.02] transition-transform" style="">
+<span class="material-symbols-outlined text-3xl" style="">update</span>
+<span class="font-bold text-sm text-center" style="">Atualizar Status</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 transition-colors" style="">
+<span class="material-symbols-outlined text-primary text-3xl" style="">campaign</span>
+<span class="font-bold text-sm text-center" style="">Anunciar Oferta</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 transition-colors" style="">
+<span class="material-symbols-outlined text-burgundy dark:text-cream text-3xl" style="">local_shipping</span>
+<span class="font-bold text-sm text-center" style="">Entregas</span>
+</button>
+</section>
+<!-- Stats Cards -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-sm font-medium text-slate-500" style="">Vendas Hoje</p>
+<div class="flex items-end justify-between mt-2">
+<p class="text-2xl font-bold text-burgundy dark:text-cream" style="">R$ 1.842,50</p>
+<span class="text-green-500 text-sm font-bold flex items-center gap-1" style="">
+<span class="material-symbols-outlined text-sm" style="">trending_up</span> 12%
+                            </span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-sm font-medium text-slate-500" style="">Pedidos Ativos</p>
+<div class="flex items-end justify-between mt-2">
+<p class="text-2xl font-bold text-burgundy dark:text-cream" style="">28</p>
+<span class="text-primary text-sm font-bold" style="">Pendentes</span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-sm font-medium text-slate-500" style="">Ticket Médio</p>
+<div class="flex items-end justify-between mt-2">
+<p class="text-2xl font-bold text-burgundy dark:text-cream" style="">R$ 32,15</p>
+<span class="text-slate-400 text-sm font-normal" style="">Estável</span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-sm font-medium text-slate-500" style="">Avaliação</p>
+<div class="flex items-end justify-between mt-2">
+<p class="text-2xl font-bold text-burgundy dark:text-cream flex items-center gap-1" style="">4.8 <span class="material-symbols-outlined text-yellow-500 text-xl fill-current" style="">star</span></p>
+<span class="text-slate-400 text-sm font-normal" style="">92 reviews</span>
+</div>
+</div>
+</section>
+<!-- Charts and Lists -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Sales Chart Card -->
+<div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg" style="">Fluxo de Vendas (24h)</h3>
+<select class="bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm font-medium focus:ring-primary">
+<option>Hoje</option>
+<option>Ontem</option>
+<option>Últimos 7 dias</option>
+</select>
+</div>
+<div class="h-64 flex items-end gap-2 px-2 border-b border-slate-100 dark:border-slate-700">
+<!-- Bar Chart Placeholder -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-burgundy/10 group-hover:bg-burgundy/20 rounded-t-lg transition-all" style="height: 40%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">08h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-burgundy/10 group-hover:bg-burgundy/20 rounded-t-lg transition-all" style="height: 60%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">10h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-primary rounded-t-lg transition-all" style="height: 95%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">12h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-burgundy/10 group-hover:bg-burgundy/20 rounded-t-lg transition-all" style="height: 75%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">14h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-burgundy/10 group-hover:bg-burgundy/20 rounded-t-lg transition-all" style="height: 55%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">16h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-primary/60 rounded-t-lg transition-all" style="height: 85%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">18h</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-burgundy/10 group-hover:bg-burgundy/20 rounded-t-lg transition-all" style="height: 45%"></div>
+<span class="text-[10px] text-slate-400 mt-2" style="">20h</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-4 text-xs text-slate-500">
+<div class="flex items-center gap-1" style=""><span class="w-3 h-3 rounded-full bg-primary"></span> Pico de Vendas</div>
+<div class="flex items-center gap-1" style=""><span class="w-3 h-3 rounded-full bg-burgundy/20"></span> Fluxo Médio</div>
+</div>
+</div>
+<!-- Top Products List -->
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<h3 class="font-bold text-lg mb-4" style="">Mais Vendidos</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-cream flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="Pão francês recém saído do forno" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTOYp4Qg-9C8cS-F1S-jwJiZa2L3DqtLO6PzMYyn9Qfi-bFAZ0hzlhx1b_NZvQFcoD6e0UtEL1o7PG6YQsfqDibH4tQJz427DIcRoNarExXDYFU4LNv5lGZUImgwUD6GEEif3KBDT6adnDwH5N2fD2KPH_HWBTIb42-QfqSUY667El_Gp4vC2iXy0jYD_oQragArhx6SFrRHHWNIe8you0rPHrGmV7TP_GM_260hiBVpj0DbF1uNb07OplxIVGLhvqt_3QBdfh" style=""/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold" style="">Pão Francês</p>
+<p class="text-xs text-slate-500" style="">420 unidades</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-primary" style="">R$ 357,00</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-cream flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="Pão de queijo dourado" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9_h8b7nOqshKAgBlCXDPGkePFFmOTEddKfOW3K_4zJGW3DeHyKOa4_z5zWKZKtnvBz6w4EOqe-uChcnbzBf-kHOf7dYkOzaazWn-xeR7ent9Dz-UihtZIV6QobpZs8N3P9jDP6uPMFJQnuegcf_dBRr7qwKF9NpIVB0zjF_ogOWIuuqOefAkj9Yqe4ONuttLD-Tv0ujzZsm2t5fN20iAUDRE5JifNlq4tKxMcx8dN_kRBEI9JXuEM33i82aSWUrYG5jT8_vED" style=""/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold" style="">Pão de Queijo</p>
+<p class="text-xs text-slate-500" style="">215 unidades</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-primary" style="">R$ 537,50</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-cream flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="Bolo de chocolate fatiado" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1Z6SqCbXDUQxiITv3fkBFqS7mbNuP3lWOCUaUTgkVkP9_AaIzJGF5SeVqYgdD-YtBPpHjJU3637eVxJn2t5IB0cuHUDCG9DqICnp5fI63SVEHYNpiIwD2NHLVUcZh5Y0MGs1Dohw-rh3nQZnL3eJLE5S4Z6SlSAd9hovSHDDCqoaJqu5p-R78vOuW9XKYiWLPJI4X0KN6SEf7gk5ifu37ApTUMMfTiyUcfhwkrvMFI7cDEr8yOCLwtv7-j_yO6k0UbaNwi5wT" style=""/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold" style="">Bolo de Cenoura</p>
+<p class="text-xs text-slate-500" style="">18 unidades</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-primary" style="">R$ 216,00</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-cream flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="Café com leite artesanal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9b1MMUfjQgxw8chdvPJ-L9JIqEStL-TSTt6VfYIncWAbHKmrDW__OproFpr8pBsedMoJ4MIf22UmEH66uc_V3c4AWGvxV3uGBNLjqNGXmWgwH6e8M_35zjPGM7SpbcaDDlZvvXGSjbZYy7r1djic4CEUic61CMBLdbCJ8etobvwQM1u8zMz6rQfvJugfHAYxAUeUFZTgnx53CUxPoA_T7WqWYDg9DOEuN_stWgBSbVaLr_w2bpiwpjYtdwfr0ATb8q5e76H4X" style=""/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold" style="">Café Expresso</p>
+<p class="text-xs text-slate-500" style="">85 unidades</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-primary" style="">R$ 170,00</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 text-sm font-bold text-burgundy dark:text-cream border border-burgundy/20 dark:border-cream/20 rounded-lg hover:bg-burgundy/5 transition-colors" style="">Ver Relatório Completo</button>
+</div>
+</div>
+<!-- Recent Orders Table/List -->
+<section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+<div class="p-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-700">
+<h3 class="font-bold text-lg" style="">Pedidos Recentes</h3>
+<button class="text-primary text-sm font-bold" style="">Ver Todos</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs uppercase">
+<tr>
+<th class="px-6 py-4" style="">ID Pedido</th>
+<th class="px-6 py-4" style="">Cliente</th>
+<th class="px-6 py-4" style="">Itens</th>
+<th class="px-6 py-4" style="">Total</th>
+<th class="px-6 py-4" style="">Status</th>
+<th class="px-6 py-4" style="">Ação</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+<tr>
+<td class="px-6 py-4 text-sm font-medium" style="">#8492</td>
+<td class="px-6 py-4 text-sm" style="">Mariana Silva</td>
+<td class="px-6 py-4 text-sm text-slate-500" style="">6 Pães, 1 Café</td>
+<td class="px-6 py-4 text-sm font-bold" style="">R$ 15,50</td>
+<td class="px-6 py-4" style="">
+<span class="px-2 py-1 text-[10px] font-bold uppercase rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" style="">Preparando</span>
+</td>
+<td class="px-6 py-4" style="">
+<button class="text-primary hover:text-primary/80" style=""><span class="material-symbols-outlined" style="">visibility</span></button>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4 text-sm font-medium" style="">#8491</td>
+<td class="px-6 py-4 text-sm" style="">João Pedro</td>
+<td class="px-6 py-4 text-sm text-slate-500" style="">2 Pães de Queijo</td>
+<td class="px-6 py-4 text-sm font-bold" style="">R$ 8,00</td>
+<td class="px-6 py-4" style="">
+<span class="px-2 py-1 text-[10px] font-bold uppercase rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" style="">Pronto</span>
+</td>
+<td class="px-6 py-4" style="">
+<button class="text-primary hover:text-primary/80" style=""><span class="material-symbols-outlined" style="">visibility</span></button>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4 text-sm font-medium" style="">#8490</td>
+<td class="px-6 py-4 text-sm" style="">Ricardo Mendes</td>
+<td class="px-6 py-4 text-sm text-slate-500" style="">1 Bolo Cenoura</td>
+<td class="px-6 py-4 text-sm font-bold" style="">R$ 45,00</td>
+<td class="px-6 py-4" style="">
+<span class="px-2 py-1 text-[10px] font-bold uppercase rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" style="">Entregue</span>
+</td>
+<td class="px-6 py-4" style="">
+<button class="text-primary hover:text-primary/80" style=""><span class="material-symbols-outlined" style="">visibility</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-burgundy border-t border-white/10 flex items-center justify-around p-2 pb-4">
+<a class="flex flex-col items-center gap-1 text-primary" href="#" style="">
+<span class="material-symbols-outlined fill-current" style="">dashboard</span>
+<span class="text-[10px] font-medium uppercase" style="">Painel</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-white/60" href="#" style="">
+<span class="material-symbols-outlined" style="">receipt_long</span>
+<span class="text-[10px] font-medium uppercase" style="">Vendas</span>
+</a>
+<div class="relative -top-6">
+<button class="bg-primary text-white p-4 rounded-full shadow-lg shadow-primary/40 border-4 border-burgundy" style="">
+<span class="material-symbols-outlined text-3xl" style="">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center gap-1 text-white/60" href="#" style="">
+<span class="material-symbols-outlined" style="">inventory_2</span>
+<span class="text-[10px] font-medium uppercase" style="">Estoque</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-white/60" href="#" style="">
+<span class="material-symbols-outlined" style="">menu</span>
+<span class="text-[10px] font-medium uppercase" style="">Menu</span>
+</a>
+</nav>
+</div>
+</body></html>

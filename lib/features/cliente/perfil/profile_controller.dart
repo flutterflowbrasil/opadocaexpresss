@@ -6,20 +6,28 @@ class ProfileState {
   final bool isLoading;
   final String? name;
   final String? email;
+  final String? fotoPerfilUrl;
   final String? error;
 
-  ProfileState({this.isLoading = true, this.name, this.email, this.error});
+  ProfileState(
+      {this.isLoading = true,
+      this.name,
+      this.email,
+      this.fotoPerfilUrl,
+      this.error});
 
   ProfileState copyWith({
     bool? isLoading,
     String? name,
     String? email,
+    String? fotoPerfilUrl,
     String? error,
   }) {
     return ProfileState(
       isLoading: isLoading ?? this.isLoading,
       name: name ?? this.name,
       email: email ?? this.email,
+      fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
       error: error,
     );
   }
@@ -30,7 +38,7 @@ class ProfileController extends StateNotifier<ProfileState> {
   final SupabaseClient _supabase;
 
   ProfileController(this._authRepository, this._supabase)
-    : super(ProfileState()) {
+      : super(ProfileState()) {
     loadProfile();
   }
 
@@ -48,6 +56,7 @@ class ProfileController extends StateNotifier<ProfileState> {
           isLoading: false,
           name: data['nome'],
           email: data['email'],
+          fotoPerfilUrl: data['foto_perfil_url'],
         );
       } else {
         state = state.copyWith(
@@ -63,7 +72,7 @@ class ProfileController extends StateNotifier<ProfileState> {
 
 final profileControllerProvider =
     StateNotifierProvider<ProfileController, ProfileState>((ref) {
-      final authRepository = ref.watch(authRepositoryProvider);
-      final supabase = Supabase.instance.client;
-      return ProfileController(authRepository, supabase);
-    });
+  final authRepository = ref.watch(authRepositoryProvider);
+  final supabase = Supabase.instance.client;
+  return ProfileController(authRepository, supabase);
+});

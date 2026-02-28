@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                        "burgundy": "#472724",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .receipt-edge {
+            background-image: radial-gradient(circle, transparent 70%, #fdfcf0 70%);
+            background-size: 20px 20px;
+            background-position: 0 -10px;
+            background-repeat: repeat-x;
+        }
+        .receipt-edge-bottom {
+            background-image: radial-gradient(circle, transparent 70%, #fdfcf0 70%);
+            background-size: 20px 20px;
+            background-position: 0 10px;
+            background-repeat: repeat-x;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<div class="relative flex min-h-screen w-full flex-col max-w-4xl mx-auto overflow-x-hidden shadow-xl bg-background-light dark:bg-background-dark px-0">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-10 flex items-center bg-background-light dark:bg-background-dark p-4 border-b border-primary/10">
+<button class="text-burgundy dark:text-primary flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-primary/10 transition-colors" style="">
+<span class="material-symbols-outlined" style="">arrow_back</span>
+</button>
+<h2 class="text-burgundy dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-10" style="">Finalizar Pedido</h2>
+</header>
+<main class="flex-1 pb-32 flex flex-col md:flex-row md:items-start gap-4 p-4 md:px-6"><!-- Left Column: Delivery and Payment -->
+<div class="flex-1 flex flex-col space-y-4 md:max-w-[62%]">
+<!-- Delivery Section -->
+<section class="w-full">
+<h3 class="text-burgundy dark:text-primary text-sm font-bold uppercase tracking-wider mb-3" style="">Endereço de Entrega</h3>
+<div class="flex items-center gap-4 bg-white dark:bg-burgundy/20 p-4 rounded-xl border border-primary/10 shadow-sm w-full">
+<div class="text-white flex items-center justify-center rounded-lg bg-burgundy shrink-0 size-12">
+<span class="material-symbols-outlined" style="">location_on</span>
+</div>
+<div class="flex flex-col justify-center flex-1">
+<p class="text-burgundy dark:text-slate-100 text-base font-semibold leading-tight line-clamp-1" style="">Rua das Flores, 123</p>
+<p class="text-burgundy/60 dark:text-slate-400 text-sm font-normal leading-normal line-clamp-2" style="">Bairro Central, São Paulo - SP</p>
+</div>
+<button class="text-primary text-sm font-bold hover:underline" style="">Trocar</button>
+</div>
+</section>
+<!-- Payment Section -->
+<section class="w-full">
+<h3 class="text-burgundy dark:text-primary text-sm font-bold uppercase tracking-wider mb-3" style="">Forma de Pagamento</h3>
+<div class="flex p-1 bg-burgundy/5 dark:bg-burgundy/20 rounded-xl mb-4 w-full"><button class="flex-1 py-3 px-2 rounded-lg text-burgundy/60 dark:text-slate-400 text-sm font-semibold flex items-center justify-center gap-2" style="">
+<span class="material-symbols-outlined text-base" style="">language</span>
+                Pelo site
+            </button>
+<button class="flex-1 py-3 px-2 rounded-lg bg-white dark:bg-primary shadow-sm text-burgundy dark:text-white text-sm font-bold flex items-center justify-center gap-2" style="">
+<span class="material-symbols-outlined text-base" style="">delivery_dining</span>
+                Na entrega
+            </button></div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Dinheiro -->
+<label class="flex items-center gap-3 p-4 bg-white dark:bg-burgundy/20 rounded-xl border border-primary/10 cursor-pointer shadow-sm">
+<div class="text-green-600 shrink-0">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-medium text-sm">Dinheiro</span>
+</label>
+<!-- Mastercard - Débito -->
+<label class="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800 cursor-pointer shadow-sm">
+<div class="shrink-0 flex items-center">
+<span class="material-symbols-outlined text-red-500">credit_card</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-medium text-sm">Mastercard - Débito</span>
+</label>
+<!-- Visa - Débito -->
+<label class="flex items-center gap-3 p-4 bg-white dark:bg-burgundy/20 rounded-xl border border-primary/10 cursor-pointer shadow-sm">
+<div class="shrink-0 flex items-center">
+<span class="material-symbols-outlined text-blue-600">credit_card</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-medium text-sm">Visa - Débito</span>
+</label>
+<!-- Elo - Débito -->
+<label class="flex items-center gap-3 p-4 bg-white dark:bg-burgundy/20 rounded-xl border border-primary/10 cursor-pointer shadow-sm">
+<div class="shrink-0 flex items-center">
+<span class="material-symbols-outlined text-gray-800 dark:text-gray-200">credit_card</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-medium text-sm">Elo - Débito</span>
+</label>
+</div>
+</section>
+</div>
+<!-- Right Column: Order Summary (Sidebar) -->
+<aside class="w-full md:w-[35%] md:sticky md:top-24">
+<h3 class="text-burgundy dark:text-primary text-sm font-bold uppercase tracking-wider mb-3" style="">Resumo do Pedido</h3>
+<div class="relative bg-[#fdfcf0] dark:bg-burgundy/40 p-6 pt-8 pb-10 border-x border-primary/10">
+<!-- Receipt decoration top -->
+<div class="absolute top-0 left-0 w-full h-2 receipt-edge"></div>
+<div class="space-y-4 border-b border-dashed border-burgundy/20 pb-4">
+<div class="flex justify-between items-start gap-4 w-full">
+<div class="flex flex-col flex-1">
+<span class="text-burgundy dark:text-slate-100 font-medium" style="">2x Pão na Chapa</span>
+<span class="text-burgundy/50 text-xs italic" style="">Com manteiga extra</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-bold whitespace-nowrap" style="">R$ 12,00</span>
+</div>
+<div class="flex justify-between items-start gap-4 w-full">
+<div class="flex flex-col flex-1">
+<span class="text-burgundy dark:text-slate-100 font-medium" style="">1x Café Pingado</span>
+<span class="text-burgundy/50 text-xs italic" style="">Médio, sem açúcar</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-bold whitespace-nowrap" style="">R$ 6,50</span>
+</div>
+<div class="flex justify-between items-start gap-4 w-full">
+<div class="flex flex-col flex-1">
+<span class="text-burgundy dark:text-slate-100 font-medium" style="">3x Pão de Queijo</span>
+<span class="text-burgundy/50 text-xs italic" style="">Tradicional mineiro</span>
+</div>
+<span class="text-burgundy dark:text-slate-100 font-bold whitespace-nowrap" style="">R$ 15,00</span>
+</div>
+</div>
+<!-- Totals inside receipt -->
+<div class="mt-4 space-y-2">
+<div class="flex justify-between text-sm text-burgundy/70 dark:text-slate-400">
+<span class="" style="">Subtotal</span>
+<span class="" style="">R$ 33,50</span>
+</div>
+<div class="flex justify-between text-sm text-burgundy/70 dark:text-slate-400">
+<span class="" style="">Taxa de Serviço</span>
+<span class="" style="">R$ 3,35</span>
+</div>
+<div class="flex justify-between text-sm text-green-600 font-medium">
+<span class="" style="">Taxa de Entrega</span>
+<span class="" style="">Grátis</span>
+</div>
+<div class="flex justify-between text-lg font-extrabold text-burgundy dark:text-primary pt-2 border-t border-burgundy/10">
+<span class="" style="">TOTAL</span>
+<span class="" style="">R$ 36,85</span>
+</div>
+</div>
+<!-- Receipt decoration bottom -->
+<div class="absolute bottom-0 left-0 w-full h-2 receipt-edge-bottom"></div>
+</div>
+</aside></main>
+<!-- Footer Action -->
+<div class="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto p-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t border-primary/10 w-full z-20">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95 flex items-center justify-center gap-2" style="">
+                Finalizar Pedido
+                <span class="material-symbols-outlined" style="">chevron_right</span>
+</button>
+</div>
+</div>
+</body></html>

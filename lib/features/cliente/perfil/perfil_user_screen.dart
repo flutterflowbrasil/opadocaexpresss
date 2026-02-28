@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
+import 'package:padoca_express/features/cliente/perfil/comp/editar_informacoes.dart';
+import 'package:padoca_express/features/cliente/perfil/comp/meus_enderecos.dart';
 
 class PerfilUserScreen extends ConsumerStatefulWidget {
   const PerfilUserScreen({super.key});
@@ -60,9 +62,10 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                         offset: const Offset(0, 4),
                       ),
                     ],
-                    image: const DecorationImage(
+                    image: DecorationImage(
                       image: NetworkImage(
-                        'https://lh3.googleusercontent.com/aida-public/AB6AXuB3TYB3nqJUiQDEvsnYTSQOCp1namm9a65lATM2cc8ubuael3Nr1Ul4AderRK6Edi-lO38d_HYIgstd9X06jK5zhkX3UaY-NDqa0g2uvEDwJ_0Zt_d1Y1kQztqZB0i82DV8IqZza4C4CCQGKdNx5WnPxOd00pyXSeucasIFrszm7nGWWJqh3O35jXiY6ApwsJ8eBWVhuZeYp61CkRJp_-KF1GWrx3Rp3vD0wXCCoZybsaWzoX1paLPYt9eIyHP8x8Cvy5TPEkKq',
+                        profileState.fotoPerfilUrl ??
+                            'https://lh3.googleusercontent.com/aida-public/AB6AXuB3TYB3nqJUiQDEvsnYTSQOCp1namm9a65lATM2cc8ubuael3Nr1Ul4AderRK6Edi-lO38d_HYIgstd9X06jK5zhkX3UaY-NDqa0g2uvEDwJ_0Zt_d1Y1kQztqZB0i82DV8IqZza4C4CCQGKdNx5WnPxOd00pyXSeucasIFrszm7nGWWJqh3O35jXiY6ApwsJ8eBWVhuZeYp61CkRJp_-KF1GWrx3Rp3vD0wXCCoZybsaWzoX1paLPYt9eIyHP8x8Cvy5TPEkKq',
                       ),
                       fit: BoxFit.cover,
                     ),
@@ -141,6 +144,22 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                         isDark: isDark,
                         primaryColor: primaryColor,
                         secondaryColor: secondaryColor,
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) =>
+                                const EditarInformacoesModal(),
+                          ).then((updated) {
+                            if (updated == true) {
+                              // Recarregar os dados do perfil na tela principal
+                              ref
+                                  .read(profileControllerProvider.notifier)
+                                  .loadProfile();
+                            }
+                          });
+                        },
                       ),
                       Divider(
                         height: 1,
@@ -152,6 +171,19 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                         isDark: isDark,
                         primaryColor: primaryColor,
                         secondaryColor: secondaryColor,
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            elevation: 0,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(32)),
+                            ),
+                            builder: (context) => const MeusEnderecosModal(),
+                          );
+                        },
                       ),
                       Divider(
                         height: 1,
@@ -305,9 +337,10 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
     required bool isDark,
     required Color primaryColor,
     required Color secondaryColor,
+    VoidCallback? onTap,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(

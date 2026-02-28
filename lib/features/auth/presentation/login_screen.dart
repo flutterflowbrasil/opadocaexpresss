@@ -59,11 +59,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         FocusScope.of(context).unfocus();
         if (next.userType == 'cliente') {
           context.go('/home');
+        } else if (next.userType == 'estabelecimento') {
+          context.go('/dashboard_estabelecimento');
         } else {
           // Handle other user types or show a message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Login realizado com sucesso!'),
+              content: Text('Login de entregador ainda não suportado!'),
               behavior: SnackBarBehavior.floating,
             ),
           );

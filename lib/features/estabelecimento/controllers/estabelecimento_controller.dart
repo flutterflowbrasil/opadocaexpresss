@@ -47,9 +47,10 @@ class EstabelecimentoState {
     var filtered = produtos;
 
     if (searchQuery.isNotEmpty) {
-      final query = searchQuery.toLowerCase();
-      filtered =
-          filtered.where((p) => p.nome.toLowerCase().contains(query)).toList();
+      final query = _removeDiacritics(searchQuery.toLowerCase());
+      filtered = filtered
+          .where((p) => _removeDiacritics(p.nome.toLowerCase()).contains(query))
+          .toList();
     }
 
     if (selectedCategoriaId != 'tudo') {
@@ -59,6 +60,19 @@ class EstabelecimentoState {
     }
 
     return filtered;
+  }
+
+  String _removeDiacritics(String str) {
+    const withDia =
+        'ÀÁÂÃÄÅàáâãäåÒÓÔÕÕÖØòóôõöøÈÉÊËèéêëðÇçÐÌÍÎÏìíîïÙÚÛÜùúûüÑñŠšŸÿýŽž';
+    const withoutDia =
+        'AAAAAAaaaaaaOOOOOOOooooooEEEEeeeeeCcDIIIIiiiiUUUUuuuuNnSsYyyZz';
+
+    String result = str;
+    for (int i = 0; i < withDia.length; i++) {
+      result = result.replaceAll(withDia[i], withoutDia[i]);
+    }
+    return result;
   }
 }
 

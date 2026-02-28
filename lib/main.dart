@@ -45,7 +45,7 @@ class MyApp extends ConsumerWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      routerConfig: appRouter,
+      routerConfig: ref.watch(appRouterProvider),
     );
   }
 }
