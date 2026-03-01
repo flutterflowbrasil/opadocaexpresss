@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
-import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_controller.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
 import 'package:padoca_express/features/estabelecimento/data/storage_service.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
@@ -106,9 +106,8 @@ class _CadastroEstabelecimentoStep3ScreenState
     final burgundyColor = const Color(0xFF7d2d35);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF23150f)
-          : const Color(0xFFf9f5f0),
+      backgroundColor:
+          isDark ? const Color(0xFF23150f) : const Color(0xFFf9f5f0),
       appBar: const AppBarEstabelecimento(),
       body: Center(
         child: SingleChildScrollView(
@@ -482,9 +481,8 @@ class _CadastroEstabelecimentoStep3ScreenState
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected
-                ? primaryColor
-                : Colors.grey.withValues(alpha: 0.3),
+            color:
+                isSelected ? primaryColor : Colors.grey.withValues(alpha: 0.3),
           ),
           boxShadow: isSelected
               ? [
@@ -503,8 +501,8 @@ class _CadastroEstabelecimentoStep3ScreenState
               color: isSelected
                   ? primaryColor
                   : (isDark
-                        ? Colors.white
-                        : const Color(0xFF7d2d35).withValues(alpha: 0.6)),
+                      ? Colors.white
+                      : const Color(0xFF7d2d35).withValues(alpha: 0.6)),
               fontWeight: FontWeight.bold,
             ),
           ),

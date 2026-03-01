@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/gestures.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:padoca_express/features/cliente/cadastro_cliente/cadastro_cliente_controller.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_cliente/cadastro_cliente_controller.dart';
 import 'package:padoca_express/shared/widgets/responsive_layout.dart';
 
 class CadastroClienteScreen extends ConsumerStatefulWidget {

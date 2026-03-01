@@ -9,7 +9,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
-import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_controller.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
 
 class CadastroEstabelecimentoStep1Screen extends ConsumerStatefulWidget {
   const CadastroEstabelecimentoStep1Screen({super.key});
@@ -114,15 +114,12 @@ class _CadastroEstabelecimentoStep1ScreenState
         return;
       }
 
-      ref
-          .read(cadastroEstabelecimentoProvider.notifier)
-          .updateStep1(
+      ref.read(cadastroEstabelecimentoProvider.notifier).updateStep1(
             nomeFantasia: _nomeController.text,
             cnpj: _cnpjController.text,
             telefone: _telefoneController.text,
             email: _emailController.text,
             senha: _senhaController.text,
-
             imagemCapaPath: _imagePath,
             tipoPessoa: _tipoPessoa,
           );
@@ -150,9 +147,8 @@ class _CadastroEstabelecimentoStep1ScreenState
     }
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF23150f)
-          : const Color(0xFFf9f5f0),
+      backgroundColor:
+          isDark ? const Color(0xFF23150f) : const Color(0xFFf9f5f0),
       appBar: const AppBarEstabelecimento(),
       body: Center(
         child: SingleChildScrollView(
@@ -235,9 +231,8 @@ class _CadastroEstabelecimentoStep1ScreenState
                                 Text(
                                   'Foto da Padaria',
                                   style: GoogleFonts.plusJakartaSans(
-                                    color: isDark
-                                        ? Colors.white
-                                        : burgundyColor,
+                                    color:
+                                        isDark ? Colors.white : burgundyColor,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -297,8 +292,8 @@ class _CadastroEstabelecimentoStep1ScreenState
                               color: _tipoPessoa == 'fisica'
                                   ? primaryColor
                                   : (isDark
-                                        ? Colors.grey[700]!
-                                        : Colors.grey[300]!),
+                                      ? Colors.grey[700]!
+                                      : Colors.grey[300]!),
                               width: 2,
                             ),
                             shape: RoundedRectangleBorder(
@@ -313,8 +308,8 @@ class _CadastroEstabelecimentoStep1ScreenState
                                 color: _tipoPessoa == 'fisica'
                                     ? primaryColor
                                     : (isDark
-                                          ? Colors.grey[400]
-                                          : Colors.grey[600]),
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600]),
                                 fontWeight: _tipoPessoa == 'fisica'
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -340,8 +335,8 @@ class _CadastroEstabelecimentoStep1ScreenState
                               color: _tipoPessoa == 'juridica'
                                   ? primaryColor
                                   : (isDark
-                                        ? Colors.grey[700]!
-                                        : Colors.grey[300]!),
+                                      ? Colors.grey[700]!
+                                      : Colors.grey[300]!),
                               width: 2,
                             ),
                             shape: RoundedRectangleBorder(
@@ -356,8 +351,8 @@ class _CadastroEstabelecimentoStep1ScreenState
                                 color: _tipoPessoa == 'juridica'
                                     ? primaryColor
                                     : (isDark
-                                          ? Colors.grey[400]
-                                          : Colors.grey[600]),
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600]),
                                 fontWeight: _tipoPessoa == 'juridica'
                                     ? FontWeight.bold
                                     : FontWeight.normal,

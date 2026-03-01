@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
-import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_controller.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
 
 class CadastroEstabelecimentoStep2Screen extends ConsumerStatefulWidget {
   const CadastroEstabelecimentoStep2Screen({super.key});
@@ -64,9 +64,7 @@ class _CadastroEstabelecimentoStep2ScreenState
       // (Em um app real, cada dia teria seu controle individual se desejado)
       // Horários já estão atualizados no map _horarios diretamente pelos switches
 
-      ref
-          .read(cadastroEstabelecimentoProvider.notifier)
-          .updateStep2(
+      ref.read(cadastroEstabelecimentoProvider.notifier).updateStep2(
             cep: _cepController.text,
             logradouro: _logradouroController.text,
             numero: _numeroController.text,
@@ -87,9 +85,8 @@ class _CadastroEstabelecimentoStep2ScreenState
     final burgundyColor = const Color(0xFF7d2d35);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF23150f)
-          : const Color(0xFFf9f5f0),
+      backgroundColor:
+          isDark ? const Color(0xFF23150f) : const Color(0xFFf9f5f0),
       appBar: const AppBarEstabelecimento(),
       body: Center(
         child: SingleChildScrollView(

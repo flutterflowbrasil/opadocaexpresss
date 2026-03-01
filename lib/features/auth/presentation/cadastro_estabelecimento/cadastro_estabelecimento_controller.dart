@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_state.dart';
-export 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_state.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
+export 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
 
 class CadastroEstabelecimentoController
     extends StateNotifier<CadastroEstabelecimentoState> {
@@ -76,10 +76,7 @@ class CadastroEstabelecimentoController
   }
 }
 
-final cadastroEstabelecimentoProvider =
-    StateNotifierProvider<
-      CadastroEstabelecimentoController,
-      CadastroEstabelecimentoState
-    >((ref) {
-      return CadastroEstabelecimentoController();
-    });
+final cadastroEstabelecimentoProvider = StateNotifierProvider<
+    CadastroEstabelecimentoController, CadastroEstabelecimentoState>((ref) {
+  return CadastroEstabelecimentoController();
+});

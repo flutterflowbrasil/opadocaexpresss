@@ -1,4 +1,4 @@
-import 'package:padoca_express/features/estabelecimento/auth/cadastro_estabelecimento_state.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
