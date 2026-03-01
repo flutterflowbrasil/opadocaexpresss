@@ -153,8 +153,14 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     }
   }
 
-  void limparCarrinho() {
-    _updateState(CarrinhoState());
+  Future<void> limparCarrinho() async {
+    state = CarrinhoState();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+    } catch (_) {
+      // Falha ao limpar storage local
+    }
   }
 }
 

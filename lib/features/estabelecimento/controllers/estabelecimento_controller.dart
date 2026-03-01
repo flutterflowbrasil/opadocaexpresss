@@ -76,8 +76,8 @@ class EstabelecimentoState {
   }
 }
 
-final estabelecimentoControllerProvider = StateNotifierProvider.family<
-    EstabelecimentoController, EstabelecimentoState, String>(
+final estabelecimentoControllerProvider = StateNotifierProvider.autoDispose
+    .family<EstabelecimentoController, EstabelecimentoState, String>(
   (ref, estabelecimentoId) {
     return EstabelecimentoController(
       ref.watch(estabelecimentoRepositoryProvider),

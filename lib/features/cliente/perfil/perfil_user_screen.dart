@@ -7,6 +7,7 @@ import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/editar_informacoes.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/meus_enderecos.dart';
+import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 
 class PerfilUserScreen extends ConsumerStatefulWidget {
   const PerfilUserScreen({super.key});
@@ -297,6 +298,9 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () async {
+                  // Previnir Memory Leak de Ghost Sessions no Logout
+                  ref.invalidate(carrinhoControllerProvider);
+                  ref.invalidate(profileControllerProvider);
                   await ref.read(authRepositoryProvider).signOut();
                   if (context.mounted) {
                     context.go('/login');

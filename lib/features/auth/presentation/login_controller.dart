@@ -64,7 +64,7 @@ class LoginController extends StateNotifier<LoginState> {
 }
 
 final loginControllerProvider =
-    StateNotifierProvider<LoginController, LoginState>((ref) {
-      final authRepository = ref.watch(authRepositoryProvider);
-      return LoginController(authRepository);
-    });
+    StateNotifierProvider.autoDispose<LoginController, LoginState>((ref) {
+  final authRepository = ref.watch(authRepositoryProvider);
+  return LoginController(authRepository);
+});

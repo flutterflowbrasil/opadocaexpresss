@@ -71,7 +71,7 @@ class ProfileController extends StateNotifier<ProfileState> {
 }
 
 final profileControllerProvider =
-    StateNotifierProvider<ProfileController, ProfileState>((ref) {
+    StateNotifierProvider.autoDispose<ProfileController, ProfileState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
   final supabase = Supabase.instance.client;
   return ProfileController(authRepository, supabase);

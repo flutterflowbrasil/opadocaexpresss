@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_controller.dart';
 import 'dashboard_colors.dart';
 
 class SidebarMenu extends ConsumerWidget {
@@ -152,6 +153,7 @@ class SidebarMenu extends ConsumerWidget {
                 ),
                 IconButton(
                   onPressed: () async {
+                    ref.invalidate(dashboardControllerProvider);
                     await ref.read(authRepositoryProvider).signOut();
                     if (context.mounted) {
                       context.go('/login');

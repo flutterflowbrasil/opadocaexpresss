@@ -130,23 +130,28 @@ class AuthRepository {
       final user = _supabase.auth.currentUser;
       if (user == null) return null;
 
-      final userResponse = await _supabase
+      final response = await _supabase
           .from('usuarios')
-          .select('nome_completo_fantasia')
+          .select('nome_completo_fantasia, clientes(foto_perfil_url)')
           .eq('id', userId)
           .maybeSingle();
 
-      final clientResponse = await _supabase
-          .from('clientes')
-          .select('foto_perfil_url')
-          .eq('usuario_id', userId)
-          .maybeSingle();
+      String? fotoPerfilUrl;
+      if (response != null && response['clientes'] != null) {
+        // Handle array or single object representation of the join
+        final clientesData = response['clientes'];
+        if (clientesData is List && clientesData.isNotEmpty) {
+          fotoPerfilUrl = clientesData.first['foto_perfil_url'];
+        } else if (clientesData is Map) {
+          fotoPerfilUrl = clientesData['foto_perfil_url'];
+        }
+      }
 
       return {
-        'nome': userResponse?['nome_completo_fantasia'] ?? 'Usuário',
+        'nome': response?['nome_completo_fantasia'] ?? 'Usuário',
         'email': user.email,
         'id': userId,
-        'foto_perfil_url': clientResponse?['foto_perfil_url'],
+        'foto_perfil_url': fotoPerfilUrl,
       };
     } catch (e) {
       return null;
