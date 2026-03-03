@@ -2,26 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../componentes_dash/dashboard_colors.dart';
+import '../models/pedido_kanban_model.dart';
 
 enum KanbanStatus { recebido, preparo, pronto, entrega }
 
 class KanbanCard extends StatelessWidget {
+  final PedidoKanbanModel pedido;
   final KanbanStatus status;
-  final String idPedido;
-  final String clienteNome;
-  final String itensResumo;
-  final double total;
-  final String tempoDesde;
   final bool animatePulse;
 
   const KanbanCard({
     super.key,
+    required this.pedido,
     required this.status,
-    required this.idPedido,
-    required this.clienteNome,
-    required this.itensResumo,
-    required this.total,
-    required this.tempoDesde,
     this.animatePulse = false,
   });
 
@@ -38,10 +31,23 @@ class KanbanCard extends StatelessWidget {
     }
   }
 
+  String _formatarTempoDesde(DateTime created) {
+    final diff = DateTime.now().difference(created);
+    if (diff.inMinutes < 1) return 'Agora';
+    if (diff.inHours < 1) return 'Há ${diff.inMinutes} min';
+    return 'Há ${diff.inHours}h ${diff.inMinutes % 60}m';
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final idPedidoScreen = pedido.numeroPedido != null
+        ? '#${pedido.numeroPedido.toString().padLeft(3, '0')}'
+        : '#${pedido.id.substring(0, 4).toUpperCase()}';
+
+    final tempoDesde = _formatarTempoDesde(pedido.createdAt);
 
     final card = Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -77,7 +83,7 @@ class KanbanCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          idPedido,
+                          idPedidoScreen,
                           style: GoogleFonts.publicSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -114,16 +120,18 @@ class KanbanCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      clienteNome,
+                      pedido.cliente.nome,
                       style: GoogleFonts.publicSans(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[800],
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      itensResumo,
+                      pedido.itensResumo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.publicSans(
@@ -141,7 +149,7 @@ class KanbanCard extends StatelessWidget {
                       children: [
                         Text(
                           NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$')
-                              .format(total),
+                              .format(pedido.total),
                           style: GoogleFonts.publicSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -161,7 +169,7 @@ class KanbanCard extends StatelessWidget {
     );
 
     return Draggable<String>(
-      data: idPedido,
+      data: pedido.id,
       feedback: Material(
         color: Colors.transparent,
         child: SizedBox(

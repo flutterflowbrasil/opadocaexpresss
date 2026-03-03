@@ -124,12 +124,14 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
       final novaLista = List<ItemCarrinhoModel>.from(state.itens);
       novaLista.removeAt(index);
 
+      if (novaLista.isEmpty) {
+        limparCarrinho();
+        return;
+      }
+
       _updateState(state.copyWith(
         itens: novaLista,
-        estabelecimento: novaLista.isEmpty
-            ? null
-            : state
-                .estabelecimento, // Limpa o estabelecimento se o carrinho esvaziar
+        estabelecimento: state.estabelecimento,
       ));
     }
   }

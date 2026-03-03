@@ -1,105 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'kanban_column.dart';
 import 'kanban_card.dart';
+import '../models/pedido_kanban_model.dart';
+import '../controllers/pedidos_kanban_controller.dart';
 
-class KanbanItem {
-  final String idPedido;
-  final String clienteNome;
-  final String itensResumo;
-  final double total;
-  final String tempoDesde;
-  final bool animatePulse;
-  KanbanStatus status;
-
-  KanbanItem({
-    required this.idPedido,
-    required this.clienteNome,
-    required this.itensResumo,
-    required this.total,
-    required this.tempoDesde,
-    this.animatePulse = false,
-    required this.status,
-  });
-}
-
-class KanbanBoard extends StatefulWidget {
+class KanbanBoard extends ConsumerStatefulWidget {
   const KanbanBoard({super.key});
 
   @override
-  State<KanbanBoard> createState() => _KanbanBoardState();
+  ConsumerState<KanbanBoard> createState() => _KanbanBoardState();
 }
 
-class _KanbanBoardState extends State<KanbanBoard> {
-  final List<KanbanItem> _items = [
-    KanbanItem(
-      status: KanbanStatus.recebido,
-      idPedido: '#001',
-      clienteNome: 'João Silva',
-      itensResumo: '2x Pão na Chapa, 1x Pingado Médio, 1x Suco...',
-      total: 42.50,
-      tempoDesde: 'Há 5 min',
-    ),
-    KanbanItem(
-      status: KanbanStatus.recebido,
-      idPedido: '#004',
-      clienteNome: 'Maria Oliveira',
-      itensResumo: '1x Croissant Frango, 1x Espresso Curto',
-      total: 28.90,
-      tempoDesde: 'Há 2 min',
-    ),
-    KanbanItem(
-      status: KanbanStatus.preparo,
-      idPedido: '#002',
-      clienteNome: 'Roberto Santos',
-      itensResumo: '3x Pão de Queijo, 1x Capuccino Grande',
-      total: 22.00,
-      tempoDesde: '12 min',
-      animatePulse: true,
-    ),
-    KanbanItem(
-      status: KanbanStatus.pronto,
-      idPedido: '#003',
-      clienteNome: 'Ana Paula',
-      itensResumo: '1x Combo Café da Manhã Familiar',
-      total: 85.90,
-      tempoDesde: 'Aguardando Retirada',
-    ),
-  ];
-
-  void _onItemDropped(String idPedido, KanbanStatus newStatus) {
-    setState(() {
-      final itemIndex = _items.indexWhere((item) => item.idPedido == idPedido);
-      if (itemIndex != -1) {
-        // Remove and re-add to place at the bottom of the new column
-        final item = _items.removeAt(itemIndex);
-        item.status = newStatus;
-        _items.add(item);
-      }
-    });
+class _KanbanBoardState extends ConsumerState<KanbanBoard> {
+  @override
+  void initState() {
+    super.initState();
+    // A inicialização principal dos dados ocorre automaticamente ao
+    // dar 'ref.watch' no provider abaixo durante o build inicial ou
+    // via constructor do Controller.
   }
 
-  List<KanbanCard> _buildCards(KanbanStatus status) {
-    return _items
-        .where((item) => item.status == status)
+  void _onItemDropped(String idPedido, KanbanStatus newStatus) {
+    ref
+        .read(pedidosKanbanControllerProvider.notifier)
+        .alterarStatusPedido(idPedido, newStatus);
+  }
+
+  List<KanbanCard> _buildCards(
+      List<PedidoKanbanModel> items, KanbanStatus status) {
+    return items
         .map((item) => KanbanCard(
-              key: ValueKey(item.idPedido),
-              status: item.status,
-              idPedido: item.idPedido,
-              clienteNome: item.clienteNome,
-              itensResumo: item.itensResumo,
-              total: item.total,
-              tempoDesde: item.tempoDesde,
-              animatePulse: item.animatePulse,
+              key: ValueKey(item.id),
+              pedido: item,
+              status: status,
+              animatePulse: status ==
+                  KanbanStatus.preparo, // Pulse effect only in preparo
             ))
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final recebidos = _buildCards(KanbanStatus.recebido);
-    final preparo = _buildCards(KanbanStatus.preparo);
-    final pronto = _buildCards(KanbanStatus.pronto);
-    final entrega = _buildCards(KanbanStatus.entrega);
+    final state = ref.watch(pedidosKanbanControllerProvider);
+
+    if (state.isLoading && state.recebidos.isEmpty && state.emPreparo.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state.error != null && state.recebidos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(state.error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref
+                  .read(pedidosKanbanControllerProvider.notifier)
+                  .carregarPedidos(),
+              child: const Text('Tentar Novamente'),
+            )
+          ],
+        ),
+      );
+    }
+
+    final recebidosCards = _buildCards(state.recebidos, KanbanStatus.recebido);
+    final preparoCards = _buildCards(state.emPreparo, KanbanStatus.preparo);
+    final prontoCards = _buildCards(state.prontos, KanbanStatus.pronto);
+    final entregaCards = _buildCards(state.emEntrega, KanbanStatus.entrega);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -111,41 +83,41 @@ class _KanbanBoardState extends State<KanbanBoard> {
           // Recebidos
           KanbanColumn(
             title: 'Recebidos',
-            count: recebidos.length,
+            count: recebidosCards.length,
             statusType: KanbanStatus.recebido,
-            isEmpty: recebidos.isEmpty,
+            isEmpty: recebidosCards.isEmpty,
             onAccept: (id) => _onItemDropped(id, KanbanStatus.recebido),
-            children: recebidos,
+            children: recebidosCards,
           ),
 
           // Em Preparo
           KanbanColumn(
             title: 'Em Preparo',
-            count: preparo.length,
+            count: preparoCards.length,
             statusType: KanbanStatus.preparo,
-            isEmpty: preparo.isEmpty,
+            isEmpty: preparoCards.isEmpty,
             onAccept: (id) => _onItemDropped(id, KanbanStatus.preparo),
-            children: preparo,
+            children: preparoCards,
           ),
 
           // Pronto
           KanbanColumn(
             title: 'Pronto',
-            count: pronto.length,
+            count: prontoCards.length,
             statusType: KanbanStatus.pronto,
-            isEmpty: pronto.isEmpty,
+            isEmpty: prontoCards.isEmpty,
             onAccept: (id) => _onItemDropped(id, KanbanStatus.pronto),
-            children: pronto,
+            children: prontoCards,
           ),
 
           // Saiu para Entrega
           KanbanColumn(
             title: 'Saiu para Entrega',
-            count: entrega.length,
+            count: entregaCards.length,
             statusType: KanbanStatus.entrega,
-            isEmpty: entrega.isEmpty,
+            isEmpty: entregaCards.isEmpty,
             onAccept: (id) => _onItemDropped(id, KanbanStatus.entrega),
-            children: entrega,
+            children: entregaCards,
           ),
         ],
       ),

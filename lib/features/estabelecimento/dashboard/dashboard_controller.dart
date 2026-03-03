@@ -113,6 +113,7 @@ class DashboardController extends StateNotifier<DashboardState> {
 final dashboardControllerProvider =
     StateNotifierProvider.autoDispose<DashboardController, DashboardState>(
         (ref) {
+  ref.keepAlive(); // Cache do painel inicial para transições instantâneas
   final repository = ref.watch(dashboardRepositoryProvider);
   return DashboardController(repository);
 });

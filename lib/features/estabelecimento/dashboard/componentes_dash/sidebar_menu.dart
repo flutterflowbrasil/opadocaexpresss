@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_controller.dart';
+import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
+import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
 import 'dashboard_colors.dart';
+
+final sidebarCollapsedProvider = StateProvider<bool>((ref) => false);
 
 class SidebarMenu extends ConsumerWidget {
   final int selectedIndex;
@@ -18,45 +22,74 @@ class SidebarMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      width: 256, // 64rem equivalent in tailwind
+    final isCollapsed = ref.watch(sidebarCollapsedProvider);
+
+    void toggleSidebar() {
+      ref.read(sidebarCollapsedProvider.notifier).state = !isCollapsed;
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      width: isCollapsed ? 80 : 256, // 64rem equivalent in tailwind
       color: DashboardColors.burgundy,
       child: Column(
         children: [
           const SizedBox(height: 24),
           // Logo Area
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
+              mainAxisAlignment: isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: DashboardColors.primary,
-                    borderRadius: BorderRadius.circular(8),
+                IconButton(
+                  icon: Icon(
+                    isCollapsed ? Icons.menu : Icons.menu_open,
+                    color: Colors.white70,
                   ),
-                  child: const Icon(Icons.bakery_dining,
-                      color: Colors.white, size: 24),
+                  tooltip: isCollapsed ? 'Expandir' : 'Minimizar',
+                  onPressed: toggleSidebar,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.publicSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                if (!isCollapsed)
+                  Flexible(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: DashboardColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.bakery_dining,
+                                color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Text.rich(
+                            TextSpan(
+                              style: GoogleFonts.publicSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              children: const [
+                                TextSpan(text: 'Ôpadoca\n'),
+                                TextSpan(
+                                  text: 'Express',
+                                  style:
+                                      TextStyle(color: DashboardColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      children: const [
-                        TextSpan(text: 'Ôpadoca\n'),
-                        TextSpan(
-                          text: 'Express',
-                          style: TextStyle(color: DashboardColors.primary),
-                        ),
-                      ],
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -64,13 +97,14 @@ class SidebarMenu extends ConsumerWidget {
           // Menu Items
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 8 : 16),
               children: [
                 _buildMenuItem(
                   context: context,
-                  icon: Icons.dashboard, // filled icon style per HTML
+                  icon: Icons.dashboard,
                   title: 'Painel Inicial',
                   index: 0,
+                  isCollapsed: isCollapsed,
                 ),
                 const SizedBox(height: 8),
                 _buildMenuItem(
@@ -78,6 +112,7 @@ class SidebarMenu extends ConsumerWidget {
                   icon: Icons.receipt_long,
                   title: 'Pedidos',
                   index: 1,
+                  isCollapsed: isCollapsed,
                 ),
                 const SizedBox(height: 8),
                 _buildMenuItem(
@@ -85,13 +120,15 @@ class SidebarMenu extends ConsumerWidget {
                   icon: Icons.inventory_2,
                   title: 'Produtos',
                   index: 2,
+                  isCollapsed: isCollapsed,
                 ),
                 const SizedBox(height: 8),
                 _buildMenuItem(
                   context: context,
-                  icon: Icons.bar_chart, // closest to monitoring
+                  icon: Icons.bar_chart,
                   title: 'Status',
                   index: 3,
+                  isCollapsed: isCollapsed,
                 ),
                 const SizedBox(height: 8),
                 _buildMenuItem(
@@ -99,6 +136,7 @@ class SidebarMenu extends ConsumerWidget {
                   icon: Icons.settings,
                   title: 'Configurações',
                   index: 4,
+                  isCollapsed: isCollapsed,
                 ),
               ],
             ),
@@ -106,54 +144,68 @@ class SidebarMenu extends ConsumerWidget {
 
           // User Profile Area at Bottom
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isCollapsed ? 8 : 16),
             decoration: BoxDecoration(
               border: Border(
                   top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             ),
             child: Row(
+              mainAxisAlignment: isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                    image: const DecorationImage(
-                      image: AssetImage(
-                          'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png'), // placeholder
-                      fit: BoxFit.cover,
+                if (!isCollapsed)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2)),
+                              image: const DecorationImage(
+                                image: AssetImage(
+                                    'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png'), // placeholder
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Carlos Padoca',
+                                style: GoogleFonts.publicSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Gerente',
+                                style: GoogleFonts.publicSans(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Carlos Padoca',
-                        style: GoogleFonts.publicSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Gerente',
-                        style: GoogleFonts.publicSans(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 IconButton(
                   onPressed: () async {
                     ref.invalidate(dashboardControllerProvider);
+                    ref.invalidate(carrinhoControllerProvider);
+                    ref.invalidate(profileControllerProvider);
                     await ref.read(authRepositoryProvider).signOut();
                     if (context.mounted) {
                       context.go('/login');
@@ -176,6 +228,7 @@ class SidebarMenu extends ConsumerWidget {
     required IconData icon,
     required String title,
     required int index,
+    required bool isCollapsed,
   }) {
     final isSelected = selectedIndex == index;
 
@@ -183,6 +236,7 @@ class SidebarMenu extends ConsumerWidget {
       title: title,
       icon: icon,
       isSelected: isSelected,
+      isCollapsed: isCollapsed,
       onTap: () {
         if (!isSelected) {
           if (index == 0) {
@@ -203,6 +257,7 @@ class SidebarMenuItem extends StatefulWidget {
   final String title;
   final IconData icon;
   final bool isSelected;
+  final bool isCollapsed;
   final VoidCallback onTap;
 
   const SidebarMenuItem({
@@ -210,6 +265,7 @@ class SidebarMenuItem extends StatefulWidget {
     required this.title,
     required this.icon,
     required this.isSelected,
+    required this.isCollapsed,
     required this.onTap,
   });
 
@@ -222,7 +278,6 @@ class _SidebarMenuItemState extends State<SidebarMenuItem> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine styles based on selection and hover state
     final Color iconAndTextColor = widget.isSelected
         ? DashboardColors.primary
         : (_isHovering ? DashboardColors.accent : Colors.white);
@@ -247,29 +302,45 @@ class _SidebarMenuItemState extends State<SidebarMenuItem> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: widget.isCollapsed ? 0 : 12,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: border,
             color: backgroundColor,
           ),
           child: Row(
+            mainAxisAlignment: widget.isCollapsed
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
             children: [
               Icon(
                 widget.icon,
                 color: iconAndTextColor,
-                size: 24,
+                size: widget.isCollapsed ? 28 : 24,
               ),
-              const SizedBox(width: 12),
-              Text(
-                widget.title,
-                style: GoogleFonts.publicSans(
-                  fontSize: 16,
-                  fontWeight:
-                      widget.isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: iconAndTextColor,
+              if (!widget.isCollapsed)
+                Flexible(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        widget.title,
+                        style: GoogleFonts.publicSans(
+                          fontSize: 16,
+                          fontWeight: widget.isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: iconAndTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

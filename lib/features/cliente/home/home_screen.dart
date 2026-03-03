@@ -4,6 +4,7 @@ import 'package:padoca_express/features/cliente/componentes/custom_bottom_naviga
 import 'package:padoca_express/features/cliente/componentes/home_header.dart';
 import 'package:padoca_express/features/cliente/home/home_content.dart';
 import 'package:padoca_express/features/cliente/perfil/perfil_user_screen.dart';
+import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final List<Widget> screens = [
       const HomeContent(),
-      const Center(child: Text('Pedidos')), // Placeholder
+      MeusPedidosScreen(
+        onBack: () => setState(() => _currentIndex = 0),
+      ),
       const PerfilUserScreen(),
     ];
 
@@ -51,7 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             )
-          : ClienteAppBar(isDark: isDark),
+          : _currentIndex == 1
+              ? null // A própria tela de Meus Pedidos construirá sua AppBar estilo Perfil.
+              : ClienteAppBar(isDark: isDark),
       body: screens[_currentIndex],
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,

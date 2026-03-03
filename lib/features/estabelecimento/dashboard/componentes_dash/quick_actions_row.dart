@@ -13,14 +13,17 @@ class QuickActionsRow extends StatelessWidget {
             ? 4
             : (constraints.maxWidth > 600 ? 2 : 2);
 
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
+        return GridView(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            mainAxisExtent:
+                100, // Altura fixa previne reflow vertical na animação
+          ),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 2.5,
           children: [
             _buildActionCard(
               context,
@@ -116,6 +119,8 @@ class QuickActionsRow extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

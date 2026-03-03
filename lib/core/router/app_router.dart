@@ -22,6 +22,7 @@ import 'package:padoca_express/features/cliente/carrinho/finalizar_pedido_screen
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/pedidos_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/configuracoes/configuracoes.dart';
+import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
@@ -118,6 +119,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final termo = state.uri.queryParameters['q'] ?? '';
           return BuscaResultadosScreen(termoInicial: termo);
         },
+      ),
+      GoRoute(
+        path: '/cliente/pedidos',
+        builder: (context, state) => const MeusPedidosScreen(),
       ),
       GoRoute(
         path: '/carrinho',

@@ -25,14 +25,17 @@ class SalesMetricsRow extends StatelessWidget {
             ? 4
             : (constraints.maxWidth > 600 ? 2 : 1);
 
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
+        return GridView(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            mainAxisExtent:
+                100, // Altura fixa previne reflow vertical na animação
+          ),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 3.0,
           children: [
             _buildMetricCard(
               context,
@@ -107,52 +110,62 @@ class SalesMetricsRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    value,
-                    style: GoogleFonts.publicSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? DashboardColors.cream
-                          : DashboardColors.burgundy,
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          value,
+                          style: GoogleFonts.publicSans(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? DashboardColors.cream
+                                : DashboardColors.burgundy,
+                          ),
+                        ),
+                        if (extraIcon != null && title == 'Avaliação') ...[
+                          const SizedBox(width: 4),
+                          Icon(extraIcon,
+                              color: extraIconColor ?? extraColor, size: 20),
+                        ]
+                      ],
                     ),
                   ),
-                  if (extraIcon != null && title == 'Avaliação') ...[
-                    const SizedBox(width: 4),
-                    Icon(extraIcon,
-                        color: extraIconColor ?? extraColor, size: 20),
-                  ]
-                ],
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (extraIcon != null && title != 'Avaliação') ...[
-                    Icon(extraIcon, color: extraColor, size: 14),
-                    const SizedBox(width: 4),
+                ),
+                const SizedBox(width: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (extraIcon != null && title != 'Avaliação') ...[
+                      Icon(extraIcon, color: extraColor, size: 14),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      extraText,
+                      style: GoogleFonts.publicSans(
+                        fontSize: 14,
+                        fontWeight:
+                            title == 'Ticket Médio' || title == 'Avaliação'
+                                ? FontWeight.normal
+                                : FontWeight.bold,
+                        color: extraColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
-                  Text(
-                    extraText,
-                    style: GoogleFonts.publicSans(
-                      fontSize: 14,
-                      fontWeight:
-                          title == 'Ticket Médio' || title == 'Avaliação'
-                              ? FontWeight.normal
-                              : FontWeight.bold,
-                      color: extraColor,
-                    ),
-                  ),
-                ],
-              )
-            ],
+                )
+              ],
+            ),
           ),
         ],
       ),
