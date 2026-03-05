@@ -9,14 +9,19 @@ Future<Position?> getWebSafePosition() async {
       final difference = DateTime.now().difference(lastPosition.timestamp);
       // Se a posição tem menos de 10 minutos de vida, usamos ela para não gastar bateria/tempo do GPS novo
       if (difference.inMinutes <= 10) {
-        debugPrint(
-            '[Localizacao] Usando lastKnownPosition (Cache Nativo): ${difference.inMinutes}min de idade');
+        // A5: Log apenas em modo debug
+        if (kDebugMode) {
+          debugPrint(
+              '[Localizacao] Usando lastKnownPosition (Cache Nativo): ${difference.inMinutes}min de idade');
+        }
         return lastPosition;
       }
     }
 
     // 2. O mobile usa o pacote normal puxando ativamente do satélite (demora 2-5s em média na 1ª vez)
-    debugPrint('[Localizacao] Buscando posição atual do satélite...');
+    if (kDebugMode) {
+      debugPrint('[Localizacao] Buscando posição atual do satélite...');
+    }
     return await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy
@@ -24,7 +29,9 @@ Future<Position?> getWebSafePosition() async {
       ),
     ).timeout(const Duration(seconds: 15));
   } catch (e) {
-    debugPrint('[Localizacao] Erro no utilitário Mobile nativo: $e');
+    if (kDebugMode) {
+      debugPrint('[Localizacao] Erro no utilitário Mobile nativo: $e');
+    }
     return null;
   }
 }

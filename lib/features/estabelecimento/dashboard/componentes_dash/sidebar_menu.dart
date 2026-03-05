@@ -243,6 +243,8 @@ class SidebarMenu extends ConsumerWidget {
             context.go('/dashboard_estabelecimento');
           } else if (index == 1) {
             context.go('/dashboard_estabelecimento/pedidos');
+          } else if (index == 2) {
+            context.go('/dashboard_estabelecimento/produtos');
           } else if (index == 4) {
             context.go('/dashboard_estabelecimento/configuracoes');
           }

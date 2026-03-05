@@ -1,0 +1,13 @@
+﻿00:00 +0: loading C:/antigravity/padocaexpreess/padoca_express/test/carrinho_controller_test.dart
+00:00 +0: Deve adicionar produto e calcular o total e subtotais corretamente
+00:00 +1: Deve atualizar a quantidade e refletir no valor total
+00:00 +2: Deve esvaziar carrinho e remover estabelecimento
+00:00 +2 -1: Deve esvaziar carrinho e remover estabelecimento [E]
+  Expected: null
+    Actual: <Instance of 'EstabelecimentoModel'>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\carrinho_controller_test.dart 107:5            main.<fn>
+  
+00:00 +2 -1: Some tests failed.

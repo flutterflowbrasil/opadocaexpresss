@@ -89,7 +89,33 @@ class _MeusPedidosScreenState extends ConsumerState<MeusPedidosScreen>
       body: state.isLoading
           ? const Center(child: CircularProgressIndicator(color: _primaryColor))
           : state.error != null
-              ? Center(child: Text('Erro: \${state.error}'))
+              // A3: Mensagem de erro amigável com botão de retry
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            size: 48, color: Colors.redAccent),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Não foi possível carregar seus pedidos.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () => ref
+                              .read(pedidosClienteControllerProvider.notifier)
+                              .carregarPedidos(),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : TabBarView(
                   controller: _tabController,
                   children: [
@@ -99,11 +125,11 @@ class _MeusPedidosScreenState extends ConsumerState<MeusPedidosScreen>
                           .read(pedidosClienteControllerProvider.notifier)
                           .carregarPedidos(),
                       color: _primaryColor,
+                      // M6: Usar Center ao invés de ListView para estado vazio
                       child: state.pedidosAtivos.isEmpty
-                          ? ListView(children: const [
-                              SizedBox(height: 100),
-                              EmptyStatePedidos(isAtivos: true)
-                            ])
+                          ? const Center(
+                              child: EmptyStatePedidos(isAtivos: true),
+                            )
                           : ListView.builder(
                               padding: const EdgeInsets.all(16),
                               itemCount: state.pedidosAtivos.length,
@@ -118,10 +144,9 @@ class _MeusPedidosScreenState extends ConsumerState<MeusPedidosScreen>
                           .carregarPedidos(),
                       color: _primaryColor,
                       child: state.pedidosAnteriores.isEmpty
-                          ? ListView(children: const [
-                              SizedBox(height: 100),
-                              EmptyStatePedidos(isAtivos: false)
-                            ])
+                          ? const Center(
+                              child: EmptyStatePedidos(isAtivos: false),
+                            )
                           : ListView.builder(
                               padding: const EdgeInsets.all(16),
                               itemCount: state.pedidosAnteriores.length,

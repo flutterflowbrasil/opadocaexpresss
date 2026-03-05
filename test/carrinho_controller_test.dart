@@ -1,12 +1,13 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // A1: Mock do FlutterSecureStorage (carrinho migrado de SharedPreferences)
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   test('Deve adicionar produto e calcular o total e subtotais corretamente',

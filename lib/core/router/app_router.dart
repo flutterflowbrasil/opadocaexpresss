@@ -22,6 +22,7 @@ import 'package:padoca_express/features/cliente/carrinho/finalizar_pedido_screen
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/pedidos_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/configuracoes/configuracoes.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produtos_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -30,20 +31,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) async {
-      // Rotas protegidas que precisam do tipo_usuario
-      final isDashboardArea =
-          state.matchedLocation.startsWith('/dashboard_estabelecimento');
+      // Rotas que exigem autenticação obrigatória
+      const authRequired = [
+        '/carrinho',
+        '/finalizar_pedido',
+        '/cliente/pedidos',
+      ];
 
-      if (isDashboardArea) {
-        if (authRepository.currentUser == null) {
-          return '/login';
-        }
+      final loc = state.matchedLocation;
 
+      final needsAuth = authRequired.any((r) => loc.startsWith(r)) ||
+          loc.startsWith('/dashboard_estabelecimento');
+
+      // Redireciona para login se não autenticado
+      if (needsAuth && authRepository.currentUser == null) {
+        return '/login';
+      }
+
+      // Verifica tipo de usuário para o dashboard
+      if (loc.startsWith('/dashboard_estabelecimento')) {
         final type =
             await authRepository.getUserType(authRepository.currentUser!.id);
 
         if (type != 'estabelecimento') {
-          // Se não for estabelecimento tenta voltar ou home
           return '/home';
         }
       }
@@ -68,6 +78,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dashboard_estabelecimento/configuracoes',
         pageBuilder: (context, state) => const NoTransitionPage(
           child: ConfiguracoesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_estabelecimento/produtos',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ProdutosScreen(),
         ),
       ),
       GoRoute(

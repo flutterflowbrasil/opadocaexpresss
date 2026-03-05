@@ -3,7 +3,6 @@ import '../../../../auth/data/auth_repository.dart';
 import '../data/pedidos_kanban_repository.dart';
 import '../models/pedido_kanban_model.dart';
 import 'pedidos_kanban_state.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../componentes_kanban/kanban_card.dart'; // Para acessar KanbanStatus
 
 class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
@@ -46,21 +45,9 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
   }
 
   Future<String?> _getEstabelecimentoIdLigadoAoUser(String userId) async {
-    // Esse mapeamento pode estar sendo feito no dashboard_repository no atual sistema
-    // Para resolver, importaremos/criaremos a função se não existir.
-    // Simulando obtenção para a implementação fluída da feature pedidos isolada:
-    try {
-      await _repository.buscarPedidosAbertos('PLACEHOLDER');
-      return 'MOCKED_ESTAB_ID_AWAITING_AUTH_LINK_REF';
-    } catch (e) {
-      // Faremos hardcode do acesso ao authRepository type = estabelecimento
-      final authEstab = await Supabase.instance.client
-          .from('estabelecimentos')
-          .select('id')
-          .eq('usuario_id', userId)
-          .maybeSingle();
-      return authEstab?['id'] as String?;
-    }
+    // Delega para o AuthRepository para manter testabilidade
+    // (evita chamada direta ao Supabase.instance.client, que não pode ser mockada em unit tests)
+    return await _authRepository.getEstabelecimentoId(userId);
   }
 
   void _categorizarPedidos(List<PedidoKanbanModel> todosPedidos) {

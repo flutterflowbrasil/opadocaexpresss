@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
@@ -55,6 +55,10 @@ class CarrinhoState {
 
 class CarrinhoController extends StateNotifier<CarrinhoState> {
   static const _storageKey = 'padoca_carrinho_state';
+  // A1: Migrado de SharedPreferences para FlutterSecureStorage (criptografado)
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   CarrinhoController() : super(CarrinhoState()) {
     _loadState();
@@ -62,8 +66,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
 
   Future<void> _loadState() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString(_storageKey);
+      final data = await _storage.read(key: _storageKey);
       if (data != null) {
         state = CarrinhoState.fromJson(jsonDecode(data));
       }
@@ -75,8 +78,10 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
   Future<void> _updateState(CarrinhoState newState) async {
     state = newState;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_storageKey, jsonEncode(newState.toJson()));
+      await _storage.write(
+        key: _storageKey,
+        value: jsonEncode(newState.toJson()),
+      );
     } catch (_) {
       // Falha ao salvar no storage local
     }
@@ -158,8 +163,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
   Future<void> limparCarrinho() async {
     state = CarrinhoState();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_storageKey);
+      await _storage.delete(key: _storageKey);
     } catch (_) {
       // Falha ao limpar storage local
     }

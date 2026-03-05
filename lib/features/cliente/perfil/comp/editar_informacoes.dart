@@ -144,6 +144,13 @@ class _EditarInformacoesModalState
             WebUiSettings(
               context: context,
               presentStyle: WebPresentStyle.page,
+              translations: const WebTranslations(
+                title: 'Editar Imagem',
+                cropButton: 'Cortar',
+                cancelButton: 'Cancelar',
+                rotateLeftTooltip: 'Girar Esquerda',
+                rotateRightTooltip: 'Girar Direita',
+              ),
             ),
           ],
         );

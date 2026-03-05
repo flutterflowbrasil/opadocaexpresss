@@ -1,6 +1,7 @@
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 
 class AuthRepository {
@@ -123,6 +124,11 @@ class AuthRepository {
 
   Future<void> signOut() async {
     await _supabase.auth.signOut();
+    // M1: Limpar todos os dados locais criptografados ao fazer logout
+    const storage = FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    );
+    await storage.deleteAll();
   }
 
   Future<Map<String, dynamic>?> getProfile(String userId) async {
@@ -156,6 +162,17 @@ class AuthRepository {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Retorna o ID do estabelecimento vinculado a um usuário autenticado.
+  /// Extraído do AuthRepository para permitir mocking em testes unitários.
+  Future<String?> getEstabelecimentoId(String userId) async {
+    final result = await _supabase
+        .from('estabelecimentos')
+        .select('id')
+        .eq('usuario_id', userId)
+        .maybeSingle();
+    return result?['id'] as String?;
   }
 
   User? get currentUser => _supabase.auth.currentUser;

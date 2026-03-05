@@ -26,6 +26,9 @@ void main() {
     final mockUser = MockUser();
     when(() => mockUser.id).thenReturn('user-123');
     when(() => mockAuth.currentUser).thenReturn(mockUser);
+    // Stub getEstabelecimentoId para evitar chamada real ao Supabase
+    when(() => mockAuth.getEstabelecimentoId(any()))
+        .thenAnswer((_) async => 'estab-test-id');
   });
 
   PedidoKanbanModel _criarPedidoMock(String id, String status) {

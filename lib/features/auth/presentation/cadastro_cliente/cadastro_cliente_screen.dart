@@ -345,7 +345,11 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Por favor, insira seu e-mail';
                     }
-                    if (!value.contains('@') || !value.contains('.')) {
+                    // M2: Validação robusta com regex RFC-compatível
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
                       return 'Por favor, insira um e-mail válido';
                     }
                     return null;

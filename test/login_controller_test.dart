@@ -62,6 +62,9 @@ class MockAuthRepository implements AuthRepository {
       required dynamic storageService}) async {}
 
   @override
+  Future<String?> getEstabelecimentoId(String userId) async => null;
+
+  @override
   User? get currentUser => null;
 }
 

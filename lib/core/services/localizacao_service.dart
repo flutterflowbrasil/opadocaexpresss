@@ -15,20 +15,29 @@ Future<Position?> obterLocalizacao() async {
     // 1. Verifica se o serviço está ligado
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      debugPrint(
-          '[Localizacao] Erro: Serviço de localização (GPS) do aparelho está desativado.');
+      // A5: Log apenas em modo debug
+      if (kDebugMode) {
+        debugPrint(
+            '[Localizacao] Erro: Serviço de localização (GPS) do aparelho está desativado.');
+      }
       return null;
     }
 
     // 2. Verifica permissão atual
     var permission = await Geolocator.checkPermission();
-    debugPrint('[Localizacao] Status da permissão atual: $permission');
+    if (kDebugMode) {
+      debugPrint('[Localizacao] Status da permissão atual: $permission');
+    }
 
     // 3. Pede permissão apenas se ainda não foi solicitada
     if (permission == LocationPermission.denied) {
-      debugPrint('[Localizacao] Solicitando permissão ao usuário...');
+      if (kDebugMode) {
+        debugPrint('[Localizacao] Solicitando permissão ao usuário...');
+      }
       permission = await Geolocator.requestPermission();
-      debugPrint('[Localizacao] Resposta da solicitação: $permission');
+      if (kDebugMode) {
+        debugPrint('[Localizacao] Resposta da solicitação: $permission');
+      }
       if (permission == LocationPermission.denied) {
         return null;
       }
@@ -36,33 +45,47 @@ Future<Position?> obterLocalizacao() async {
 
     // 4. Bloqueado permanentemente — não pode pedir novamente
     if (permission == LocationPermission.deniedForever) {
-      debugPrint('[Localizacao] Erro: Permissão negada permanentemente.');
+      if (kDebugMode) {
+        debugPrint('[Localizacao] Erro: Permissão negada permanentemente.');
+      }
       return null;
     }
 
     // 5. Obtém a posição usando o utilitário seguro para a plataforma
-    debugPrint(
-        '[Localizacao] Obtendo posição com utilitário específico da plataforma...');
+    if (kDebugMode) {
+      debugPrint(
+          '[Localizacao] Obtendo posição com utilitário específico da plataforma...');
+    }
     Position? position;
     try {
       position = await getWebSafePosition();
     } catch (e) {
-      debugPrint('[Localizacao] Erro em getWebSafePosition: $e');
+      if (kDebugMode) {
+        debugPrint('[Localizacao] Erro em getWebSafePosition: $e');
+      }
       if (!kIsWeb) {
-        debugPrint('[Localizacao] Tentando getLastKnownPosition...');
+        if (kDebugMode) {
+          debugPrint('[Localizacao] Tentando getLastKnownPosition...');
+        }
         try {
           position = await Geolocator.getLastKnownPosition();
         } catch (e2) {
-          debugPrint('[Localizacao] Erro em getLastKnownPosition: $e2');
+          if (kDebugMode) {
+            debugPrint('[Localizacao] Erro em getLastKnownPosition: $e2');
+          }
         }
       }
     }
-    debugPrint(
-        '[Localizacao] Posição obtida: ${position?.latitude}, ${position?.longitude}');
+    if (kDebugMode) {
+      debugPrint(
+          '[Localizacao] Posição obtida: ${position?.latitude}, ${position?.longitude}');
+    }
     return position;
   } catch (e, stack) {
-    debugPrint(
-        '[Localizacao] Exception capturada em obterLocalizacao: $e\n$stack');
+    if (kDebugMode) {
+      debugPrint(
+          '[Localizacao] Exception capturada em obterLocalizacao: $e\n$stack');
+    }
     return null;
   }
 }
@@ -74,7 +97,9 @@ Future<bool> temPermissaoLocalizacao() async {
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
   } catch (e) {
-    debugPrint('[Localizacao] Erro ao checar permissão previa: $e');
+    if (kDebugMode) {
+      debugPrint('[Localizacao] Erro ao checar permissão previa: $e');
+    }
     return false;
   }
 }

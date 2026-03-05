@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,7 +18,14 @@ class EstabelecimentoResult {
 
 final estabelecimentoProximoProvider =
     FutureProvider<EstabelecimentoResult>((ref) async {
-  ref.keepAlive();
+  // B1: keepAlive com política de expiração de 10 minutos
+  // Evita dados obsoletos (ex: status aberto/fechado que muda ao longo do dia)
+  final link = ref.keepAlive();
+  final timer = Timer(const Duration(minutes: 10), () {
+    link.close(); // Permite que o provider seja recriado na próxima consulta
+  });
+  ref.onDispose(timer.cancel);
+
   try {
     final response = await Supabase.instance.client
         .from('estabelecimentos')
@@ -27,9 +35,11 @@ final estabelecimentoProximoProvider =
           'latitude, longitude, config_entrega, endereco, '
           'categoria_estabelecimento_id',
         )
-        // Opcional: só trazer quem está ativo no sistema
-        // .eq('ativo', true)
-        .order('avaliacao_media', ascending: false);
+        // M7: Limite de 50 registros para evitar carregar todo o banco em memória
+        .order('avaliacao_media', ascending: false)
+        .limit(50)
+        // A4: Timeout de 15 segundos para evitar loading infinito em redes lentas
+        .timeout(const Duration(seconds: 15));
 
     final List<EstabelecimentoModel> todos = (response as List)
         .map((json) => EstabelecimentoModel.fromJson(json))
@@ -91,7 +101,10 @@ final estabelecimentoProximoProvider =
       temLocalizacao: true,
     );
   } catch (e) {
-    debugPrint('Erro em estabelecimentoProximoProvider: $e');
+    // A4+A5: Log apenas em debug, sem expor dados internos
+    if (kDebugMode) {
+      debugPrint('Erro em estabelecimentoProximoProvider: $e');
+    }
     return EstabelecimentoResult(estabelecimentos: [], temLocalizacao: false);
   }
 });
