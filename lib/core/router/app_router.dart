@@ -48,6 +48,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
+      // Usuário já autenticado não deve acessar telas de cadastro/login
+      const authForbiddenWhenLoggedIn = [
+        '/login',
+        '/pre_cadastro',
+        '/cadastro_cliente',
+        '/cadastro_entregador',
+        '/cadastro-estabelecimento',
+      ];
+      if (authRepository.currentUser != null &&
+          authForbiddenWhenLoggedIn.any((r) => loc.startsWith(r))) {
+        return '/home';
+      }
+
       // Verifica tipo de usuário para o dashboard
       if (loc.startsWith('/dashboard_estabelecimento')) {
         final type =

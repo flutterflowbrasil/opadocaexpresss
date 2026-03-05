@@ -26,11 +26,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
           ? null
           : Drawer(
               child: SidebarMenu(
-                selectedIndex: 1, // 'Pedidos' is index 1
-                onItemSelected: (index) {
-                  // We handle routing from the Sidebar itself via app_router context
-                  if (index != 1)
-                    Navigator.pop(context); // Close drawer only if changing
+                activeId: 'orders',
+                onItemSelected: (id) {
+                  Navigator.pop(context);
                 },
               ),
             ),
@@ -38,8 +36,8 @@ class _PedidosScreenState extends State<PedidosScreen> {
         children: [
           if (isWideScreen)
             SidebarMenu(
-              selectedIndex: 1,
-              onItemSelected: (index) {},
+              activeId: 'orders',
+              onItemSelected: (_) {},
             ),
           Expanded(
             child: Column(

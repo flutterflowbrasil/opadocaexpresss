@@ -81,9 +81,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
           ? null
           : Drawer(
               child: SidebarMenu(
-                selectedIndex: 4,
-                onItemSelected: (index) {
-                  if (index != 4) Navigator.pop(context);
+                activeId: 'settings',
+                onItemSelected: (id) {
+                  if (id != 'settings') Navigator.pop(context);
                 },
               ),
             ),
@@ -91,8 +91,8 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         children: [
           if (isWideScreen)
             SidebarMenu(
-              selectedIndex: 4,
-              onItemSelected: (index) {},
+              activeId: 'settings',
+              onItemSelected: (_) {},
             ),
           Expanded(child: bodyContent),
         ],

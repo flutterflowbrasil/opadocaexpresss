@@ -131,9 +131,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ? null
           : Drawer(
               child: SidebarMenu(
-                selectedIndex: 0,
-                onItemSelected: (index) {
-                  if (index != 0) Navigator.pop(context);
+                activeId: 'dashboard',
+                onItemSelected: (id) {
+                  Navigator.pop(context);
                 },
               ),
             ),
@@ -141,8 +141,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           if (isWideScreen)
             SidebarMenu(
-              selectedIndex: 0,
-              onItemSelected: (index) {},
+              activeId: 'dashboard',
+              onItemSelected: (_) {},
             ),
           Expanded(child: bodyContent),
         ],

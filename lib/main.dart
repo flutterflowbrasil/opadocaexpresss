@@ -13,7 +13,12 @@ void main() async {
   // Carrega variáveis de ambiente do .env
   // Em produção (Web/Vercel), as variáveis --dart-define sobrescrevem os valores do .env
   // Em desenvolvimento web, o .env local é usado como fallback
-  await dotenv.load(fileName: '.env');
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // Em Flutter Web, o .env pode não estar disponível — as variáveis
+    // são injetadas via --dart-define (ex: SUPABASE_URL, SUPABASE_ANON_KEY)
+  }
 
   // Inicializa Supabase
   await SupabaseConfig.initialize();

@@ -83,9 +83,9 @@ class _ProdutosScreenState extends ConsumerState<ProdutosScreen> {
           ? null
           : Drawer(
               child: SidebarMenu(
-                selectedIndex: 2,
-                onItemSelected: (index) {
-                  if (index != 2) Navigator.pop(context);
+                activeId: 'products',
+                onItemSelected: (id) {
+                  if (id != 'products') Navigator.pop(context);
                 },
               ),
             ),
@@ -103,8 +103,8 @@ class _ProdutosScreenState extends ConsumerState<ProdutosScreen> {
         children: [
           if (isWideScreen)
             SidebarMenu(
-              selectedIndex: 2,
-              onItemSelected: (index) {},
+              activeId: 'products',
+              onItemSelected: (_) {},
             ),
           Expanded(
             child: isLoading

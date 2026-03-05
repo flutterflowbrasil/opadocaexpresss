@@ -10,18 +10,165 @@ import 'dashboard_colors.dart';
 
 final sidebarCollapsedProvider = StateProvider<bool>((ref) => false);
 
-class SidebarMenu extends ConsumerWidget {
-  final int selectedIndex;
-  final Function(int) onItemSelected;
+// ─── Modelo de item de menu ──────────────────────────────────────────────────
+
+class _MenuItem {
+  final String id;
+  final String label;
+  final IconData icon;
+  final String? badge;
+  final Color? badgeColor;
+  final String? route;
+
+  const _MenuItem({
+    required this.id,
+    required this.label,
+    required this.icon,
+    this.badge,
+    this.badgeColor,
+    this.route,
+  });
+}
+
+class _MenuSection {
+  final String label;
+  final List<_MenuItem> items;
+  const _MenuSection({required this.label, required this.items});
+}
+
+// ─── Definição das seções ────────────────────────────────────────────────────
+
+const _sections = [
+  _MenuSection(
+    label: 'OPERAÇÃO',
+    items: [
+      _MenuItem(
+        id: 'dashboard',
+        label: 'Painel Inicial',
+        icon: Icons.dashboard_rounded,
+        route: '/dashboard_estabelecimento',
+      ),
+      _MenuItem(
+        id: 'orders',
+        label: 'Pedidos',
+        icon: Icons.receipt_long_rounded,
+        badge: '3',
+        badgeColor: Color(0xFFF97316),
+        route: '/dashboard_estabelecimento/pedidos',
+      ),
+      _MenuItem(
+        id: 'store',
+        label: 'Minha Loja',
+        icon: Icons.storefront_rounded,
+      ),
+      _MenuItem(
+        id: 'status',
+        label: 'Status da Loja',
+        icon: Icons.radio_button_checked_rounded,
+      ),
+    ],
+  ),
+  _MenuSection(
+    label: 'CARDÁPIO',
+    items: [
+      _MenuItem(
+        id: 'products',
+        label: 'Produtos',
+        icon: Icons.inventory_2_rounded,
+        route: '/dashboard_estabelecimento/produtos',
+      ),
+      _MenuItem(
+        id: 'coupons',
+        label: 'Cupons & Ofertas',
+        icon: Icons.local_offer_rounded,
+      ),
+    ],
+  ),
+  _MenuSection(
+    label: 'CRESCIMENTO',
+    items: [
+      _MenuItem(
+        id: 'customers',
+        label: 'Clientes',
+        icon: Icons.people_alt_rounded,
+      ),
+      _MenuItem(
+        id: 'reviews',
+        label: 'Avaliações',
+        icon: Icons.star_rounded,
+        badge: '5★',
+        badgeColor: Color(0xFFF59E0B),
+      ),
+    ],
+  ),
+  _MenuSection(
+    label: 'GESTÃO',
+    items: [
+      _MenuItem(
+        id: 'finance',
+        label: 'Financeiro',
+        icon: Icons.attach_money_rounded,
+      ),
+      _MenuItem(
+        id: 'team',
+        label: 'Equipe & Acessos',
+        icon: Icons.shield_rounded,
+      ),
+    ],
+  ),
+];
+
+const _bottomItems = [
+  _MenuItem(
+    id: 'settings',
+    label: 'Configurações',
+    icon: Icons.settings_rounded,
+    route: '/dashboard_estabelecimento/configuracoes',
+  ),
+  _MenuItem(
+    id: 'help',
+    label: 'Ajuda & Suporte',
+    icon: Icons.help_outline_rounded,
+  ),
+];
+
+// ─── Widget principal ────────────────────────────────────────────────────────
+
+class SidebarMenu extends ConsumerStatefulWidget {
+  final String activeId;
+  final Function(String) onItemSelected;
 
   const SidebarMenu({
     super.key,
-    required this.selectedIndex,
+    required this.activeId,
     required this.onItemSelected,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SidebarMenu> createState() => _SidebarMenuState();
+}
+
+class _SidebarMenuState extends ConsumerState<SidebarMenu> {
+  // Seções abertas por padrão
+  final Set<String> _openSections = {
+    'OPERAÇÃO',
+    'CARDÁPIO',
+    'CRESCIMENTO',
+    'GESTÃO'
+  };
+
+  void _toggleSection(String label) {
+    setState(() {
+      if (_openSections.contains(label)) {
+        _openSections.remove(label);
+      } else {
+        _openSections.add(label);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isCollapsed = ref.watch(sidebarCollapsedProvider);
 
     void toggleSidebar() {
@@ -29,232 +176,619 @@ class SidebarMenu extends ConsumerWidget {
     }
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      width: isCollapsed ? 80 : 256, // 64rem equivalent in tailwind
-      color: DashboardColors.burgundy,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      width: isCollapsed ? 68 : 252,
+      color: const Color(0xFF1E0A14),
       child: Column(
         children: [
-          const SizedBox(height: 24),
-          // Logo Area
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: isCollapsed
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    isCollapsed ? Icons.menu : Icons.menu_open,
-                    color: Colors.white70,
-                  ),
-                  tooltip: isCollapsed ? 'Expandir' : 'Minimizar',
-                  onPressed: toggleSidebar,
-                ),
-                if (!isCollapsed)
-                  Flexible(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: DashboardColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.bakery_dining,
-                                color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Text.rich(
-                            TextSpan(
-                              style: GoogleFonts.publicSans(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              children: const [
-                                TextSpan(text: 'Ôpadoca\n'),
-                                TextSpan(
-                                  text: 'Express',
-                                  style:
-                                      TextStyle(color: DashboardColors.primary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
-          // Menu Items
+          // ── Logo / Toggle ─────────────────────────────────────
+          _buildHeader(isCollapsed, toggleSidebar),
+
+          // ── Pill "Loja Aberta" ────────────────────────────────
+          if (!isCollapsed) _buildStorePill(),
+
+          // ── Itens de navegação ────────────────────────────────
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 8 : 16),
-              children: [
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.dashboard,
-                  title: 'Painel Inicial',
-                  index: 0,
-                  isCollapsed: isCollapsed,
-                ),
-                const SizedBox(height: 8),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.receipt_long,
-                  title: 'Pedidos',
-                  index: 1,
-                  isCollapsed: isCollapsed,
-                ),
-                const SizedBox(height: 8),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.inventory_2,
-                  title: 'Produtos',
-                  index: 2,
-                  isCollapsed: isCollapsed,
-                ),
-                const SizedBox(height: 8),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.bar_chart,
-                  title: 'Status',
-                  index: 3,
-                  isCollapsed: isCollapsed,
-                ),
-                const SizedBox(height: 8),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.settings,
-                  title: 'Configurações',
-                  index: 4,
-                  isCollapsed: isCollapsed,
-                ),
-              ],
+            child: ScrollConfiguration(
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                children: [
+                  for (final section in _sections)
+                    _buildSection(section, isCollapsed),
+                ],
+              ),
             ),
           ),
 
-          // User Profile Area at Bottom
-          Container(
-            padding: EdgeInsets.all(isCollapsed ? 8 : 16),
-            decoration: BoxDecoration(
-              border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-            ),
-            child: Row(
-              mainAxisAlignment: isCollapsed
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              children: [
-                if (!isCollapsed)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2)),
-                              image: const DecorationImage(
-                                image: AssetImage(
-                                    'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png'), // placeholder
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Carlos Padoca',
-                                style: GoogleFonts.publicSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Gerente',
-                                style: GoogleFonts.publicSans(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                IconButton(
-                  onPressed: () async {
-                    ref.invalidate(dashboardControllerProvider);
-                    ref.invalidate(carrinhoControllerProvider);
-                    ref.invalidate(profileControllerProvider);
-                    await ref.read(authRepositoryProvider).signOut();
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  },
-                  icon: const Icon(Icons.logout, color: Colors.white70),
-                  tooltip: 'Sair',
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+          // ── Itens inferiores (Settings, Help) ─────────────────
+          _buildBottomItems(isCollapsed),
+
+          // ── Perfil / Logout ───────────────────────────────────
+          _buildUserRow(isCollapsed),
+
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItem({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required int index,
-    required bool isCollapsed,
-  }) {
-    final isSelected = selectedIndex == index;
+  // ── Header ────────────────────────────────────────────────────────────────
 
-    return SidebarMenuItem(
-      title: title,
-      icon: icon,
-      isSelected: isSelected,
-      isCollapsed: isCollapsed,
-      onTap: () {
-        if (!isSelected) {
-          if (index == 0) {
-            context.go('/dashboard_estabelecimento');
-          } else if (index == 1) {
-            context.go('/dashboard_estabelecimento/pedidos');
-          } else if (index == 2) {
-            context.go('/dashboard_estabelecimento/produtos');
-          } else if (index == 4) {
-            context.go('/dashboard_estabelecimento/configuracoes');
-          }
-        }
-        onItemSelected(index);
-      },
+  Widget _buildHeader(bool isCollapsed, VoidCallback onToggle) {
+    return Container(
+      height: 64,
+      padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 15 : 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Quando expandido: mostra logo; quando colapsado: só o botão de menu
+          if (!isCollapsed) ...[
+            // Ícone de padoca
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: DashboardColors.primary,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: DashboardColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text('🥐', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Ôpadoca',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'EXPRESS',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: DashboardColors.primary,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // Botão de toggle — sempre visível
+          _ToggleButton(isCollapsed: isCollapsed, onTap: onToggle),
+        ],
+      ),
+    );
+  }
+
+  // ── Pill Loja Aberta ──────────────────────────────────────────────────────
+
+  Widget _buildStorePill() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+        border:
+            Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _BlinkingDot(),
+          const SizedBox(width: 7),
+          Text(
+            'Loja Aberta',
+            style: GoogleFonts.dmSans(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF10B981),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Seção agrupada ────────────────────────────────────────────────────────
+
+  Widget _buildSection(_MenuSection section, bool isCollapsed) {
+    final isOpen = _openSections.contains(section.label);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label da seção (só quando expandido)
+        if (!isCollapsed)
+          _SectionLabel(
+            label: section.label,
+            isOpen: isOpen,
+            onTap: () => _toggleSection(section.label),
+          ),
+
+        // Itens
+        if (isOpen || isCollapsed)
+          for (final item in section.items)
+            _NavItem(
+              item: item,
+              isActive: widget.activeId == item.id,
+              isCollapsed: isCollapsed,
+              onTap: () {
+                widget.onItemSelected(item.id);
+                if (item.route != null) {
+                  context.go(item.route!);
+                }
+              },
+            ),
+
+        // Divisor no modo colapsado
+        if (isCollapsed)
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+      ],
+    );
+  }
+
+  // ── Itens do rodapé ───────────────────────────────────────────────────────
+
+  Widget _buildBottomItems(bool isCollapsed) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: Column(
+        children: [
+          for (final item in _bottomItems)
+            _NavItem(
+              item: item,
+              isActive: widget.activeId == item.id,
+              isCollapsed: isCollapsed,
+              onTap: () {
+                widget.onItemSelected(item.id);
+                if (item.route != null) {
+                  context.go(item.route!);
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Perfil / Logout ───────────────────────────────────────────────────────
+
+  Widget _buildUserRow(bool isCollapsed) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isCollapsed ? 15 : 9,
+          vertical: 10,
+        ),
+        child: Row(
+          mainAxisAlignment:
+              isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+          children: [
+            // Avatar
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF97316), Color(0xFFdc2626)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  'CP',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            if (!isCollapsed) ...[
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Carlos Padoca',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'proprietario',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        color: Colors.white.withValues(alpha: 0.32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _LogoutButton(
+                onPressed: () async {
+                  ref.invalidate(dashboardControllerProvider);
+                  ref.invalidate(carrinhoControllerProvider);
+                  ref.invalidate(profileControllerProvider);
+                  await ref.read(authRepositoryProvider).signOut();
+                  if (mounted) context.go('/login');
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
 
+// ─── Subwidgets ──────────────────────────────────────────────────────────────
+
+/// Botão de toggle do sidebar
+class _ToggleButton extends StatefulWidget {
+  final bool isCollapsed;
+  final VoidCallback onTap;
+  const _ToggleButton({required this.isCollapsed, required this.onTap});
+
+  @override
+  State<_ToggleButton> createState() => _ToggleButtonState();
+}
+
+class _ToggleButtonState extends State<_ToggleButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            color: _hover
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.white.withValues(alpha: 0.06),
+          ),
+          child: Icon(
+            Icons.menu_rounded,
+            size: 16,
+            color: _hover ? Colors.white : Colors.white.withValues(alpha: 0.4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Label de seção recolhível
+class _SectionLabel extends StatefulWidget {
+  final String label;
+  final bool isOpen;
+  final VoidCallback onTap;
+
+  const _SectionLabel({
+    required this.label,
+    required this.isOpen,
+    required this.onTap,
+  });
+
+  @override
+  State<_SectionLabel> createState() => _SectionLabelState();
+}
+
+class _SectionLabelState extends State<_SectionLabel> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 15, 8, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.4,
+                    color: _hover
+                        ? Colors.white.withValues(alpha: 0.4)
+                        : Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+              ),
+              AnimatedRotation(
+                turns: widget.isOpen ? 0.25 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 13,
+                  color: _hover
+                      ? Colors.white.withValues(alpha: 0.4)
+                      : Colors.white.withValues(alpha: 0.22),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Item de navegação individual
+class _NavItem extends StatefulWidget {
+  final _MenuItem item;
+  final bool isActive;
+  final bool isCollapsed;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.item,
+    required this.isActive,
+    required this.isCollapsed,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color itemColor = widget.isActive
+        ? Colors.white
+        : (_hover
+            ? Colors.white.withValues(alpha: 0.8)
+            : Colors.white.withValues(alpha: 0.46));
+
+    final Color bgColor = widget.isActive
+        ? DashboardColors.primary
+        : (_hover ? Colors.white.withValues(alpha: 0.055) : Colors.transparent);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: Tooltip(
+        message: widget.isCollapsed ? widget.item.label : '',
+        preferBelow: false,
+        decoration: BoxDecoration(
+          color: const Color(0xFF100510),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 14)],
+        ),
+        textStyle: GoogleFonts.dmSans(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 130),
+            clipBehavior: Clip.hardEdge,
+            margin: const EdgeInsets.only(bottom: 1),
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isCollapsed ? 0 : 9,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: bgColor,
+            ),
+            child: Row(
+              mainAxisAlignment: widget.isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
+              mainAxisSize:
+                  widget.isCollapsed ? MainAxisSize.min : MainAxisSize.max,
+              children: [
+                Icon(
+                  widget.item.icon,
+                  size: 18,
+                  color: itemColor,
+                ),
+                if (!widget.isCollapsed) ...[
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      widget.item.label,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: itemColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  if (widget.item.badge != null)
+                    Flexible(
+                      flex: 0,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: widget.isActive
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : widget.item.badgeColor!.withValues(alpha: 0.13),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.item.badge!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: widget.isActive
+                                ? Colors.white
+                                : widget.item.badgeColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Botão de Logout
+class _LogoutButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  const _LogoutButton({required this.onPressed});
+
+  @override
+  State<_LogoutButton> createState() => _LogoutButtonState();
+}
+
+class _LogoutButtonState extends State<_LogoutButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            color: _hover
+                ? DashboardColors.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+          ),
+          child: Icon(
+            Icons.logout_rounded,
+            size: 16,
+            color: _hover
+                ? DashboardColors.primary
+                : Colors.white.withValues(alpha: 0.22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ponto piscante de status
+class _BlinkingDot extends StatefulWidget {
+  @override
+  State<_BlinkingDot> createState() => _BlinkingDotState();
+}
+
+class _BlinkingDotState extends State<_BlinkingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 1, end: 0.35).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _anim,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFF10B981),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Compatibilidade com código existente ────────────────────────────────────
+
+/// Mantido para compatibilidade retroativa com o widget SidebarMenuItem
+/// que pode ser referenciado em outros arquivos.
 class SidebarMenuItem extends StatefulWidget {
   final String title;
   final IconData icon;
@@ -276,69 +810,51 @@ class SidebarMenuItem extends StatefulWidget {
 }
 
 class _SidebarMenuItemState extends State<SidebarMenuItem> {
-  bool _isHovering = false;
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
-    final Color iconAndTextColor = widget.isSelected
+    final Color color = widget.isSelected
         ? DashboardColors.primary
-        : (_isHovering ? DashboardColors.accent : Colors.white);
-
-    final Color backgroundColor = widget.isSelected
-        ? DashboardColors.primary.withValues(alpha: 0.2)
-        : (_isHovering
-            ? DashboardColors.accent.withValues(alpha: 0.1)
-            : Colors.transparent);
-
-    final Border? border = widget.isSelected
-        ? Border.all(color: DashboardColors.primary.withValues(alpha: 0.3))
-        : (_isHovering
-            ? Border.all(color: DashboardColors.accent.withValues(alpha: 0.3))
-            : null);
+        : (_hover ? DashboardColors.accent : Colors.white);
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: widget.isCollapsed ? 0 : 12,
-          ),
+              vertical: 12, horizontal: widget.isCollapsed ? 0 : 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: border,
-            color: backgroundColor,
+            color: widget.isSelected
+                ? DashboardColors.primary.withValues(alpha: 0.2)
+                : (_hover
+                    ? DashboardColors.accent.withValues(alpha: 0.1)
+                    : Colors.transparent),
           ),
           child: Row(
             mainAxisAlignment: widget.isCollapsed
                 ? MainAxisAlignment.center
                 : MainAxisAlignment.start,
             children: [
-              Icon(
-                widget.icon,
-                color: iconAndTextColor,
-                size: widget.isCollapsed ? 28 : 24,
-              ),
+              Icon(widget.icon,
+                  color: color, size: widget.isCollapsed ? 28 : 24),
               if (!widget.isCollapsed)
                 Flexible(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(
-                        widget.title,
-                        style: GoogleFonts.publicSans(
-                          fontSize: 16,
-                          fontWeight: widget.isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: iconAndTextColor,
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Text(
+                      widget.title,
+                      style: GoogleFonts.publicSans(
+                        fontSize: 16,
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: color,
                       ),
                     ),
                   ),

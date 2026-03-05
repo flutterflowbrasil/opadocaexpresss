@@ -34,7 +34,8 @@ class EstabelecimentoRepository {
       String estabelecimentoId) async {
     final response = await _client
         .from('categorias_cardapio')
-        .select()
+        .select(
+            'id, nome, descricao, imagem_url, ordem_exibicao, ativa, estabelecimento_id')
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('ativa', true)
         .order('ordem_exibicao', ascending: true);
@@ -47,7 +48,8 @@ class EstabelecimentoRepository {
   Future<List<ProdutoModel>> getProdutos(String estabelecimentoId) async {
     final response = await _client
         .from('produtos')
-        .select()
+        .select(
+            'id, nome, descricao, preco, imagem_url, disponivel, categoria_cardapio_id, estabelecimento_id, total_vendidos')
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('disponivel', true);
 
