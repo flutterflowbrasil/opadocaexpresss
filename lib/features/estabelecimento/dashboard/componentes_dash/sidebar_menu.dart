@@ -114,6 +114,12 @@ const _sections = [
         label: 'Equipe & Acessos',
         icon: Icons.shield_rounded,
       ),
+      _MenuItem(
+        id: 'reports',
+        label: 'Relatórios',
+        icon: Icons.bar_chart_rounded,
+        route: '/dashboard_estabelecimento/relatorios',
+      ),
     ],
   ),
 ];
@@ -227,6 +233,8 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
         ),
       ),
       child: Row(
+        mainAxisAlignment:
+            isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           // Quando expandido: mostra logo; quando colapsado: só o botão de menu
           if (!isCollapsed) ...[
@@ -285,32 +293,80 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
     );
   }
 
-  // ── Pill Loja Aberta ──────────────────────────────────────────────────────
+  bool _isStoreOpen = true;
 
   Widget _buildStorePill() {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.1),
-        border:
-            Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.18)),
+        color: _isStoreOpen
+            ? const Color(0xFF10B981).withValues(alpha: 0.1)
+            : Colors.redAccent.withValues(alpha: 0.1),
+        border: Border.all(
+          color: _isStoreOpen
+              ? const Color(0xFF10B981).withValues(alpha: 0.18)
+              : Colors.redAccent.withValues(alpha: 0.18),
+        ),
         borderRadius: BorderRadius.circular(7),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _BlinkingDot(),
-          const SizedBox(width: 7),
-          Text(
-            'Loja Aberta',
-            style: GoogleFonts.dmSans(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF10B981),
-            ),
+      child: ClipRect(
+        child: OverflowBox(
+          maxWidth: 214,
+          minWidth: 214,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isStoreOpen)
+                    _BlinkingDot()
+                  else
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  const SizedBox(width: 7),
+                  Text(
+                    _isStoreOpen ? 'Loja Aberta' : 'Loja Fechada',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: _isStoreOpen
+                          ? const Color(0xFF10B981)
+                          : Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 24,
+                child: FittedBox(
+                  fit: BoxFit.fill,
+                  child: Switch(
+                    value: _isStoreOpen,
+                    activeColor: const Color(0xFF10B981),
+                    inactiveThumbColor: Colors.redAccent,
+                    inactiveTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                    onChanged: (value) {
+                      setState(() {
+                        _isStoreOpen = value;
+                      });
+                      // TODO: Acionar o controller/repositório para salvar no Supabase
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -396,71 +452,98 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
           horizontal: isCollapsed ? 15 : 9,
           vertical: 10,
         ),
-        child: Row(
-          mainAxisAlignment:
-              isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            // Avatar
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF97316), Color(0xFFdc2626)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Center(
-                child: Text(
-                  'CP',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+        child: isCollapsed
+            ? Center(
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFF97316), Color(0xFFdc2626)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
-                ),
-              ),
-            ),
-            if (!isCollapsed) ...[
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Carlos Padoca',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  child: const Center(
+                    child: Text(
+                      'CP',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      'proprietario',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: Colors.white.withValues(alpha: 0.32),
+                  ),
+                ),
+              )
+            : OverflowBox(
+                maxWidth: 234,
+                minWidth: 234,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF97316), Color(0xFFdc2626)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
+                      child: const Center(
+                        child: Text(
+                          'CP',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Carlos Padoca',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'proprietario',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10,
+                              color: Colors.white.withValues(alpha: 0.32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _LogoutButton(
+                      onPressed: () async {
+                        ref.invalidate(dashboardControllerProvider);
+                        ref.invalidate(carrinhoControllerProvider);
+                        ref.invalidate(profileControllerProvider);
+                        await ref.read(authRepositoryProvider).signOut();
+                        if (mounted) context.go('/login');
+                      },
                     ),
                   ],
                 ),
               ),
-              _LogoutButton(
-                onPressed: () async {
-                  ref.invalidate(dashboardControllerProvider);
-                  ref.invalidate(carrinhoControllerProvider);
-                  ref.invalidate(profileControllerProvider);
-                  await ref.read(authRepositoryProvider).signOut();
-                  if (mounted) context.go('/login');
-                },
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -638,61 +721,70 @@ class _NavItemState extends State<_NavItem> {
               borderRadius: BorderRadius.circular(8),
               color: bgColor,
             ),
-            child: Row(
-              mainAxisAlignment: widget.isCollapsed
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              mainAxisSize:
-                  widget.isCollapsed ? MainAxisSize.min : MainAxisSize.max,
-              children: [
-                Icon(
-                  widget.item.icon,
-                  size: 18,
-                  color: itemColor,
-                ),
-                if (!widget.isCollapsed) ...[
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      widget.item.label,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: itemColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+            child: widget.isCollapsed
+                ? Center(
+                    child: Icon(
+                      widget.item.icon,
+                      size: 18,
+                      color: itemColor,
+                    ),
+                  )
+                : OverflowBox(
+                    maxWidth: 214,
+                    minWidth: 214,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Icon(
+                          widget.item.icon,
+                          size: 18,
+                          color: itemColor,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            widget.item.label,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: itemColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        if (widget.item.badge != null)
+                          Flexible(
+                            flex: 0,
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: widget.isActive
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : widget.item.badgeColor!
+                                        .withValues(alpha: 0.13),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                widget.item.badge!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.isActive
+                                      ? Colors.white
+                                      : widget.item.badgeColor,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (widget.item.badge != null)
-                    Flexible(
-                      flex: 0,
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: widget.isActive
-                              ? Colors.white.withValues(alpha: 0.25)
-                              : widget.item.badgeColor!.withValues(alpha: 0.13),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          widget.item.badge!,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: widget.isActive
-                                ? Colors.white
-                                : widget.item.badgeColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                ],
-              ],
-            ),
           ),
         ),
       ),
