@@ -35,7 +35,7 @@ class EstabelecimentoRepository {
     final response = await _client
         .from('categorias_cardapio')
         .select(
-            'id, nome, descricao, imagem_url, ordem_exibicao, ativa, estabelecimento_id')
+            'id, nome, descricao, ordem_exibicao, ativa, estabelecimento_id')
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('ativa', true)
         .order('ordem_exibicao', ascending: true);
@@ -49,7 +49,7 @@ class EstabelecimentoRepository {
     final response = await _client
         .from('produtos')
         .select(
-            'id, nome, descricao, preco, imagem_url, disponivel, categoria_cardapio_id, estabelecimento_id, total_vendidos')
+            'id, nome, descricao, preco, foto_principal_url, disponivel, categoria_cardapio_id, estabelecimento_id, total_vendidos')
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('disponivel', true);
 

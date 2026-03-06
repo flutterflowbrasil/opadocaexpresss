@@ -1,13 +1,38 @@
-﻿00:00 +0: loading C:/antigravity/padocaexpreess/padoca_express/test/carrinho_controller_test.dart
-00:00 +0: Deve adicionar produto e calcular o total e subtotais corretamente
-00:00 +1: Deve atualizar a quantidade e refletir no valor total
-00:00 +2: Deve esvaziar carrinho e remover estabelecimento
-00:00 +2 -1: Deve esvaziar carrinho e remover estabelecimento [E]
-  Expected: null
-    Actual: <Instance of 'EstabelecimentoModel'>
+﻿00:00 +0: loading C:/antigravity/padocaexpreess/padoca_express/test/features/entregador/dashboard/presentation/controllers/dashboard_controller_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: loadDashboard updates state correctly with success profile and earnings
+00:00 +0 -1: loadDashboard updates state correctly with success profile and earnings [E]
+  Invalid argument(s): An ArgumentMatcher was declared as named callback, but was not passed as an argument named callback.
   
-  package:matcher                                     expect
-  package:flutter_test/src/widget_tester.dart 473:18  expect
-  test\carrinho_controller_test.dart 107:5            main.<fn>
+  BAD:  when(() => obj.fn(any(named: "a")))
+  GOOD: when(() => obj.fn(a: any(named: "a")))
+  package:mocktail/src/_is_invocation.dart 202:9                                                    _InvocationForMatchedArguments._reconstituteNamedArgs.<fn>
+  dart:_compact_hash                                                                                _LinkedHashMapMixin.forEach
+  package:mocktail/src/_is_invocation.dart 196:22                                                   _InvocationForMatchedArguments._reconstituteNamedArgs
+  package:mocktail/src/_is_invocation.dart 125:28                                                   new _InvocationForMatchedArguments
+  package:mocktail/src/_is_invocation.dart 111:18                                                   _useMatchedInvocationIfSet
+  package:mocktail/src/mocktail.dart 112:18                                                         Mock.noSuchMethod
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 15:7   MockRealtimeChannel.subscribe
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 49:28  main.<fn>.<fn>
+  package:mocktail/src/mocktail.dart 211:9                                                          when.<fn>
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 49:9   main.<fn>
   
-00:00 +2 -1: Some tests failed.
+00:00 +0 -1: toggleOnlineStatus calls repository and updates state true/false
+00:00 +0 -2: toggleOnlineStatus calls repository and updates state true/false [E]
+  Invalid argument(s): An ArgumentMatcher was declared as named callback, but was not passed as an argument named callback.
+  
+  BAD:  when(() => obj.fn(any(named: "a")))
+  GOOD: when(() => obj.fn(a: any(named: "a")))
+  package:mocktail/src/_is_invocation.dart 202:9                                                    _InvocationForMatchedArguments._reconstituteNamedArgs.<fn>
+  dart:_compact_hash                                                                                _LinkedHashMapMixin.forEach
+  package:mocktail/src/_is_invocation.dart 196:22                                                   _InvocationForMatchedArguments._reconstituteNamedArgs
+  package:mocktail/src/_is_invocation.dart 125:28                                                   new _InvocationForMatchedArguments
+  package:mocktail/src/_is_invocation.dart 111:18                                                   _useMatchedInvocationIfSet
+  package:mocktail/src/mocktail.dart 112:18                                                         Mock.noSuchMethod
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 15:7   MockRealtimeChannel.subscribe
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 49:28  main.<fn>.<fn>
+  package:mocktail/src/mocktail.dart 211:9                                                          when.<fn>
+  test\features\entregador\dashboard\presentation\controllers\dashboard_controller_test.dart 49:9   main.<fn>
+  
+00:00 +0 -2: (tearDownAll)
+00:00 +0 -2: Some tests failed.

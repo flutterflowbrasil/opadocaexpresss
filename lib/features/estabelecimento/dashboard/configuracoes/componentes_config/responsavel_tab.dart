@@ -31,7 +31,7 @@ class ResponsavelTab extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.amber[900]?.withOpacity(0.3)
+                    ? Colors.amber[900]?.withValues(alpha: 0.3)
                     : Colors.amber[100],
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -88,11 +88,11 @@ class ResponsavelTab extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.blue[900]?.withOpacity(0.1)
+                      ? Colors.blue[900]?.withValues(alpha: 0.1)
                       : Colors.blue[50],
                   border: Border.all(
                       color: isDark
-                          ? Colors.blue[900]!.withOpacity(0.3)
+                          ? Colors.blue[900]!.withValues(alpha: 0.3)
                           : Colors.blue[100]!),
                   borderRadius: BorderRadius.circular(12),
                 ),

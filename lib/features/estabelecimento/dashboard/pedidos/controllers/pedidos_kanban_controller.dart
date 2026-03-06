@@ -3,7 +3,6 @@ import '../../../../auth/data/auth_repository.dart';
 import '../data/pedidos_kanban_repository.dart';
 import '../models/pedido_kanban_model.dart';
 import 'pedidos_kanban_state.dart';
-import '../componentes_kanban/kanban_card.dart'; // Para acessar KanbanStatus
 
 class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
   final PedidosKanbanRepository _repository;
@@ -25,10 +24,7 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
         return;
       }
 
-      // TODO: Get linked Estabelecimento id from the user. For now, assuming user.id or auth lookup,
-      // but typically we get the estabelecimento_id linked to auth.users.
-      // Em um projeto maduro, tem um repository estabRepository.getEstabelecimentoLogado().
-      final estabId = await _getEstabelecimentoIdLigadoAoUser(user.id);
+      final estabId = await _authRepository.getEstabelecimentoId(user.id);
 
       if (estabId == null) {
         state = state.copyWith(
@@ -36,134 +32,47 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
         return;
       }
 
-      final pedidos = await _repository.buscarPedidosAbertos(estabId);
+      final pedidos = await _repository.buscarPedidosDia(estabId);
 
-      _categorizarPedidos(pedidos);
+      state = state.copyWith(isLoading: false, pedidos: pedidos);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  Future<String?> _getEstabelecimentoIdLigadoAoUser(String userId) async {
-    // Delega para o AuthRepository para manter testabilidade
-    // (evita chamada direta ao Supabase.instance.client, que não pode ser mockada em unit tests)
-    return await _authRepository.getEstabelecimentoId(userId);
-  }
+  Future<void> alterarStatusPedido(String pedidoId, String novoStatus) async {
+    final oldPedidoIdx = state.pedidos.indexWhere((p) => p.id == pedidoId);
+    if (oldPedidoIdx == -1) return;
 
-  void _categorizarPedidos(List<PedidoKanbanModel> todosPedidos) {
-    final recebidos = <PedidoKanbanModel>[];
-    final emPreparo = <PedidoKanbanModel>[];
-    final prontos = <PedidoKanbanModel>[];
-    final emEntrega = <PedidoKanbanModel>[];
+    final pedidoData = state.pedidos[oldPedidoIdx];
+    final statusAntigo = pedidoData.status;
+    if (statusAntigo == novoStatus) return;
 
-    for (var p in todosPedidos) {
-      if (p.status == 'pendente' || p.status == 'confirmado') {
-        recebidos.add(p);
-      } else if (p.status == 'preparando') {
-        emPreparo.add(p);
-      } else if (p.status == 'pronto') {
-        prontos.add(p);
-      } else if (p.status == 'em_entrega') {
-        emEntrega.add(p);
-      }
-    }
+    // Optimistic Update
+    final newStateList = List<PedidoKanbanModel>.from(state.pedidos);
+    newStateList[oldPedidoIdx] = pedidoData.copyWith(status: novoStatus);
+    state = state.copyWith(pedidos: newStateList);
 
-    state = state.copyWith(
-      isLoading: false,
-      recebidos: recebidos,
-      emPreparo: emPreparo,
-      prontos: prontos,
-      emEntrega: emEntrega,
-    );
-  }
-
-  /// Movimenta um pedido pra outra coluna (Atualização Otimista na UI)
-  Future<void> alterarStatusPedido(
-      String pedidoId, KanbanStatus novoStatusUi) async {
-    // 1. Descobrir onde o pedido está atualmente nas nossas 4 arrays:
-    final antigoStatusString = _encontrarStatusAntigoNoState(pedidoId);
-    if (antigoStatusString == null)
-      return; // Pedido não encontrado no state (pode ter sumido)
-
-    final novoStatusString =
-        PedidosKanbanState.kanbanEnumToString(novoStatusUi);
-    if (antigoStatusString == novoStatusString) return; // Não mudou nada
-
-    // 2. Localizar o Model atual
-    final pedidoModel = _localizarPedidoModelNoState(pedidoId);
-    if (pedidoModel == null) return;
-
-    // 3. Remover da lista Antiga
-    _removerPedidoDoState(pedidoId, antigoStatusString);
-
-    // 4. Inserir na lista Nova (Optimistic Update -> Tela atualiza INSTANTANEAMENTE 60FPS)
-    final pedidoAtualizado = pedidoModel.copyWith(status: novoStatusString);
-    _adicionarPedidoNoState(pedidoAtualizado, novoStatusString);
-
-    // 5. Salvar de Background no Banco via API
+    // Save
     try {
-      await _repository.atualizarStatus(pedidoId, novoStatusString);
+      await _repository.atualizarStatus(pedidoId, novoStatus);
     } catch (e) {
-      // Se der Erro (Ex: internet caiu, Supabase offline)
-      // Fazemos Rollback (Rollback Otimista) -> Tira da Nova, Poe na Antiga.
-      _removerPedidoDoState(pedidoId, novoStatusString);
-      _adicionarPedidoNoState(pedidoModel, antigoStatusString);
-      // Aqui idealmente disparamos um Snackbar na UI. Como controllers não tem BuildContext,
-      // usariamos um provider auxiliar de SnackBar/Mensagens globais ou State error bool.
-      state = state.copyWith(error: 'Falha ao mover pedido. Tente novamente.');
+      // Rollback
+      final rollbackList = List<PedidoKanbanModel>.from(state.pedidos);
+      rollbackList[oldPedidoIdx] = pedidoData.copyWith(status: statusAntigo);
+      state = state.copyWith(
+          pedidos: rollbackList,
+          error: 'Falha ao mover pedido. Tente novamente.');
     }
   }
 
-  String? _encontrarStatusAntigoNoState(String id) {
-    if (state.recebidos.any((p) => p.id == id)) return 'pendente';
-    if (state.emPreparo.any((p) => p.id == id)) return 'preparando';
-    if (state.prontos.any((p) => p.id == id)) return 'pronto';
-    if (state.emEntrega.any((p) => p.id == id)) return 'em_entrega';
-    return null;
+  Future<void> rejeitarPedido(String pedidoId) async {
+    await alterarStatusPedido(pedidoId, 'cancelado_estab');
   }
 
-  PedidoKanbanModel? _localizarPedidoModelNoState(String id) {
-    try {
-      return state.recebidos.firstWhere((p) => p.id == id);
-    } catch (_) {}
-    try {
-      return state.emPreparo.firstWhere((p) => p.id == id);
-    } catch (_) {}
-    try {
-      return state.prontos.firstWhere((p) => p.id == id);
-    } catch (_) {}
-    try {
-      return state.emEntrega.firstWhere((p) => p.id == id);
-    } catch (_) {}
-    return null;
-  }
-
-  void _removerPedidoDoState(String id, String statusAntigo) {
-    if (statusAntigo == 'pendente' || statusAntigo == 'confirmado') {
-      state = state.copyWith(
-          recebidos: state.recebidos.where((p) => p.id != id).toList());
-    } else if (statusAntigo == 'preparando') {
-      state = state.copyWith(
-          emPreparo: state.emPreparo.where((p) => p.id != id).toList());
-    } else if (statusAntigo == 'pronto') {
-      state = state.copyWith(
-          prontos: state.prontos.where((p) => p.id != id).toList());
-    } else if (statusAntigo == 'em_entrega') {
-      state = state.copyWith(
-          emEntrega: state.emEntrega.where((p) => p.id != id).toList());
-    }
-  }
-
-  void _adicionarPedidoNoState(PedidoKanbanModel pedido, String statusNovo) {
-    if (statusNovo == 'pendente' || statusNovo == 'confirmado') {
-      state = state.copyWith(recebidos: [...state.recebidos, pedido]);
-    } else if (statusNovo == 'preparando') {
-      state = state.copyWith(emPreparo: [...state.emPreparo, pedido]);
-    } else if (statusNovo == 'pronto') {
-      state = state.copyWith(prontos: [...state.prontos, pedido]);
-    } else if (statusNovo == 'em_entrega') {
-      state = state.copyWith(emEntrega: [...state.emEntrega, pedido]);
-    }
+  // Auto-reload to fetch deliveries, new orders etc.
+  Future<void> recarregar() async {
+    await carregarPedidos();
   }
 }
 

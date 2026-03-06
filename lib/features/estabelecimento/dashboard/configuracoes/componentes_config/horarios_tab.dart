@@ -82,7 +82,7 @@ class HorariosTab extends ConsumerWidget {
                       ),
                       Switch(
                         value: isAberto,
-                        activeColor: Colors.green,
+                        activeThumbColor: Colors.green,
                         onChanged: (v) {
                           final newDiaData = Map<String, dynamic>.from(diaData);
                           newDiaData['aberto'] = v;

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +7,13 @@ class SupabaseConfig {
   /// - Mobile/Desktop: lida do .env via flutter_dotenv
   /// - Web (produção): injetada via --dart-define=SUPABASE_URL=...
   static String get url {
-    if (kIsWeb) {
-      const webUrl = String.fromEnvironment('SUPABASE_URL');
-      if (webUrl.isNotEmpty) return webUrl;
+    const dartDefineUrl = String.fromEnvironment('SUPABASE_URL');
+    if (dartDefineUrl.isNotEmpty) return dartDefineUrl;
+
+    if (dotenv.isInitialized) {
+      return dotenv.get('SUPABASE_URL', fallback: '');
     }
-    return dotenv.get('SUPABASE_URL', fallback: '');
+    return '';
   }
 
   /// Publishable Key do Supabase (substitui a antiga anon key JWT)
@@ -20,22 +21,23 @@ class SupabaseConfig {
   /// - Mobile/Desktop: lida do .env via flutter_dotenv
   /// - Web (produção): injetada via --dart-define=SUPABASE_PUBLISHABLE_KEY=...
   static String get anonKey {
-    if (kIsWeb) {
-      // Tenta a nova publishable key primeiro
-      const publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
-      if (publishableKey.isNotEmpty) return publishableKey;
+    // Tenta a nova publishable key via --dart-define primeiro
+    const publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+    if (publishableKey.isNotEmpty) return publishableKey;
 
-      // Fallback para variável legada (compatibilidade)
-      const legacyKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-      if (legacyKey.isNotEmpty) return legacyKey;
-    }
+    // Fallback para variável legada via --dart-define
+    const legacyKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+    if (legacyKey.isNotEmpty) return legacyKey;
 
-    // Mobile/Desktop: tenta nova chave, depois legada
-    final publishableKey = dotenv.maybeGet('SUPABASE_PUBLISHABLE_KEY');
-    if (publishableKey != null && publishableKey.isNotEmpty) {
-      return publishableKey;
+    if (dotenv.isInitialized) {
+      // Tenta nova chave no .env, depois legada
+      final envPublishableKey = dotenv.maybeGet('SUPABASE_PUBLISHABLE_KEY');
+      if (envPublishableKey != null && envPublishableKey.isNotEmpty) {
+        return envPublishableKey;
+      }
+      return dotenv.get('SUPABASE_ANON_KEY', fallback: '');
     }
-    return dotenv.get('SUPABASE_ANON_KEY', fallback: '');
+    return '';
   }
 
   static Future<void> initialize() async {

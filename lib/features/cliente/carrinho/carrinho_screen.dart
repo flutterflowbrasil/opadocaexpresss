@@ -14,8 +14,8 @@ class CarrinhoScreen extends ConsumerWidget {
     final estadoCarrinho = ref.watch(carrinhoControllerProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF1C1917) : const Color(0xFFF9F5F0);
-    final _primaryColor = const Color(0xFFFF7034);
-    final _secondaryColor = const Color(0xFF7D2D35);
+    final primaryColor = const Color(0xFFFF7034);
+    final secondaryColor = const Color(0xFF7D2D35);
 
     if (estadoCarrinho.itens.isEmpty) {
       return Scaffold(
@@ -26,7 +26,7 @@ class CarrinhoScreen extends ConsumerWidget {
           centerTitle: true,
           leading: IconButton(
             icon: Icon(Icons.arrow_back_ios_new,
-                color: isDark ? Colors.white : _secondaryColor, size: 20),
+                color: isDark ? Colors.white : secondaryColor, size: 20),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -38,7 +38,7 @@ class CarrinhoScreen extends ConsumerWidget {
           title: Text(
             'Meu Carrinho',
             style: GoogleFonts.outfit(
-                color: isDark ? Colors.white : _secondaryColor,
+                color: isDark ? Colors.white : secondaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 18),
           ),
@@ -69,7 +69,7 @@ class CarrinhoScreen extends ConsumerWidget {
                   context.go('/home');
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: primaryColor,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -99,7 +99,7 @@ class CarrinhoScreen extends ConsumerWidget {
         centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new,
-              color: isDark ? Colors.white : _secondaryColor, size: 20),
+              color: isDark ? Colors.white : secondaryColor, size: 20),
           onPressed: () {
             context.go('/estabelecimento/${estabelecimento.id}',
                 extra: estabelecimento);
@@ -108,7 +108,7 @@ class CarrinhoScreen extends ConsumerWidget {
         title: Text(
           'Meu Carrinho',
           style: GoogleFonts.outfit(
-              color: isDark ? Colors.white : _secondaryColor,
+              color: isDark ? Colors.white : secondaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 18),
         ),
@@ -193,7 +193,7 @@ class CarrinhoScreen extends ConsumerWidget {
                         style: GoogleFonts.outfit(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: _primaryColor,
+                          color: primaryColor,
                         ),
                       ),
                     ],
@@ -257,7 +257,7 @@ class CarrinhoScreen extends ConsumerWidget {
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: estabelecimento.statusAberto
-                  ? _primaryColor
+                  ? primaryColor
                   : Colors.grey[400],
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(

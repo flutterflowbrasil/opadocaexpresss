@@ -14,8 +14,9 @@ class EntregaTab extends ConsumerWidget {
     final state = ref.watch(configuracoesControllerProvider);
     final editedEstab = state.editedEstab;
 
-    if (editedEstab == null)
+    if (editedEstab == null) {
       return const Center(child: CircularProgressIndicator());
+    }
 
     final config = editedEstab.configEntrega;
     final notifier = ref.read(configuracoesControllerProvider.notifier);

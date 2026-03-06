@@ -65,7 +65,7 @@ class _MeusPedidosScreenState extends ConsumerState<MeusPedidosScreen>
           preferredSize: const Size.fromHeight(48.0),
           child: Container(
             color: isDark
-                ? const Color(0xFF0F172A).withOpacity(0.5)
+                ? const Color(0xFF0F172A).withValues(alpha: 0.5)
                 : Colors.white,
             child: TabBar(
               controller: _tabController,

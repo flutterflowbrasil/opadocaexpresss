@@ -21,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgLight = const Color(0xFFF9F5F0);
     final bgDark = const Color(0xFF1C1917);
-    final _secondaryColor = const Color(0xFF7D2D35);
+    final secondaryColor = const Color(0xFF7D2D35);
 
     final List<Widget> screens = [
       const HomeContent(),
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
               centerTitle: true,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back_ios_new,
-                    color: isDark ? Colors.white : _secondaryColor, size: 20),
+                    color: isDark ? Colors.white : secondaryColor, size: 20),
                 onPressed: () {
                   setState(() => _currentIndex = 0);
                 },
@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: Text(
                 'Perfil',
                 style: GoogleFonts.outfit(
-                  color: isDark ? Colors.white : _secondaryColor,
+                  color: isDark ? Colors.white : secondaryColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),

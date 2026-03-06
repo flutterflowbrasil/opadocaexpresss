@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../componentes_dash/dashboard_colors.dart';
 import '../componentes_dash/sidebar_menu.dart';
-import '../componentes_dash/mobile_bottom_nav.dart';
 import 'controllers/configuracoes_controller.dart';
 import 'controllers/configuracoes_state.dart';
 import 'componentes_config/visual_tab.dart';
@@ -97,68 +96,92 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
           Expanded(child: bodyContent),
         ],
       ),
-      bottomNavigationBar: isWideScreen ? null : const MobileBottomNav(),
+      bottomNavigationBar: null,
     );
   }
 
   Widget _buildHeader(
       bool isDark, ConfiguracoesState state, ConfiguracoesController notifier) {
+    final isWideScreen = MediaQuery.of(context).size.width >= 768;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
         border: Border(
             bottom: BorderSide(
                 color: isDark ? Colors.grey[800]! : Colors.grey[200]!)),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.settings, size: 32, color: DashboardColors.primary),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Configurações',
-                  style: GoogleFonts.publicSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+      child: Builder(
+        builder: (ctx) => Row(
+          children: [
+            // Hamburger (mobile only)
+            if (!isWideScreen) ...[
+              InkWell(
+                onTap: () => Scaffold.of(ctx).openDrawer(),
+                borderRadius: BorderRadius.circular(9),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border:
+                        Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
+                    borderRadius: BorderRadius.circular(9),
                   ),
+                  child: const Icon(Icons.menu,
+                      color: Color(0xFF6B7280), size: 20),
                 ),
-                if (state.hasChanges)
-                  const Text(
-                    'Você tem alterações não salvas',
-                    style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold),
-                  )
-                else
+              ),
+              const SizedBox(width: 14),
+            ],
+            const Icon(Icons.settings,
+                size: 32, color: DashboardColors.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Gerencie os dados e o funcionamento da sua loja.',
+                    'Configurações',
                     style: GoogleFonts.publicSans(
-                      fontSize: 14,
-                      color: Colors.grey[500],
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
-              ],
+                  if (state.hasChanges)
+                    const Text(
+                      'Você tem alterações não salvas',
+                      style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    )
+                  else
+                    Text(
+                      'Gerencie os dados e o funcionamento da sua loja.',
+                      style: GoogleFonts.publicSans(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (state.hasChanges) ...[
-            TextButton(
-              onPressed:
-                  state.isSaving ? null : () => notifier.descartarAlteracoes(),
-              child: const Text('Descartar'),
-            ),
-            const SizedBox(width: 12),
-          ],
-          ElevatedButton.icon(
-            onPressed: (state.hasChanges && !state.isSaving)
-                ? () async {
-                    final success = await notifier.salvarAlteracoes();
-                    if (context.mounted) {
+            if (state.hasChanges) ...[
+              TextButton(
+                onPressed: state.isSaving
+                    ? null
+                    : () => notifier.descartarAlteracoes(),
+                child: const Text('Descartar'),
+              ),
+              const SizedBox(width: 12),
+            ],
+            ElevatedButton.icon(
+              onPressed: (state.hasChanges && !state.isSaving)
+                  ? () async {
+                      final success = await notifier.salvarAlteracoes();
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(success
@@ -168,29 +191,30 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
                         ),
                       );
                     }
-                  }
-                : null,
-            icon: state.isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.save),
-            label: const Text('Salvar Alterações'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DashboardColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              disabledBackgroundColor:
-                  isDark ? Colors.grey[800] : Colors.grey[200],
+                  : null,
+              icon: state.isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.save),
+              label: const Text('Salvar Alterações'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DashboardColors.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                disabledBackgroundColor:
+                    isDark ? Colors.grey[800] : Colors.grey[200],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ), // Close Row
+      ), // Close Builder
     );
   }
 

@@ -44,8 +44,9 @@ class _EditarInformacoesModalState
     if (_newImageBytes != null) return true;
     if (_nomeController.text.trim() != _initialNome) return true;
     if (_cpfController.text.trim() != _initialCpf) return true;
-    if (_dataNascimentoController.text.trim() != _initialDataNascimento)
+    if (_dataNascimentoController.text.trim() != _initialDataNascimento) {
       return true;
+    }
     if (_telefoneController.text.trim() != _initialTelefone) return true;
     return false;
   }
@@ -142,6 +143,7 @@ class _EditarInformacoesModalState
               resetAspectRatioEnabled: false,
             ),
             WebUiSettings(
+              // ignore: use_build_context_synchronously
               context: context,
               presentStyle: WebPresentStyle.page,
               translations: const WebTranslations(
@@ -228,8 +230,9 @@ class _EditarInformacoesModalState
               ? null
               : _dataNascimentoController.text.trim(),
         };
-        if (uploadedImageUrl != null)
+        if (uploadedImageUrl != null) {
           updates['foto_perfil_url'] = uploadedImageUrl;
+        }
 
         await _supabase
             .from('clientes')
@@ -298,7 +301,7 @@ class _EditarInformacoesModalState
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -353,7 +356,7 @@ class _EditarInformacoesModalState
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 10,
                                   )
                                 ],
@@ -378,7 +381,8 @@ class _EditarInformacoesModalState
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color:
+                                            Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       )
@@ -460,7 +464,7 @@ class _EditarInformacoesModalState
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: _hasChanges ? 4 : 0,
-                              shadowColor: primaryColor.withOpacity(0.4),
+                              shadowColor: primaryColor.withValues(alpha: 0.4),
                             ),
                             child: _isSaving
                                 ? const SizedBox(

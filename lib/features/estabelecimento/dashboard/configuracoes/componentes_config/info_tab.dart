@@ -15,8 +15,9 @@ class InfoTab extends ConsumerWidget {
     final state = ref.watch(configuracoesControllerProvider);
     final editedEstab = state.editedEstab;
 
-    if (editedEstab == null)
+    if (editedEstab == null) {
       return const Center(child: CircularProgressIndicator());
+    }
 
     final notifier = ref.read(configuracoesControllerProvider.notifier);
     final categoriasAsync = ref.watch(categoriasEstabelecimentoProvider);

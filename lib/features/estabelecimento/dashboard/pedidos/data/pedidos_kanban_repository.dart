@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/pedido_kanban_model.dart';
+import 'package:padoca_express/core/supabase/supabase_config.dart';
 
 final pedidosKanbanRepositoryProvider =
     Provider<PedidosKanbanRepository>((ref) {
-  return PedidosKanbanRepository(Supabase.instance.client);
+  final supabase = ref.watch(supabaseClientProvider);
+  return PedidosKanbanRepository(supabase);
 });
 
 class PedidosKanbanRepository {
@@ -12,9 +14,13 @@ class PedidosKanbanRepository {
 
   PedidosKanbanRepository(this._supabase);
 
-  Future<List<PedidoKanbanModel>> buscarPedidosAbertos(
+  Future<List<PedidoKanbanModel>> buscarPedidosDia(
       String estabelecimentoId) async {
     try {
+      final now = DateTime.now();
+      final todayStart =
+          DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+
       final data = await _supabase
           .from('pedidos')
           .select('''
@@ -22,27 +28,41 @@ class PedidosKanbanRepository {
             numero_pedido,
             status,
             total,
+            taxa_entrega,
+            pagamento_metodo,
             created_at,
             itens,
-            clientes!inner (
-              id,
-              foto_perfil_url,
-              usuarios!inner (
+            endereco_entrega_snapshot,
+            clientes (
+              usuarios (
+                nome_completo_fantasia,
+                telefone
+              )
+            ),
+            entregadores!pedidos_entregador_id_fkey (
+              veiculo_modelo,
+              veiculo_placa,
+              usuarios (
                 nome_completo_fantasia
               )
             )
           ''')
           .eq('estabelecimento_id', estabelecimentoId)
-          .inFilter('status',
-              ['pendente', 'confirmado', 'preparando', 'pronto', 'em_entrega'])
-          .order('created_at',
-              ascending: true); // Mais antigos primeiro no Kanban
+          .gte('created_at', todayStart)
+          .order('created_at', ascending: true); // Mais antigos primeiro
 
-      return (data as List)
-          .map((json) => PedidoKanbanModel.fromJson(json))
-          .toList();
+      List<PedidoKanbanModel> parsedList = [];
+      for (var json in (data as List)) {
+        try {
+          parsedList.add(PedidoKanbanModel.fromJson(json));
+        } catch (e) {
+          // Silent catch for failed order parsing, or add analytics later
+        }
+      }
+
+      return parsedList;
     } catch (e) {
-      throw Exception('Erro ao buscar pedidos abertos: \$e');
+      throw Exception('Erro ao buscar pedidos no Supabase: $e');
     }
   }
 
@@ -52,7 +72,18 @@ class PedidosKanbanRepository {
           .from('pedidos')
           .update({'status': novoStatus}).eq('id', pedidoId);
     } catch (e) {
-      throw Exception('Falha ao atualizar o status no banco');
+      throw Exception('Falha ao atualizar o status no banco: $e');
+    }
+  }
+
+  Future<void> atualizarEntregador(
+      String pedidoId, String? entregadorId) async {
+    try {
+      await _supabase
+          .from('pedidos')
+          .update({'entregador_id': entregadorId}).eq('id', pedidoId);
+    } catch (e) {
+      throw Exception('Falha ao atualizar o entregador selecionado');
     }
   }
 }

@@ -38,7 +38,7 @@ class ConfiguracoesRepository {
   // Futuro: Adicionar upload de imagens para Storage
   Future<String> uploadImagem(
       String path, List<int> bytes, String fileName) async {
-    final storagePath = 'estabelecimentos/${path}/$fileName';
+    final storagePath = 'estabelecimentos/$path/$fileName';
     await _client.storage
         .from('imagens')
         .uploadBinary(storagePath, bytes as dynamic);

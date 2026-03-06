@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../shared/widgets/responsive_layout.dart';
 import '../dashboard_controller.dart';
 import '../componentes_dash/sidebar_menu.dart';
-import '../componentes_dash/mobile_bottom_nav.dart';
 import 'controllers/produtos_controller.dart';
 import 'components/produtos_header.dart';
 import 'components/produtos_filters.dart';
@@ -89,16 +88,8 @@ class _ProdutosScreenState extends ConsumerState<ProdutosScreen> {
                 },
               ),
             ),
-      appBar: isMobile
-          ? AppBar(
-              title: Text('Produtos',
-                  style: GoogleFonts.publicSans(fontWeight: FontWeight.bold)),
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              elevation: 0,
-            )
-          : null,
-      bottomNavigationBar: isMobile ? const MobileBottomNav() : null,
+      appBar: null,
+      bottomNavigationBar: null,
       body: Row(
         children: [
           if (isWideScreen)

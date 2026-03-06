@@ -13,8 +13,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// final response = await dio.get('/customers');
 /// ```
 final dioProvider = Provider<Dio>((ref) {
-  final baseUrl = dotenv.maybeGet('ASAAS_BASE_URL') ?? '';
-  final apiKey = dotenv.maybeGet('ASAAS_API_KEY') ?? '';
+  String baseUrl = const String.fromEnvironment('ASAAS_BASE_URL');
+  if (baseUrl.isEmpty && dotenv.isInitialized) {
+    baseUrl = dotenv.maybeGet('ASAAS_BASE_URL') ?? '';
+  }
+
+  String apiKey = const String.fromEnvironment('ASAAS_API_KEY');
+  if (apiKey.isEmpty && dotenv.isInitialized) {
+    apiKey = dotenv.maybeGet('ASAAS_API_KEY') ?? '';
+  }
 
   return Dio(
     BaseOptions(

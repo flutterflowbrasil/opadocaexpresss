@@ -552,6 +552,7 @@ class _TabBasico extends StatelessWidget {
                     _SectionLabel('Categoria'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
+                      // ignore: deprecated_member_use
                       value: categoriaId,
                       style: GoogleFonts.publicSans(
                           fontSize: 14, color: Colors.black87),
@@ -582,6 +583,7 @@ class _TabBasico extends StatelessWidget {
                     _SectionLabel('Tipo de Produto'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
+                      // ignore: deprecated_member_use
                       value: tipoProduto,
                       style: GoogleFonts.publicSans(
                           fontSize: 14, color: Colors.black87),

@@ -20,9 +20,12 @@ import 'package:padoca_express/features/cliente/home/models/estabelecimento_mode
 import 'package:padoca_express/features/cliente/carrinho/finalizar_pedido_screen.dart';
 
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_screen.dart';
+import 'package:padoca_express/features/entregador/dashboard/presentation/ui/dashboard_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/pedidos_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/configuracoes/configuracoes.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produtos_screen.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/cupons/cupons_screen.dart';
+import 'package:padoca_express/features/estabelecimento/financeiro/financeiro_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -41,7 +44,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
 
       final needsAuth = authRequired.any((r) => loc.startsWith(r)) ||
-          loc.startsWith('/dashboard_estabelecimento');
+          loc.startsWith('/dashboard_estabelecimento') ||
+          loc.startsWith('/dashboard_entregador');
 
       // Redireciona para login se não autenticado
       if (needsAuth && authRepository.currentUser == null) {
@@ -61,12 +65,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      // Verifica tipo de usuário para o dashboard
+      // Verifica tipo de usuário para o dashboard do estabelecimento
       if (loc.startsWith('/dashboard_estabelecimento')) {
         final type =
             await authRepository.getUserType(authRepository.currentUser!.id);
 
         if (type != 'estabelecimento') {
+          return '/home';
+        }
+      }
+
+      // Verifica tipo de usuário para o dashboard do entregador
+      if (loc.startsWith('/dashboard_entregador')) {
+        final type =
+            await authRepository.getUserType(authRepository.currentUser!.id);
+
+        if (type != 'entregador') {
           return '/home';
         }
       }
@@ -79,6 +93,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dashboard_estabelecimento',
         pageBuilder: (context, state) => const NoTransitionPage(
           child: DashboardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: EntregadorDashboardScreen(),
         ),
       ),
       GoRoute(
@@ -97,6 +117,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dashboard_estabelecimento/produtos',
         pageBuilder: (context, state) => const NoTransitionPage(
           child: ProdutosScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_estabelecimento/cupons',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: CuponsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_estabelecimento/financeiro',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: FinanceiroScreen(),
         ),
       ),
       GoRoute(

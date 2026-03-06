@@ -54,6 +54,7 @@ class _VisualTabState extends ConsumerState<VisualTab> {
             resetAspectRatioEnabled: false,
           ),
           WebUiSettings(
+            // ignore: use_build_context_synchronously
             context: context,
             presentStyle: WebPresentStyle.page,
             translations: const WebTranslations(

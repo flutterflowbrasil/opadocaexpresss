@@ -118,7 +118,7 @@ class AvancadoTab extends ConsumerWidget {
                         notifier.updateConfigAvancada(
                             advanced.copyWith(aceitaAgendamento: v));
                       },
-                      activeColor: Colors.orange,
+                      activeThumbColor: Colors.orange,
                     ),
                   ],
                 ),
@@ -129,12 +129,12 @@ class AvancadoTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.orange.withOpacity(0.05)
-                        : Colors.orange.withOpacity(0.1),
+                        ? Colors.orange.withValues(alpha: 0.05)
+                        : Colors.orange.withValues(alpha: 0.1),
                     border: Border.all(
                       color: isDark
-                          ? Colors.orange.withOpacity(0.2)
-                          : Colors.orange.withOpacity(0.3),
+                          ? Colors.orange.withValues(alpha: 0.2)
+                          : Colors.orange.withValues(alpha: 0.3),
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -162,11 +162,12 @@ class AvancadoTab extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color:
-                  isDark ? Colors.red[900]?.withOpacity(0.1) : Colors.red[50],
+              color: isDark
+                  ? Colors.red[900]?.withValues(alpha: 0.1)
+                  : Colors.red[50],
               border: Border.all(
                   color: isDark
-                      ? Colors.red[900]!.withOpacity(0.3)
+                      ? Colors.red[900]!.withValues(alpha: 0.3)
                       : Colors.red[100]!),
               borderRadius: BorderRadius.circular(16),
             ),
@@ -216,7 +217,7 @@ class AvancadoTab extends ConsumerWidget {
                               fontSize: 12,
                               color: isDark
                                   ? Colors.red[300]
-                                  : Colors.red[600]?.withOpacity(0.7),
+                                  : Colors.red[600]?.withValues(alpha: 0.7),
                             ),
                           ),
                         ],

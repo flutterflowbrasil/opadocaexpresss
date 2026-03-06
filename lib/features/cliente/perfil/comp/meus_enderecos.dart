@@ -132,7 +132,7 @@ class _MeusEnderecosModalState extends ConsumerState<MeusEnderecosModal> {
                         ),
                         tooltip: 'Fechar',
                         hoverColor: (isDark ? Colors.white : secondaryColor)
-                            .withOpacity(0.1),
+                            .withValues(alpha: 0.1),
                       ),
                       Expanded(
                         child: Padding(

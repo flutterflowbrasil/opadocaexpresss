@@ -25,15 +25,17 @@ class PedidoCard extends StatelessWidget {
     Color statusTextColor;
 
     if (pedido.statusDisplay == 'entregue') {
-      statusBgColor =
-          isDark ? Colors.green[900]!.withOpacity(0.3) : Colors.green[100]!;
+      statusBgColor = isDark
+          ? Colors.green[900]!.withValues(alpha: 0.3)
+          : Colors.green[100]!;
       statusTextColor = isDark ? Colors.green[400]! : Colors.green[700]!;
     } else if (pedido.statusDisplay == 'cancelado') {
       statusBgColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
       statusTextColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     } else {
-      statusBgColor =
-          isDark ? Colors.orange[900]!.withOpacity(0.3) : Colors.orange[100]!;
+      statusBgColor = isDark
+          ? Colors.orange[900]!.withValues(alpha: 0.3)
+          : Colors.orange[100]!;
       statusTextColor = isDark ? Colors.orange[400]! : Colors.orange[700]!;
     }
 
@@ -44,13 +46,13 @@ class PedidoCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: bgColor
-            .withOpacity(pedido.statusDisplay == 'cancelado' ? 0.6 : 1.0),
+        color: bgColor.withValues(
+            alpha: pedido.statusDisplay == 'cancelado' ? 0.6 : 1.0),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

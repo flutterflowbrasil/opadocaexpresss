@@ -14,8 +14,9 @@ class EnderecoTab extends ConsumerWidget {
     final state = ref.watch(configuracoesControllerProvider);
     final editedEstab = state.editedEstab;
 
-    if (editedEstab == null)
+    if (editedEstab == null) {
       return const Center(child: CircularProgressIndicator());
+    }
 
     final endereco = editedEstab.endereco;
     final notifier = ref.read(configuracoesControllerProvider.notifier);

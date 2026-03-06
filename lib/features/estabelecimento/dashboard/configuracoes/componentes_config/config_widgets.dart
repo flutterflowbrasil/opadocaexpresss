@@ -234,6 +234,7 @@ class ConfigDropdownField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
+          // ignore: deprecated_member_use
           value: value ?? (items.isNotEmpty ? items.first : null),
           dropdownColor: isDark ? Colors.grey[800] : Colors.white,
           icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey[500]),
