@@ -53,25 +53,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-      } else if (next.success) {
+      } else if (next.success && next.targetRoute != null) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         FocusScope.of(context).unfocus();
-        if (next.userType == 'cliente') {
-          context.go('/home');
-        } else if (next.userType == 'estabelecimento') {
-          context.go('/dashboard_estabelecimento');
-        } else if (next.userType == 'entregador') {
-          context.go('/dashboard_entregador');
-        } else {
-          // Handle other user types or show a message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tipo de usuário desconhecido!'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        context.go(next.targetRoute!);
       }
     });
 
@@ -260,11 +246,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Google Button Placeholder
+                    // Google Button
                     OutlinedButton.icon(
-                      onPressed: () {
-                        // TODO: Google Sign In
-                      },
+                      onPressed: state.isLoading
+                          ? null
+                          : () => ref
+                              .read(loginControllerProvider.notifier)
+                              .loginComGoogle(),
                       style: OutlinedButton.styleFrom(
                         backgroundColor:
                             isDark ? const Color(0xFF27272A) : Colors.white,

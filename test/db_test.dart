@@ -20,14 +20,14 @@ void main() {
           await supabase.from('enderecos_clientes').select('id').limit(1);
 
       print('====== INICIO DUMP ======');
-      print('EstID:\${data.isNotEmpty ? data.first["id"] : "null"}');
+      print('EstID:${data.isNotEmpty ? data.first["id"] : "null"}');
       print(
-          'CliID:\${clientData.isNotEmpty ? clientData.first["id"] : "null"}');
+          'CliID:${clientData.isNotEmpty ? clientData.first["id"] : "null"}');
       print(
-          'EndID:\${addressData.isNotEmpty ? addressData.first["id"] : "null"}');
+          'EndID:${addressData.isNotEmpty ? addressData.first["id"] : "null"}');
 
       throw Exception(
-          'FORCING ERROR TO PRINT: Estabelecimento: \${data.isNotEmpty ? data.first["id"] : "null"}, Cliente: \${clientData.isNotEmpty ? clientData.first["id"] : "null"}');
+          'FORCING ERROR TO PRINT: Estabelecimento: ${data.isNotEmpty ? data.first["id"] : "null"}, Cliente: ${clientData.isNotEmpty ? clientData.first["id"] : "null"}');
     } catch (e) {
       print('DEBUG ERROR: $e');
       rethrow;

@@ -406,9 +406,10 @@ class _CadastroEntregadorScreenState extends State<CadastroEntregadorScreen> {
                           const TextSpan(text: 'Eu aceito os '),
                           TextSpan(
                             text: 'termos de serviço e política de privacidade',
-                            style: TextStyle(
+                            style: GoogleFonts.outfit(
                               color: primaryColor,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                               decoration: TextDecoration.underline,
                               decorationColor: primaryColor,
                             ),
@@ -417,6 +418,7 @@ class _CadastroEntregadorScreenState extends State<CadastroEntregadorScreen> {
                                 context.push('/privacy');
                               },
                           ),
+                          const TextSpan(text: ' da Padoca Express.'),
                         ],
                       ),
                     ),

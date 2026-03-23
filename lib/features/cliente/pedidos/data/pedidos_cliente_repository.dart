@@ -23,7 +23,7 @@ class PedidosClienteRepository {
           .map((json) => PedidoClienteModel.fromJson(json))
           .toList();
     } catch (e) {
-      throw Exception('Erro ao buscar pedidos: \$e');
+      throw Exception('Erro ao buscar pedidos: $e');
     }
   }
 

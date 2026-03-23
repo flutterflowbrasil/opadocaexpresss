@@ -46,7 +46,7 @@ class DashboardHeader extends StatelessWidget {
             gradient: const LinearGradient(colors: [orangeColor, orangeDColor]),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
-              BoxShadow(color: orangeColor.withOpacity(.35), blurRadius: 12)
+              BoxShadow(color: orangeColor.withValues(alpha: .35), blurRadius: 12)
             ],
           ),
           child:
@@ -140,11 +140,11 @@ class DashboardToggleCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-            color: online ? greenColor.withOpacity(.2) : borderColor),
+            color: online ? greenColor.withValues(alpha: .2) : borderColor),
         boxShadow: online
             ? [
                 BoxShadow(
-                    color: greenColor.withOpacity(.08),
+                    color: greenColor.withValues(alpha: .08),
                     blurRadius: 40,
                     spreadRadius: 0)
               ]
@@ -198,7 +198,7 @@ class DashboardToggleCard extends StatelessWidget {
                     boxShadow: online
                         ? [
                             BoxShadow(
-                                color: greenColor.withOpacity(.3),
+                                color: greenColor.withValues(alpha: .3),
                                 blurRadius: 16)
                           ]
                         : [],
@@ -219,7 +219,7 @@ class DashboardToggleCard extends StatelessWidget {
                             boxShadow: [
                               BoxShadow(
                                 color: (online ? greenColor : Colors.black)
-                                    .withOpacity(.3),
+                                    .withValues(alpha: .3),
                                 blurRadius: 8,
                               ),
                             ],
@@ -255,7 +255,7 @@ class DashboardToggleCard extends StatelessWidget {
             style: GoogleFonts.dmSans(
               fontSize: 12,
               height: 1.5,
-              color: online ? greenColor.withOpacity(.7) : text3,
+              color: online ? greenColor.withValues(alpha: .7) : text3,
             ),
           ),
 
@@ -265,8 +265,8 @@ class DashboardToggleCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: greenColor.withOpacity(.08),
-                border: Border.all(color: greenColor.withOpacity(.15)),
+                color: greenColor.withValues(alpha: .08),
+                border: Border.all(color: greenColor.withValues(alpha: .15)),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -333,7 +333,7 @@ class _DashboardPulseDotState extends State<DashboardPulseDot>
           color: greenColor,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: greenColor.withOpacity(.4), blurRadius: 6)
+            BoxShadow(color: greenColor.withValues(alpha: .4), blurRadius: 6)
           ],
         ),
       ),
@@ -468,7 +468,7 @@ class DashboardEarningsBanner extends StatelessWidget {
           colors: [Color(0xFF0D1F12), Color(0xFF071509)],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: greenColor.withOpacity(.2)),
+        border: Border.all(color: greenColor.withValues(alpha: .2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +478,7 @@ class DashboardEarningsBanner extends StatelessWidget {
             style: GoogleFonts.dmSans(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: greenColor.withOpacity(.6),
+                color: greenColor.withValues(alpha: .6),
                 letterSpacing: .8),
           ),
           const SizedBox(height: 4),
@@ -518,8 +518,8 @@ class DashboardEbChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: greenColor.withOpacity(.08),
-        border: Border.all(color: greenColor.withOpacity(.15)),
+        color: greenColor.withValues(alpha: .08),
+        border: Border.all(color: greenColor.withValues(alpha: .15)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(text,
@@ -634,7 +634,7 @@ class DashboardMapPlaceholder extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: orangeColor.withOpacity(.25), width: 1.5),
+                      color: orangeColor.withValues(alpha: .25), width: 1.5),
                 ),
               ),
             ),
@@ -648,7 +648,7 @@ class DashboardMapPlaceholder extends StatelessWidget {
                 'Aguardando no Raio',
                 style: GoogleFonts.jetBrainsMono(
                     fontSize: 10,
-                    color: greenColor.withOpacity(.5),
+                    color: greenColor.withValues(alpha: .5),
                     fontWeight: FontWeight.w600),
               ),
             ),
@@ -663,7 +663,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = greenColor.withOpacity(0.04)
+      ..color = greenColor.withValues(alpha: 0.04)
       ..strokeWidth = 1;
     for (double i = 0; i < size.width; i += 20) {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);

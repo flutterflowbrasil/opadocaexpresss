@@ -462,7 +462,7 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                                   'termos de serviço e política de privacidade',
                               style: GoogleFonts.outfit(
                                 color: primaryColor,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
                               ),
                               recognizer: TapGestureRecognizer()
@@ -470,6 +470,7 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                                   context.push('/privacy');
                                 },
                             ),
+                            const TextSpan(text: ' da Padoca Express.'),
                           ],
                         ),
                       ),

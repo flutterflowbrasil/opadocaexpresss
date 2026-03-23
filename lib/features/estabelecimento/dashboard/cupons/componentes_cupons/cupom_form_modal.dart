@@ -540,8 +540,9 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
                                           RegExp(r'^\d+\.?\d{0,2}'))
                                     ],
                                     validator: (v) {
-                                      if (v == null || v.trim().isEmpty)
+                                      if (v == null || v.trim().isEmpty) {
                                         return 'Obrigatório';
+                                      }
                                       return null;
                                     },
                                   ),
@@ -622,8 +623,9 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
                                     FilteringTextInputFormatter.digitsOnly
                                   ],
                                   validator: (v) {
-                                    if (v == null || v.trim().isEmpty)
+                                    if (v == null || v.trim().isEmpty) {
                                       return 'Requerido';
+                                    }
                                     if (int.tryParse(v) == 0) return '> 0';
                                     return null;
                                   },

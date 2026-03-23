@@ -75,7 +75,7 @@ class _CloseStoreModalState extends State<_CloseStoreModal> {
                     'Novos pedidos serão pausados. Pedidos em andamento continuam.',
                     style: GoogleFonts.publicSans(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -234,7 +234,7 @@ class _OpenStoreModal extends StatelessWidget {
                     'Loja visível no app.',
                     style: GoogleFonts.publicSans(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],

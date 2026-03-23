@@ -851,10 +851,11 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
   }
 
   Widget _buildSplitsTab(FinanceiroState state) {
-    if (state.isLoading)
+    if (state.isLoading) {
       return const Padding(
           padding: EdgeInsets.all(40),
           child: Center(child: CircularProgressIndicator()));
+    }
 
     if (state.splits.isEmpty) {
       return Padding(
@@ -1010,17 +1011,19 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
 
   Widget _buildTransacoesTab(
       FinanceiroState state, List<PedidoFinanceiro> txList, int txPages) {
-    if (state.isLoading)
+    if (state.isLoading) {
       return const Padding(
           padding: EdgeInsets.all(40),
           child: Center(child: CircularProgressIndicator()));
-    if (txList.isEmpty)
+    }
+    if (txList.isEmpty) {
       return Padding(
           padding: const EdgeInsets.all(40),
           child: Center(
               child: Text('Nenhuma transação no período',
                   style:
                       GoogleFonts.publicSans(color: const Color(0xFF9CA3AF)))));
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1205,7 +1208,9 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
   Widget _buildBankField(String label, dynamic val) {
     if (val == null ||
         val.toString().trim() == '-' ||
-        val.toString().trim().isEmpty) return const SizedBox.shrink();
+        val.toString().trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Container(
       width: 160,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

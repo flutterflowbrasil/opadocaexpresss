@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -493,13 +494,32 @@ class _CadastroEstabelecimentoStep1ScreenState
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          'Li e concordo com os Termos de Serviço e as Políticas de Privacidade da Padoca Express.',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: isDark
-                                ? Colors.grey[400]
-                                : burgundyColor.withValues(alpha: 0.7),
-                            fontSize: 12,
+                        child: RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.plusJakartaSans(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : burgundyColor.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                            children: [
+                              const TextSpan(text: 'Eu aceito os '),
+                              TextSpan(
+                                text:
+                                    'Termos de Serviço e Política de Privacidade',
+                                style: GoogleFonts.outfit(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    context.push('/privacy');
+                                  },
+                              ),
+                              const TextSpan(text: ' da Padoca Express.'),
+                            ],
                           ),
                         ),
                       ),

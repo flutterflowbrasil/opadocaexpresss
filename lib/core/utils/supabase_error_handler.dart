@@ -45,7 +45,7 @@ class SupabaseErrorHandler {
       case '23503':
         return 'Erro de referência: dados relacionados não encontrados.';
       default:
-        return 'Erro no banco de dados: ${error.message}';
+        return 'Erro no banco de dados. Tente novamente ou contate o suporte.';
     }
   }
 }

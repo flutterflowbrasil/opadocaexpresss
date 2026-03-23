@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,14 +13,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
 
-  // Carrega variáveis de ambiente do .env
-  // Em produção (Web/Vercel), as variáveis --dart-define sobrescrevem os valores do .env
-  // Em desenvolvimento web, o .env local é usado como fallback
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // Em Flutter Web, o .env pode não estar disponível — as variáveis
-    // são injetadas via --dart-define (ex: SUPABASE_URL, SUPABASE_ANON_KEY)
+  // No Web, as variáveis já são compiladas no binário via --dart-define-from-file=.env.
+  // Nunca tentamos carregar o .env via HTTP no web — isso geraria um GET público
+  // em /assets/.env e um 404 desnecessário no console.
+  // Em mobile/desktop, o .env é lido do filesystem local (nunca exposto via HTTP).
+  if (!kIsWeb) {
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      // .env ausente — variáveis devem vir via --dart-define
+    }
   }
 
   // Inicializa Supabase e Datas

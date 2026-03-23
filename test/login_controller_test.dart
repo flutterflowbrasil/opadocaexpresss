@@ -1,13 +1,15 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/features/auth/presentation/login_controller.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/features/auth/domain/user_type.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
 
 // === MOCK REPOSITORY MANUAL ===
 class MockAuthRepository implements AuthRepository {
   bool shouldFail = false;
-  String mockUserType = 'cliente';
+  String mockRoute = '/home';
 
   @override
   Future<AuthResponse> signIn(
@@ -15,7 +17,6 @@ class MockAuthRepository implements AuthRepository {
     if (shouldFail) {
       throw const AuthException('Invalid credentials');
     }
-    // Return a fake user response
     return AuthResponse(
       session: Session(
         accessToken: 'mock_token',
@@ -39,9 +40,13 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String?> getUserType(String userId) async {
-    return mockUserType;
-  }
+  Future<String> loginComGoogle() async => mockRoute;
+
+  @override
+  Future<String> validateSessionAndRoute() async => mockRoute;
+
+  @override
+  Future<String?> getUserType(String userId) async => 'cliente';
 
   @override
   Future<Map<String, dynamic>?> getProfile(String userId) async => null;
@@ -72,28 +77,35 @@ void main() {
   test('Fluxo de login com sucesso: define success como true e pega userType',
       () async {
     final mockRepo = MockAuthRepository();
-    final controller = LoginController(mockRepo);
+    final container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(mockRepo)],
+    );
+    addTearDown(container.dispose);
 
-    expect(controller.state.isLoading, false);
+    await container
+        .read(loginControllerProvider.notifier)
+        .login('teste@padoca.com', '123456');
 
-    // Dispara o login
-    await controller.login('teste@padoca.com', '123456');
-
-    final state = controller.state;
+    final state = container.read(loginControllerProvider);
     expect(state.isLoading, false);
     expect(state.success, true);
     expect(state.error, isNull);
-    expect(state.userType, 'cliente');
+    expect(state.userType, UserType.cliente);
   });
 
   test('Fluxo de login com falha: captura exception e emite state.error',
       () async {
     final mockRepo = MockAuthRepository()..shouldFail = true;
-    final controller = LoginController(mockRepo);
+    final container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(mockRepo)],
+    );
+    addTearDown(container.dispose);
 
-    await controller.login('errado@padoca.com', 'wrongpassword');
+    await container
+        .read(loginControllerProvider.notifier)
+        .login('errado@padoca.com', 'wrongpassword');
 
-    final state = controller.state;
+    final state = container.read(loginControllerProvider);
     expect(state.isLoading, false);
     expect(state.success, false);
     expect(state.error, isNotNull);

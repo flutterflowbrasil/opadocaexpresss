@@ -21,6 +21,7 @@ import 'package:padoca_express/features/cliente/carrinho/finalizar_pedido_screen
 
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_screen.dart';
 import 'package:padoca_express/features/entregador/dashboard/presentation/ui/dashboard_screen.dart';
+import 'package:padoca_express/features/admgeral/dashboard_adm/presentation/admin_dashboard_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/pedidos_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/configuracoes/configuracoes.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produtos_screen.dart';
@@ -45,14 +46,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final needsAuth = authRequired.any((r) => loc.startsWith(r)) ||
           loc.startsWith('/dashboard_estabelecimento') ||
-          loc.startsWith('/dashboard_entregador');
+          loc.startsWith('/dashboard_entregador') ||
+          loc.startsWith('/admin/dashboard');
 
       // Redireciona para login se não autenticado
       if (needsAuth && authRepository.currentUser == null) {
         return '/login';
       }
 
-      // Usuário já autenticado não deve acessar telas de cadastro/login
+      // Usuário já autenticado não deve acessar telas de cadastro/login.
+      // O banco (SECURITY DEFINER) decide para qual dashboard redirecionar.
       const authForbiddenWhenLoggedIn = [
         '/login',
         '/pre_cadastro',
@@ -62,28 +65,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ];
       if (authRepository.currentUser != null &&
           authForbiddenWhenLoggedIn.any((r) => loc.startsWith(r))) {
-        return '/home';
+        final route = await ref.read(sessionRouteProvider.future);
+        if (route == loc) return null; // evita loop infinito se RPC retornar rota inesperada
+        return route;
       }
 
-      // Verifica tipo de usuário para o dashboard do estabelecimento
-      if (loc.startsWith('/dashboard_estabelecimento')) {
-        final type =
-            await authRepository.getUserType(authRepository.currentUser!.id);
-
-        if (type != 'estabelecimento') {
-          return '/home';
-        }
+      // Protege dashboards: verifica uma única vez via RPC cacheada
+      const dashboardPrefixes = [
+        '/admin/dashboard',
+        '/dashboard_estabelecimento',
+        '/dashboard_entregador',
+      ];
+      final matchingPrefix =
+          dashboardPrefixes.where((p) => loc.startsWith(p)).firstOrNull;
+      if (matchingPrefix != null) {
+        final targetRoute = await ref.read(sessionRouteProvider.future);
+        if (!targetRoute.startsWith(matchingPrefix)) return targetRoute;
       }
 
-      // Verifica tipo de usuário para o dashboard do entregador
-      if (loc.startsWith('/dashboard_entregador')) {
-        final type =
-            await authRepository.getUserType(authRepository.currentUser!.id);
-
-        if (type != 'entregador') {
-          return '/home';
-        }
-      }
       return null;
     },
     routes: [
@@ -99,6 +98,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dashboard_entregador',
         pageBuilder: (context, state) => const NoTransitionPage(
           child: EntregadorDashboardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/dashboard',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: AdminDashboardScreen(),
         ),
       ),
       GoRoute(

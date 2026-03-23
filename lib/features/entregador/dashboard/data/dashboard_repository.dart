@@ -68,7 +68,8 @@ class DashboardRepository {
       await Geolocator.requestPermission();
     }
     final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high));
 
     await _supabase.from('entregador_localizacao_atual').upsert({
       'entregador_id': entregadorId,

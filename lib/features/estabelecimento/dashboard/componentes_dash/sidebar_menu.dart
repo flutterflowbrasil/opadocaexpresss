@@ -214,6 +214,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
   Widget _buildHeader(bool isCollapsed, VoidCallback onToggle) {
     return Container(
       height: 64,
+      clipBehavior: Clip.hardEdge,
       padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 15 : 16),
       decoration: BoxDecoration(
         border: Border(

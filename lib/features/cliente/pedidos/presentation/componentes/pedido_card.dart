@@ -82,7 +82,7 @@ class PedidoCard extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: isDark
-                                    ? primaryColor.withOpacity(0.8)
+                                    ? primaryColor.withValues(alpha: 0.8)
                                     : burgundy,
                                 letterSpacing: 1.0,
                               ),
