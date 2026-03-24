@@ -11,13 +11,13 @@ import 'dart:html' as html show AnchorElement, Blob, Url;
 
 // ── Paleta (local) ────────────────────────────────────────────────────────────
 const _kPrimary = Color(0xFF8B5CF6);
-const _kGreen   = Color(0xFF10B981);
-const _kRed     = Color(0xFFEF4444);
-const _kAmber   = Color(0xFFF59E0B);
-const _kBorder  = Color(0xFFEAE8E4);
-const _kText    = Color(0xFF1A0910);
-const _kHint    = Color(0xFF9CA3AF);
-const _kSub     = Color(0xFF6B7280);
+const _kGreen = Color(0xFF10B981);
+const _kRed = Color(0xFFEF4444);
+const _kAmber = Color(0xFFF59E0B);
+const _kBorder = Color(0xFFEAE8E4);
+const _kText = Color(0xFF1A0910);
+const _kHint = Color(0xFF9CA3AF);
+const _kSub = Color(0xFF6B7280);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Modal de exportação
@@ -29,8 +29,7 @@ class ExportarRelatorioModal extends StatefulWidget {
   const ExportarRelatorioModal({super.key, required this.snapshot});
 
   @override
-  State<ExportarRelatorioModal> createState() =>
-      _ExportarRelatorioModalState();
+  State<ExportarRelatorioModal> createState() => _ExportarRelatorioModalState();
 }
 
 class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
@@ -47,11 +46,13 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
     buf.writeln('## KPIs GERAIS');
     buf.writeln('Métrica,Valor');
     buf.writeln('Receita Total,${snap.receitaTotal.toStringAsFixed(2)}');
-    buf.writeln('Receita Plataforma,${snap.plataformaTotal.toStringAsFixed(2)}');
+    buf.writeln(
+        'Receita Plataforma,${snap.plataformaTotal.toStringAsFixed(2)}');
     buf.writeln('Total Pedidos,${snap.pedidos.length}');
     buf.writeln('Ticket Médio,${snap.ticketMedio.toStringAsFixed(2)}');
     buf.writeln('Taxa Conversão,${snap.taxaConversao.toStringAsFixed(1)}%');
-    buf.writeln('Taxa Cancelamento,${snap.taxaCancelamento.toStringAsFixed(1)}%');
+    buf.writeln(
+        'Taxa Cancelamento,${snap.taxaCancelamento.toStringAsFixed(1)}%');
     buf.writeln('Total Usuários,${snap.totalUsuarios}');
     buf.writeln('Total Clientes,${snap.totalClientes}');
     buf.writeln('Total Entregadores,${snap.totalEntregadores}');
@@ -59,7 +60,8 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
     buf.writeln();
 
     buf.writeln('## PEDIDOS');
-    buf.writeln('Status,Pag. Status,Método,Subtotal(R\$),Taxa Entrega(R\$),Taxa App(R\$),Desconto(R\$),Total(R\$),Split,Data');
+    buf.writeln(
+        'Status,Pag. Status,Método,Subtotal(R\$),Taxa Entrega(R\$),Taxa App(R\$),Desconto(R\$),Total(R\$),Split,Data');
     for (final p in snap.pedidos) {
       buf.writeln(
         '${p.status},${p.pagamentoStatus ?? ""},${p.pagamentoMetodo ?? ""},'
@@ -133,8 +135,7 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
       final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
       final url = html.Url.createObjectUrlFromBlob(blob);
       html.AnchorElement(href: url)
-        ..setAttribute(
-            'download',
+        ..setAttribute('download',
             'relatorio_padoca_${DateTime.now().millisecondsSinceEpoch}.csv')
         ..click();
       html.Url.revokeObjectUrl(url);
@@ -194,7 +195,7 @@ ${snap.entregadores.take(15).map((e) => '<tr><td>${e.statusCadastro}</td><td>${e
 
 <h2>Últimos Pedidos</h2>
 <table><tr><th>Status</th><th>Pagamento</th><th>Subtotal</th><th>Tx Entrega</th><th>Total</th><th>Data</th></tr>
-${(snap.pedidos.toList()..sort((a,b)=>b.createdAt.compareTo(a.createdAt))).take(15).map((p) => '<tr><td>${p.status}</td><td>${p.pagamentoMetodo ?? p.pagamentoStatus ?? "—"}</td><td>R\$ ${p.subtotalProdutos.toStringAsFixed(2)}</td><td>R\$ ${p.taxaEntrega.toStringAsFixed(2)}</td><td>R\$ ${p.total.toStringAsFixed(2)}</td><td>${p.createdAt.toString().substring(0,16)}</td></tr>').join('\n')}
+${(snap.pedidos.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt))).take(15).map((p) => '<tr><td>${p.status}</td><td>${p.pagamentoMetodo ?? p.pagamentoStatus ?? "—"}</td><td>R\$ ${p.subtotalProdutos.toStringAsFixed(2)}</td><td>R\$ ${p.taxaEntrega.toStringAsFixed(2)}</td><td>R\$ ${p.total.toStringAsFixed(2)}</td><td>${p.createdAt.toString().substring(0, 16)}</td></tr>').join('\n')}
 </table>
 
 <script>window.onload = function(){ window.print(); };</script>
@@ -270,8 +271,8 @@ ${(snap.pedidos.toList()..sort((a,b)=>b.createdAt.compareTo(a.createdAt))).take(
                           hasData
                               ? '${widget.snapshot!.pedidos.length} pedidos · ${widget.snapshot!.totalUsuarios} usuários'
                               : 'Aguarde o carregamento dos dados',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 11, color: _kHint),
+                          style:
+                              GoogleFonts.dmSans(fontSize: 11, color: _kHint),
                         ),
                       ],
                     ),
@@ -379,12 +380,10 @@ class _ExportOption extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: enabled
-                ? const Color(0xFFF9F8F7)
-                : const Color(0xFFF3F1EE),
+            color: enabled ? const Color(0xFFF9F8F7) : const Color(0xFFF3F1EE),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: enabled ? _kBorder : const Color(0xFFE5E7EB)),
+            border:
+                Border.all(color: enabled ? _kBorder : const Color(0xFFE5E7EB)),
           ),
           child: Row(
             children: [
