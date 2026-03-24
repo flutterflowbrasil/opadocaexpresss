@@ -12,6 +12,10 @@ import 'widgets/pending_approvals_section.dart';
 import 'widgets/revenue_chart_card.dart';
 import '../estabelecimentos/presentation/estabs_adm_screen.dart';
 import '../entregadores/presentation/entregadores_adm_screen.dart';
+import '../usuarios/presentation/usuarios_adm_screen.dart';
+import '../financeiro/presentation/financeiro_adm_screen.dart';
+import '../suporte/presentation/suporte_adm_screen.dart';
+import '../relatorios/presentation/relatorio_adm_screen.dart';
 
 // ── Tela principal ────────────────────────────────────────────────────────────
 
@@ -66,7 +70,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         Expanded(
           child: Column(
             children: [
-              DashboardTopbar(activeScreen: _activeScreen),
+              if (_activeScreen != 'relatorios')
+                DashboardTopbar(activeScreen: _activeScreen),
               Expanded(child: _buildContent()),
             ],
           ),
@@ -108,6 +113,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
     if (_activeScreen == 'entregadores') {
       return const EntregadoresAdmScreen();
+    }
+    if (_activeScreen == 'usuarios') {
+      return const UsuariosAdmScreen();
+    }
+    if (_activeScreen == 'financeiro') {
+      return const FinanceiroAdmScreen();
+    }
+    if (_activeScreen == 'suporte') {
+      return const SuporteAdmScreen();
+    }
+    if (_activeScreen == 'relatorios') {
+      return const RelatorioAdmScreen();
     }
     return _DashboardContent(
       activeScreen: _activeScreen,

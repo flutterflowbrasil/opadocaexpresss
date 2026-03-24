@@ -4,8 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../controllers/admin_dashboard_controller.dart';
 
 // IDs de telas que exibem a barra de pesquisa no topbar
-// 'entregadores' foi removido — tem campo de busca próprio na tela
-const _screensWithSearch = {'usuarios', 'relatorios'};
+const _screensWithSearch = {'relatorios'};
 
 class DashboardTopbar extends ConsumerWidget {
   final bool isMobile;
@@ -113,9 +112,11 @@ class DashboardTopbar extends ConsumerWidget {
                 ),
               if (showSearch) const SizedBox(width: 10),
 
-              // Botão Refresh (oculto em telas com refresh próprio)
               if (activeScreen != 'estabelecimentos' &&
-                  activeScreen != 'entregadores')
+                  activeScreen != 'entregadores' &&
+                  activeScreen != 'usuarios' &&
+                  activeScreen != 'financeiro' &&
+                  activeScreen != 'relatorios')
                 GestureDetector(
                   onTap: onRefresh ??
                       () => ref.read(adminDashboardControllerProvider.notifier).fetchData(),
@@ -131,7 +132,10 @@ class DashboardTopbar extends ConsumerWidget {
                   ),
                 ),
               if (activeScreen != 'estabelecimentos' &&
-                  activeScreen != 'entregadores')
+                  activeScreen != 'entregadores' &&
+                  activeScreen != 'usuarios' &&
+                  activeScreen != 'financeiro' &&
+                  activeScreen != 'relatorios')
                 const SizedBox(width: 10),
 
               // Notificações

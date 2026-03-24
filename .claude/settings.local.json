@@ -5,7 +5,8 @@
       "Bash(find /c/antigravity/padocaexpreess/padoca_express/test -type f -name *.dart)",
       "Bash(find /c/antigravity/padocaexpreess/padoca_express/test -name \"*.dart\" -exec wc -l {} +)",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Supabase__apply_migration"
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(find /c/antigravity/padocaexpreess/padoca_express/lib/core -name *.dart -type f)"
     ]
   }
 }
