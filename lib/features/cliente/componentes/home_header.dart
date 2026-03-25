@@ -75,58 +75,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 12),
         ],
-        // Endereço
-        Expanded(
-          child: GestureDetector(
-            onTap: onAddressTap,
-            child: Row(
-              children: [
-                Icon(Icons.location_on_outlined,
-                    color: _primaryColor, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'ENTREGAR EM',
-                        style: GoogleFonts.outfit(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Adicionar endereço',
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : _secondaryColor,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 14,
-                            color: isDark ? Colors.white70 : _secondaryColor,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(width: 8),
+        const Spacer(),
 
         // Ícone de busca compacto
         if (showSearch)
@@ -185,29 +134,6 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
 
         const SizedBox(width: 24),
-
-        // Endereço compacto
-        GestureDetector(
-          onTap: onAddressTap,
-          child: Row(
-            children: [
-              Icon(Icons.location_on_outlined, color: _primaryColor, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                'Adicionar endereço',
-                style: GoogleFonts.outfit(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : _secondaryColor,
-                ),
-              ),
-              Icon(Icons.keyboard_arrow_down,
-                  size: 14, color: isDark ? Colors.white54 : _secondaryColor),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 16),
 
         // Busca expandida (centro)
         if (showSearch)

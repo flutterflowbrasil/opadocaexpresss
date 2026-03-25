@@ -6,8 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/relatorio_adm_model.dart';
 
-// ignore_for_file: avoid_web_libraries_in_flutter
-import 'dart:html' as html show AnchorElement, Blob, Url;
+import '_download_helper.dart';
 
 // ── Paleta (local) ────────────────────────────────────────────────────────────
 const _kPrimary = Color(0xFF8B5CF6);
@@ -131,14 +130,11 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
     setState(() => _exporting = true);
     try {
       final csv = _buildCsv(widget.snapshot!);
-      final bytes = utf8.encode(csv);
-      final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download',
-            'relatorio_padoca_${DateTime.now().millisecondsSinceEpoch}.csv')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      downloadBytes(
+        utf8.encode(csv),
+        'text/csv;charset=utf-8',
+        'relatorio_padoca_${DateTime.now().millisecondsSinceEpoch}.csv',
+      );
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -146,6 +142,8 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
   }
 
   // ── Trigger PDF (impressão via browser) ─────────────────────────────────────
+  // Gera HTML com o relatório e abre no navegador para imprimir como PDF.
+  // No mobile este botão fica desabilitado (kIsWeb guard).
   void _downloadPdf() {
     if (widget.snapshot == null || !kIsWeb) return;
     setState(() => _exporting = true);
@@ -201,13 +199,11 @@ ${(snap.pedidos.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt))).ta
 <script>window.onload = function(){ window.print(); };</script>
 </body></html>''';
 
-      final bytes = utf8.encode(htmlContent);
-      final blob = html.Blob([bytes], 'text/html;charset=utf-8');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('target', '_blank')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      downloadBytes(
+        utf8.encode(htmlContent),
+        'text/html;charset=utf-8',
+        'relatorio_padoca_${DateTime.now().millisecondsSinceEpoch}.html',
+      );
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _exporting = false);

@@ -86,8 +86,7 @@ class CarrinhoScreen extends ConsumerWidget {
     }
 
     final estabelecimento = estadoCarrinho.estabelecimento!;
-    final taxaEntrega =
-        estabelecimento.configEntrega?['taxa_entrega_fixa'] ?? 0.0;
+    final taxaEntrega = estabelecimento.taxaEntregaValor;
     final subtotal = estadoCarrinho.valorTotalProdutos;
     final total = estadoCarrinho.valorTotal;
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:padoca_express/features/cliente/localizacao/adicionar_endereco_modal.dart';
+import 'package:padoca_express/features/cliente/localizacao/endereco_model.dart';
 
 class MeusEnderecosModal extends ConsumerStatefulWidget {
   const MeusEnderecosModal({super.key});
@@ -316,20 +318,156 @@ class _MeusEnderecosModalState extends ConsumerState<MeusEnderecosModal> {
                                                         ],
                                                       ),
                                                     ),
-                                                    IconButton(
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(),
-                                                      icon: Icon(
-                                                        Icons.edit_outlined,
-                                                        color: isDark
-                                                            ? Colors.grey[400]
-                                                            : Colors.grey[500],
-                                                        size: 20,
-                                                      ),
-                                                      onPressed: () {
-                                                        // Editar endereço (A implementar depois)
-                                                      },
+                                                    Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        IconButton(
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              const BoxConstraints(),
+                                                          icon: Icon(
+                                                            Icons.edit_outlined,
+                                                            color: isDark
+                                                                ? Colors
+                                                                    .grey[400]
+                                                                : Colors
+                                                                    .grey[500],
+                                                            size: 20,
+                                                          ),
+                                                          onPressed: () async {
+                                                            final endereco =
+                                                                EnderecoCliente
+                                                                    .fromJson(
+                                                                        ender);
+                                                            final atualizado =
+                                                                await AdicionarEnderecoModal
+                                                                    .show(
+                                                              context,
+                                                              enderecoParaEditar:
+                                                                  endereco,
+                                                            );
+                                                            if (atualizado !=
+                                                                    null &&
+                                                                mounted) {
+                                                              _fetchEnderecos();
+                                                            }
+                                                          },
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 4),
+                                                        IconButton(
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              const BoxConstraints(),
+                                                          icon: Icon(
+                                                            Icons
+                                                                .delete_outline,
+                                                            color: isDark
+                                                                ? Colors
+                                                                    .red[300]
+                                                                : Colors
+                                                                    .red[400],
+                                                            size: 20,
+                                                          ),
+                                                          onPressed: () async {
+                                                            final id = ender[
+                                                                'id'] as String?;
+                                                            if (id == null) {
+                                                              return;
+                                                            }
+                                                            final confirmado =
+                                                                await showDialog<
+                                                                    bool>(
+                                                              context: context,
+                                                              builder: (ctx) =>
+                                                                  AlertDialog(
+                                                                shape: RoundedRectangleBorder(
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            16)),
+                                                                backgroundColor:
+                                                                    isDark
+                                                                        ? const Color(
+                                                                            0xFF27272A)
+                                                                        : Colors
+                                                                            .white,
+                                                                title: Text(
+                                                                  'Remover endereço?',
+                                                                  style: GoogleFonts
+                                                                      .outfit(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: isDark
+                                                                        ? Colors
+                                                                            .white
+                                                                        : secondaryColor,
+                                                                  ),
+                                                                ),
+                                                                content: Text(
+                                                                  'Esta ação não pode ser desfeita.',
+                                                                  style: GoogleFonts
+                                                                      .outfit(
+                                                                    color: isDark
+                                                                        ? Colors
+                                                                            .grey[400]
+                                                                        : Colors
+                                                                            .grey[600],
+                                                                  ),
+                                                                ),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                            ctx,
+                                                                            false),
+                                                                    child: Text(
+                                                                      'Cancelar',
+                                                                      style: GoogleFonts.outfit(
+                                                                          color:
+                                                                              Colors.grey),
+                                                                    ),
+                                                                  ),
+                                                                  ElevatedButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                            ctx,
+                                                                            true),
+                                                                    style: ElevatedButton.styleFrom(
+                                                                        backgroundColor:
+                                                                            Colors.red[400],
+                                                                        shape: RoundedRectangleBorder(
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(8))),
+                                                                    child: Text(
+                                                                      'Remover',
+                                                                      style: GoogleFonts.outfit(
+                                                                          color:
+                                                                              Colors.white,
+                                                                          fontWeight:
+                                                                              FontWeight.bold),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                            if (confirmado ==
+                                                                    true &&
+                                                                mounted) {
+                                                              await _supabase
+                                                                  .from(
+                                                                      'enderecos_clientes')
+                                                                  .delete()
+                                                                  .eq('id',
+                                                                      id);
+                                                              _fetchEnderecos();
+                                                            }
+                                                          },
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),
@@ -377,8 +515,11 @@ class _MeusEnderecosModalState extends ConsumerState<MeusEnderecosModal> {
                     ),
                   ),
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Adicionar endereço (A implementar)
+                    onPressed: () async {
+                      final novo = await AdicionarEnderecoModal.show(context);
+                      if (novo != null && mounted) {
+                        _fetchEnderecos();
+                      }
                     },
                     icon: const Icon(Icons.add, color: Colors.white),
                     label: Text(

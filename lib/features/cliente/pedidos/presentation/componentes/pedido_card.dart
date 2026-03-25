@@ -110,7 +110,7 @@ class PedidoCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Pedido #\${pedido.numeroPedido ?? pedido.id.substring(0, 4)}',
+                        'Pedido #${pedido.numeroPedido ?? pedido.id.substring(0, 4)}',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -119,7 +119,7 @@ class PedidoCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "\${pedido.dataFormatada} • \${pedido.quantidadeTotalItens} \${pedido.quantidadeTotalItens == 1 ? 'item' : 'itens'}",
+                        '${pedido.dataFormatada} • ${pedido.quantidadeTotalItens} ${pedido.quantidadeTotalItens == 1 ? 'item' : 'itens'}',
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],

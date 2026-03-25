@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/core/router/app_router.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
+import 'package:padoca_express/core/maps_loader.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -29,8 +30,16 @@ void main() async {
   await initializeDateFormatting('pt_BR', null);
   await SupabaseConfig.initialize();
 
+  // Carrega a Google Maps JavaScript API apenas na Web.
+  // A chave é obtida de forma segura via Edge Function `maps-config` (JWT).
+  // No Android/iOS a chave fica no AndroidManifest.xml / AppDelegate.swift.
+  if (kIsWeb) {
+    await MapsLoader.load();
+  }
+
   runApp(const ProviderScope(child: MyApp()));
 }
+
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});

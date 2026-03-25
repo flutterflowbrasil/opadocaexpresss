@@ -49,9 +49,9 @@ class EstabelecimentoRepository {
     final response = await _client
         .from('produtos')
         .select(
-            'id, nome, descricao, preco, preco_promocional, foto_principal_url, disponivel, permite_observacao, categoria_cardapio_id, estabelecimento_id, tipo_produto, opcoes, total_vendidos')
+            'id, nome, descricao, preco, preco_promocional, foto_principal_url, ativo, disponivel, permite_observacao, categoria_cardapio_id, estabelecimento_id, tipo_produto, opcoes, total_vendidos')
         .eq('estabelecimento_id', estabelecimentoId)
-        .eq('disponivel', true);
+        .eq('ativo', true);
 
     return (response as List)
         .map((json) => ProdutoModel.fromJson(json))

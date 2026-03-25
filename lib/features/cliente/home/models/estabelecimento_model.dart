@@ -72,10 +72,16 @@ class EstabelecimentoModel {
     return '$tempo min';
   }
 
-  String get taxaEntregaFormatada {
+  /// Taxa de entrega como double — seguro para int e double vindos do JSON.
+  double get taxaEntregaValor {
     final taxa = configEntrega?['taxa_entrega_fixa'];
-    if (taxa == null) return 'Consultar';
-    final valor = double.tryParse(taxa.toString()) ?? 0.0;
+    if (taxa == null) return 0.0;
+    return (taxa as num).toDouble();
+  }
+
+  String get taxaEntregaFormatada {
+    final valor = taxaEntregaValor;
+    if (configEntrega?['taxa_entrega_fixa'] == null) return 'Consultar';
     if (valor == 0) return 'Grátis';
     return 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
   }

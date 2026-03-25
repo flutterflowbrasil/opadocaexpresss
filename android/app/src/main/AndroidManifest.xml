@@ -37,6 +37,15 @@
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+        <!--
+          Google Maps SDK for Android.
+          Substitua YOUR_ANDROID_MAPS_KEY pela chave Android criada no Google Cloud Console.
+          A chave deve ser restrita por: SHA-1 fingerprint + package name (com.opadoca.express ou similar).
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCsKQsrOenH6OBYaVf_qW3GeNsRHTQTK6M"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:padoca_express/features/cliente/carrinho/models/endereco_model.dart';
+import 'package:padoca_express/features/cliente/localizacao/endereco_model.dart';
 
 class EnderecoEntregaCard extends StatelessWidget {
   final bool isDark;
   final Color bgSecColor;
-  final EnderecoClienteModel? endereco;
+  final EnderecoCliente? endereco;
   final VoidCallback onAdicionar;
   final VoidCallback onTrocar;
 

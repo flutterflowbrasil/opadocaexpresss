@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,22 +96,31 @@ class _HomeContentState extends ConsumerState<HomeContent> {
                       ),
                     );
                   }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: categorias.length,
-                    itemBuilder: (context, index) {
-                      final cat = categorias[index];
-                      return CategoryItem(
-                        title: cat.nome,
-                        imageUrl: cat.imagemUrl ?? '',
-                        isDark: isDark,
-                        onTap: () => context.push(
-                          '/categoria/${cat.slug}',
-                          extra: cat,
-                        ),
-                      );
-                    },
+                  return ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.trackpad,
+                      },
+                    ),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: categorias.length,
+                      itemBuilder: (context, index) {
+                        final cat = categorias[index];
+                        return CategoryItem(
+                          title: cat.nome,
+                          imageUrl: cat.imagemUrl ?? '',
+                          isDark: isDark,
+                          onTap: () => context.push(
+                            '/categoria/${cat.slug}',
+                            extra: cat,
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),

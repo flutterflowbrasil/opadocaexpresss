@@ -7,6 +7,8 @@ import 'package:padoca_express/features/auth/presentation/politica_privacidade.d
 import 'package:padoca_express/features/auth/presentation/pre_cadastro_screen.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_cliente/cadastro_cliente_screen.dart';
 import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_entregador_screen.dart';
+import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_screen.dart';
+import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_screen.dart';
 import 'package:padoca_express/features/cliente/home/home_screen.dart';
 import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
 import 'package:padoca_express/features/cliente/categorias/categoria_estabelecimentos_screen.dart';
@@ -18,6 +20,8 @@ import 'package:padoca_express/features/cliente/carrinho/carrinho_screen.dart';
 import 'package:padoca_express/features/estabelecimento/estabelecimento_screen.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 import 'package:padoca_express/features/cliente/carrinho/finalizar_pedido_screen.dart';
+import 'package:padoca_express/features/cliente/pagamento/presentation/pix_pagamento_screen.dart';
+import 'package:padoca_express/features/cliente/pagamento/presentation/pagamento_sucesso_screen.dart';
 
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_screen.dart';
 import 'package:padoca_express/features/entregador/dashboard/presentation/ui/dashboard_screen.dart';
@@ -40,6 +44,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/carrinho',
         '/finalizar_pedido',
         '/cliente/pedidos',
+        '/pagamento',
       ];
 
       final loc = state.matchedLocation;
@@ -88,6 +93,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/esqueceu-senha',
+        builder: (context, state) => const EsqueceuSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => const NovaSenhaScreen(),
+      ),
       GoRoute(
         path: '/dashboard_estabelecimento',
         pageBuilder: (context, state) => const NoTransitionPage(
@@ -197,6 +210,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/finalizar_pedido',
         builder: (context, state) => const FinalizarPedidoScreen(),
+      ),
+      GoRoute(
+        path: '/pagamento/pix',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return PixPagamentoScreen(
+            pedidoId: extra['pedidoId'] as String,
+            pixCopiaECola: extra['pixCopiaECola'] as String? ?? '',
+            pixQrCodeBase64: extra['pixQrCode'] as String?,
+            segundosIniciaisRestantes: extra['segundosRestantes'] as int?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/pagamento/sucesso',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return PagamentoSucessoScreen(
+              pedidoId: extra['pedidoId'] as String? ?? '');
+        },
       ),
       GoRoute(
         path: '/estabelecimento/:id',

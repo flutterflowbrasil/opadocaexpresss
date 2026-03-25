@@ -40,7 +40,7 @@ class ProdutoModel {
           ? (json['preco_promocional'] as num).toDouble()
           : null,
       imagemUrl: json['foto_principal_url'] as String?,
-      isAtivo: json['disponivel'] ?? true,
+      isAtivo: json['ativo'] ?? true,
       permiteObservacoes: json['permite_observacao'] ?? true,
       categoriaCardapioId: json['categoria_cardapio_id'] as String?,
       tipoProduto: json['tipo_produto'] as String? ?? 'simples',

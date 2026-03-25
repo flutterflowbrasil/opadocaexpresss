@@ -9,25 +9,74 @@ import 'package:padoca_express/features/cliente/home/models/estabelecimento_mode
 import 'package:padoca_express/features/cliente/componentes/home_header.dart';
 import 'package:padoca_express/features/cliente/componentes/estabelecimento_card.dart';
 
+// ─── Parâmetro tipado para o provider ────────────────────────────────────────
+class CategoriaBuscaParams {
+  final String id;
+  final String nome;
+  const CategoriaBuscaParams({required this.id, required this.nome});
+
+  @override
+  bool operator ==(Object other) =>
+      other is CategoriaBuscaParams && id == other.id && nome == other.nome;
+
+  @override
+  int get hashCode => Object.hash(id, nome);
+}
+
 // ─── Provider de estabelecimentos por categoria ───────────────────────────────
+// Busca estabelecimentos:
+//   1. pela categoria própria do estabelecimento
+//   2. por estabelecimentos que possuem produtos em categorias de cardápio
+//      com nome semelhante ao da categoria clicada
 final estabelecimentosPorCategoriaProvider =
-    FutureProvider.family<List<EstabelecimentoModel>, String>(
-        (ref, categoriaId) async {
+    FutureProvider.family<List<EstabelecimentoModel>, CategoriaBuscaParams>(
+        (ref, params) async {
+  const selectFields = 'id, razao_social, descricao, logo_url, banner_url, '
+      'avaliacao_media, total_avaliacoes, status_aberto, '
+      'latitude, longitude, config_entrega, endereco';
+
   try {
-    final response = await Supabase.instance.client
+    final supabase = Supabase.instance.client;
+
+    // 1) Estabelecimentos pela categoria própria
+    final byCategoria = await supabase
         .from('estabelecimentos')
-        .select(
-          'id, razao_social, descricao, logo_url, banner_url, '
-          'avaliacao_media, total_avaliacoes, status_aberto, '
-          'latitude, longitude, config_entrega, endereco',
-        )
-        .eq('categoria_estabelecimento_id', categoriaId)
+        .select(selectFields)
+        .eq('categoria_estabelecimento_id', params.id)
         .order('avaliacao_media', ascending: false);
 
-    return (response as List)
-        .map((json) =>
-            EstabelecimentoModel.fromJson(json as Map<String, dynamic>))
+    // 2) Estabelecimentos que têm produtos numa categoria de cardápio com nome similar
+    final categoriasCardapioRes = await supabase
+        .from('categorias_cardapio')
+        .select('estabelecimento_id')
+        .ilike('nome', '%${params.nome}%')
+        .eq('ativa', true);
+
+    final idsPorProduto = (categoriasCardapioRes as List)
+        .map((r) => r['estabelecimento_id'] as String)
+        .toSet()
         .toList();
+
+    List byProduto = [];
+    if (idsPorProduto.isNotEmpty) {
+      byProduto = await supabase
+          .from('estabelecimentos')
+          .select(selectFields)
+          .inFilter('id', idsPorProduto)
+          .order('avaliacao_media', ascending: false);
+    }
+
+    // Mescla e desduplicar por ID
+    final seen = <String>{};
+    final merged = <Map<String, dynamic>>[];
+    for (final raw in [...(byCategoria as List), ...byProduto]) {
+      final json = raw as Map<String, dynamic>;
+      if (seen.add(json['id'] as String)) merged.add(json);
+    }
+    merged.sort((a, b) => ((b['avaliacao_media'] as num?) ?? 0)
+        .compareTo((a['avaliacao_media'] as num?) ?? 0));
+
+    return merged.map(EstabelecimentoModel.fromJson).toList();
   } catch (_) {
     return [];
   }
@@ -279,9 +328,10 @@ class _CategoriaEstabelecimentosScreenState
           else
             Consumer(
               builder: (context, ref, _) {
-                final asyncData = ref.watch(
-                    estabelecimentosPorCategoriaProvider(
-                        _categoriaIdResolved!));
+                final buscaParams = CategoriaBuscaParams(
+                    id: _categoriaIdResolved!, nome: _categoriaNome);
+                final asyncData = ref
+                    .watch(estabelecimentosPorCategoriaProvider(buscaParams));
 
                 return asyncData.when(
                   loading: () => const SliverFillRemaining(
@@ -294,8 +344,7 @@ class _CategoriaEstabelecimentosScreenState
                   error: (err, _) => SliverFillRemaining(
                     child: _CategoriaErrorWidget(
                       onRetry: () => ref.refresh(
-                        estabelecimentosPorCategoriaProvider(
-                            _categoriaIdResolved!),
+                        estabelecimentosPorCategoriaProvider(buscaParams),
                       ),
                     ),
                   ),

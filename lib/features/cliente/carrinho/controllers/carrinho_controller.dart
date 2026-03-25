@@ -47,10 +47,9 @@ class CarrinhoState {
   int get quantidadeTotal =>
       itens.fold(0, (total, item) => total + item.quantidade);
   double get valorTotalProdutos =>
-      itens.fold(0, (total, item) => total + item.subtotal);
+      itens.fold(0.0, (total, item) => total + item.subtotal);
   double get valorTotal =>
-      valorTotalProdutos +
-      (estabelecimento?.configEntrega?['taxa_entrega_fixa'] ?? 0.0);
+      valorTotalProdutos + (estabelecimento?.taxaEntregaValor ?? 0.0);
 }
 
 class CarrinhoController extends StateNotifier<CarrinhoState> {

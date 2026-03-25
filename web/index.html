@@ -39,6 +39,13 @@
   <!-- Cropper.js for image_cropper package -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+  <!--
+    Google Maps JavaScript API NÃO é carregada aqui.
+    A chave é obtida de forma segura via Edge Function `maps-config` (JWT obrigatório)
+    e injetada em runtime pelo MapsLoader em lib/core/maps_loader.dart.
+    Isso garante que a Web Key nunca fique exposta no código-fonte ou no repositório Git.
+  -->
 </head>
 
 <body>

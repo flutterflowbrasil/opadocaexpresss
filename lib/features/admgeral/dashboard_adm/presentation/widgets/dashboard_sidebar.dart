@@ -47,7 +47,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
       'items': [
         {'id': 'financeiro', 'label': 'Financeiro', 'icon': Icons.attach_money, 'badge': null},
         {'id': 'suporte', 'label': 'Suporte', 'icon': Icons.support_agent, 'badge': null},
-        {'id': 'relatorios', 'label': 'Relatórios', 'icon': Icons.insert_chart_outlined, 'badge': 'Novo', 'badgeColor': Color(0xFF8B5CF6)},
+        {'id': 'relatorios', 'label': 'Relatórios', 'icon': Icons.insert_chart_outlined, 'badge': null},
       ],
     },
   ];

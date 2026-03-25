@@ -70,19 +70,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                width: 160,
-                height: 160,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF27272A) : Colors.white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
+                minWidth: constraints.maxWidth,
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                    // Logo
+                    Container(
+                      width: 160,
+                      height: 160,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF27272A) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -143,16 +151,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildLabel('Senha', isDark, burgundyColor),
-                        GestureDetector(
-                          onTap: () {
-                            // TODO: Forgot password logic
-                          },
-                          child: Text(
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              context.push('/esqueceu-senha');
+                            },
+                            child: Text(
                             'Esqueceu a senha?',
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: primaryColor,
+                              ),
                             ),
                           ),
                         ),
@@ -280,11 +291,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 32),
 
                     Center(
-                      child: GestureDetector(
-                        onTap: () {
-                          context.push('/pre_cadastro');
-                        },
-                        child: RichText(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () {
+                            context.push('/pre_cadastro');
+                          },
+                          child: RichText(
                           text: TextSpan(
                             style: GoogleFonts.outfit(
                               fontSize: 14,
@@ -302,6 +315,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ],
                           ),
+                          ),
                         ),
                       ),
                     ),
@@ -312,7 +326,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
+},
+),
+);
   }
 
   Widget _buildLabel(String text, bool isDark, Color color) {
