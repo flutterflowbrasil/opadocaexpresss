@@ -746,26 +746,23 @@ class DespachoRecebidoCard extends StatefulWidget {
 
 class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
   Timer? _timer;
-  int _segundosRestantes = 0;
+  int _segundosRestantes = 45; // 45 segundos padrão a partir do recebimento
 
   @override
   void initState() {
     super.initState();
-    _calcularSeguntos();
+    _segundosRestantes = 45;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) { return; }
-      setState(() => _calcularSeguntos());
+      setState(() {
+        _segundosRestantes--;
+      });
       if (_segundosRestantes <= 0) {
         _timer?.cancel();
         widget.onRejeitar(); // expirado = auto-rejeitar
       }
     });
     HapticFeedback.vibrate();
-  }
-
-  void _calcularSeguntos() {
-    final diff = widget.despacho.expiraEm.difference(DateTime.now());
-    _segundosRestantes = diff.inSeconds.clamp(0, 999);
   }
 
   @override
@@ -776,10 +773,8 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
 
   @override
   Widget build(BuildContext context) {
-    final totalSec =
-        widget.despacho.expiraEm.difference(DateTime.now()).inSeconds + 1;
-    final pct =
-        (_segundosRestantes / (totalSec > 0 ? totalSec : 30)).clamp(0.0, 1.0);
+    const int totalSec = 45;
+    final pct = (_segundosRestantes / totalSec).clamp(0.0, 1.0);
     final urgente = _segundosRestantes <= 10;
 
     return Container(
