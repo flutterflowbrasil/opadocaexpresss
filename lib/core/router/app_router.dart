@@ -32,6 +32,13 @@ import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produ
 import 'package:padoca_express/features/estabelecimento/dashboard/cupons/cupons_screen.dart';
 import 'package:padoca_express/features/estabelecimento/financeiro/financeiro_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
+import 'package:padoca_express/features/entregador/carteira/presentation/ui/carteira_screen.dart';
+import 'package:padoca_express/features/entregador/historico/presentation/ui/historico_screen.dart';
+import 'package:padoca_express/features/entregador/entregas/presentation/ui/entrega_andamento_screen.dart';
+import 'package:padoca_express/features/entregador/avaliacoes/presentation/ui/avaliacoes_screen.dart';
+import 'package:padoca_express/features/entregador/perfil/presentation/ui/perfil_screen.dart';
+import 'package:padoca_express/features/entregador/configuracoes/presentation/ui/configuracoes_screen.dart' as ent_cfg;
+import 'package:padoca_express/features/entregador/suporte/presentation/ui/suporte_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
@@ -251,6 +258,51 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
           return EstabelecimentoScreen(estabelecimento: estabelecimento);
         },
+      ),
+
+      // ── Entregador sub-rotas ─────────────────────────────────────────────
+      GoRoute(
+        path: '/dashboard_entregador/financeiro',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: CarteiraScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/historico',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: HistoricoScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/entrega/:pedidoId',
+        builder: (context, state) {
+          final pedidoId = state.pathParameters['pedidoId']!;
+          return EntregaAndamentoScreen(pedidoId: pedidoId);
+        },
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/avaliacoes',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: AvaliacoesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/perfil',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: PerfilScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/configuracoes',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ent_cfg.ConfiguracoesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_entregador/suporte',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: SuporteScreen(),
+        ),
       ),
     ],
   );

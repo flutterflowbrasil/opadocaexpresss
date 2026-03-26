@@ -103,4 +103,35 @@ void main() {
         reason: 'Deveria voltar o status em caso de exception');
     expect(controller.state.error, 'Falha ao mover pedido. Tente novamente.');
   });
+
+  test('pedido com status pronto retorna getPorStatus e count ok', () async {
+    final fakePronto = PedidoKanbanModel(
+      id: 'pt-2',
+      numero: 205,
+      cliente: 'Maria',
+      tel: '1199999',
+      itens: const [],
+      total: 50.0,
+      tx: 5.0,
+      pgto: 'pix',
+      status: 'pronto',
+      at: DateTime.now(),
+      end: 'Rua A',
+    );
+    
+    final mockUser = MockUser();
+    when(() => mockUser.id).thenReturn('user123');
+    when(() => mockAuthObj.currentUser).thenReturn(mockUser);
+    when(() => mockAuthObj.getEstabelecimentoId('user123'))
+        .thenAnswer((_) async => 'estab123');
+    when(() => mockRepo.buscarPedidosDia('estab123'))
+        .thenAnswer((_) async => [fakePronto]);
+
+    controller = PedidosKanbanController(mockRepo, mockAuthObj);
+    await Future.delayed(Duration.zero);
+
+    expect(controller.state.getPorStatus('pronto').length, 1);
+    expect(controller.state.getPorStatus('pronto').first.id, 'pt-2');
+    expect(controller.state.totalAtivos, 1);
+  });
 }

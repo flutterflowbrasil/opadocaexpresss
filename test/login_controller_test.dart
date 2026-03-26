@@ -70,6 +70,9 @@ class MockAuthRepository implements AuthRepository {
   Future<String?> getEstabelecimentoId(String userId) async => null;
 
   @override
+  Future<String?> getEntregadorId(String userId) async => null;
+
+  @override
   User? get currentUser => null;
 }
 

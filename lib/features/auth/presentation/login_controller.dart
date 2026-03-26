@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/auth/domain/user_type.dart';
-import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
 class LoginState {
   final bool isLoading;
@@ -43,9 +43,13 @@ class LoginController extends StateNotifier<LoginState> {
 
   Future<void> loginComGoogle() async {
     state = state.copyWith(isLoading: true, error: null);
+    // Limpa cache da sessão anterior antes de iniciar novo login
+    _ref.read(sessionRouteCacheProvider.notifier).state = null;
     try {
       final route = await _authRepository.loginComGoogle();
       if (!mounted) return;
+      // Grava cache ANTES de invalidar — o redirect do router usa esse valor
+      _ref.read(sessionRouteCacheProvider.notifier).state = route;
       _ref.invalidate(sessionRouteProvider);
       state = state.copyWith(
         isLoading: false,
@@ -69,6 +73,8 @@ class LoginController extends StateNotifier<LoginState> {
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
+    // Limpa cache da sessão anterior antes de iniciar novo login
+    _ref.read(sessionRouteCacheProvider.notifier).state = null;
 
     try {
       final response = await _authRepository.signIn(
@@ -81,7 +87,9 @@ class LoginController extends StateNotifier<LoginState> {
       if (response.user != null) {
         final route = await _authRepository.validateSessionAndRoute();
         if (!mounted) return;
-        // Invalida o cache para que o router use a rota atualizada
+        // Grava cache ANTES de invalidar — o redirect do router usa esse valor
+        // evitando segunda chamada RPC e possível race condition
+        _ref.read(sessionRouteCacheProvider.notifier).state = route;
         _ref.invalidate(sessionRouteProvider);
         state = state.copyWith(
           isLoading: false,

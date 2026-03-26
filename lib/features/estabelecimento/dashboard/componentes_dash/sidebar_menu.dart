@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_controller.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/controllers/pedidos_kanban_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
 import 'dashboard_colors.dart';
@@ -17,16 +18,12 @@ class _MenuItem {
   final String id;
   final String label;
   final IconData icon;
-  final String? badge;
-  final Color? badgeColor;
   final String? route;
 
   const _MenuItem({
     required this.id,
     required this.label,
     required this.icon,
-    this.badge,
-    this.badgeColor,
     this.route,
   });
 }
@@ -53,8 +50,6 @@ const _sections = [
         id: 'orders',
         label: 'Pedidos',
         icon: Icons.receipt_long_rounded,
-        badge: '3',
-        badgeColor: Color(0xFFF97316),
         route: '/dashboard_estabelecimento/pedidos',
       ),
     ],
@@ -83,8 +78,6 @@ const _sections = [
         id: 'reviews',
         label: 'Avaliações',
         icon: Icons.star_rounded,
-        badge: '5★',
-        badgeColor: Color(0xFFF59E0B),
       ),
     ],
   ),
@@ -118,11 +111,6 @@ const _bottomItems = [
     label: 'Configurações',
     icon: Icons.settings_rounded,
     route: '/dashboard_estabelecimento/configuracoes',
-  ),
-  _MenuItem(
-    id: 'help',
-    label: 'Ajuda & Suporte',
-    icon: Icons.help_outline_rounded,
   ),
 ];
 
@@ -402,17 +390,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
         // Itens
         if (isOpen || isCollapsed)
           for (final item in section.items)
-            _NavItem(
-              item: item,
-              isActive: widget.activeId == item.id,
-              isCollapsed: isCollapsed,
-              onTap: () {
-                widget.onItemSelected(item.id);
-                if (item.route != null) {
-                  context.go(item.route!);
-                }
-              },
-            ),
+            _buildNavItem(item, isCollapsed),
 
         // Divisor no modo colapsado
         if (isCollapsed)
@@ -422,6 +400,31 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
             color: Colors.white.withValues(alpha: 0.06),
           ),
       ],
+    );
+  }
+
+  Widget _buildNavItem(_MenuItem item, bool isCollapsed) {
+    String? badge;
+    Color? badgeColor;
+
+    if (item.id == 'orders') {
+      final count = ref.watch(pedidosKanbanControllerProvider).totalAtivos;
+      if (count > 0) {
+        badge = '$count';
+        badgeColor = const Color(0xFFF97316);
+      }
+    }
+
+    return _NavItem(
+      item: item,
+      isActive: widget.activeId == item.id,
+      isCollapsed: isCollapsed,
+      badge: badge,
+      badgeColor: badgeColor,
+      onTap: () {
+        widget.onItemSelected(item.id);
+        if (item.route != null) context.go(item.route!);
+      },
     );
   }
 
@@ -678,12 +681,16 @@ class _NavItem extends StatefulWidget {
   final bool isActive;
   final bool isCollapsed;
   final VoidCallback onTap;
+  final String? badge;
+  final Color? badgeColor;
 
   const _NavItem({
     required this.item,
     required this.isActive,
     required this.isCollapsed,
     required this.onTap,
+    this.badge,
+    this.badgeColor,
   });
 
   @override
@@ -773,7 +780,7 @@ class _NavItemState extends State<_NavItem> {
                                 maxLines: 1,
                               ),
                             ),
-                            if (widget.item.badge != null)
+                            if (widget.badge != null)
                               Flexible(
                                 flex: 0,
                                 child: Container(
@@ -783,18 +790,18 @@ class _NavItemState extends State<_NavItem> {
                                   decoration: BoxDecoration(
                                     color: widget.isActive
                                         ? Colors.white.withValues(alpha: 0.25)
-                                        : widget.item.badgeColor!
+                                        : (widget.badgeColor ?? const Color(0xFFF97316))
                                             .withValues(alpha: 0.13),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    widget.item.badge!,
+                                    widget.badge!,
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: widget.isActive
                                           ? Colors.white
-                                          : widget.item.badgeColor,
+                                          : (widget.badgeColor ?? const Color(0xFFF97316)),
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),

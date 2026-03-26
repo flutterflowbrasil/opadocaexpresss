@@ -234,6 +234,16 @@ class AuthRepository {
     return result?['id'] as String?;
   }
 
+  /// Retorna o ID do entregador vinculado a um usuário autenticado.
+  Future<String?> getEntregadorId(String userId) async {
+    final result = await _supabase
+        .from('entregadores')
+        .select('id')
+        .eq('usuario_id', userId)
+        .maybeSingle();
+    return result?['id'] as String?;
+  }
+
   /// Chama a RPC SECURITY DEFINER — a rota é determinada pelo banco via auth.uid().
   Future<String> validateSessionAndRoute() async {
     final result = await _supabase.rpc('validar_sessao_e_rota');
@@ -248,10 +258,20 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(supabase);
 });
 
+/// Cache da rota obtida durante o login. Evita uma segunda chamada RPC
+/// quando o redirect do router lê o [sessionRouteProvider] logo após o login.
+/// Limpo no início de cada novo login para não reutilizar rota de sessão anterior.
+final sessionRouteCacheProvider = StateProvider<String?>((ref) => null);
+
 /// Chama a RPC SECURITY DEFINER `validar_sessao_e_rota()`.
 /// A rota é determinada pelo banco (via auth.uid()), não pelo cliente.
-/// autoDispose garante re-busca após logout/novo login.
+/// Usa o cache do [sessionRouteCacheProvider] quando disponível para evitar
+/// dupla chamada RPC (controller + router redirect) e a race condition associada.
 final sessionRouteProvider = FutureProvider.autoDispose<String>((ref) async {
+  // Usa rota já buscada pelo login controller (sem nova chamada RPC)
+  final cached = ref.watch(sessionRouteCacheProvider);
+  if (cached != null) return cached;
+
   final repo = ref.watch(authRepositoryProvider);
   if (repo.currentUser == null) return '/login';
   return repo.validateSessionAndRoute();
