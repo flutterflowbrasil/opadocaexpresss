@@ -14,6 +14,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
 const _bg0 = Color(0xFF0A0704);
 const _bg3 = Color(0xFF251C14);
@@ -133,6 +136,11 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   double _distanciaKm = 0;
   String? _entregadorId;
 
+  double? _estabelecimentoLat;
+  double? _estabelecimentoLng;
+  double? _clienteLat;
+  double? _clienteLng;
+
   Timer? _cronoTimer;
   int _segundosEntrega = 0;
   DateTime? _inicioEntrega;
@@ -174,7 +182,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             numero_pedido, status, taxa_entrega, distancia_km,
             em_entrega_em,
             endereco_entrega_snapshot,
-            estabelecimentos ( nome_fantasia, endereco, telefone_comercial ),
+            estabelecimentos ( nome_fantasia, endereco, telefone_comercial, latitude, longitude ),
             clientes ( usuarios ( nome_completo_fantasia, telefone ) )
           ''')
           .eq('id', widget.pedidoId)
@@ -226,6 +234,11 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
         _distanciaKm = (row['distancia_km'] as num?)?.toDouble() ?? 0;
         _status = statusAtual;
         _loading = false;
+
+        _estabelecimentoLat = (estab['latitude'] as num?)?.toDouble();
+        _estabelecimentoLng = (estab['longitude'] as num?)?.toDouble();
+        _clienteLat = (snap['latitude'] as num?)?.toDouble();
+        _clienteLng = (snap['longitude'] as num?)?.toDouble();
 
         if (row['em_entrega_em'] != null) {
           _inicioEntrega = DateTime.tryParse(row['em_entrega_em']);
@@ -535,6 +548,31 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     );
   }
 
+  Future<void> _abrirGoogleMaps() async {
+    double? lat, lng;
+    if (_status == StatusEntrega.confirmado || _status == StatusEntrega.emColeta) {
+      lat = _estabelecimentoLat;
+      lng = _estabelecimentoLng;
+    } else {
+      lat = _clienteLat;
+      lng = _clienteLng;
+    }
+
+    Uri uri;
+    if (lat != null && lng != null) {
+      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+    } else {
+      final dest = (_status == StatusEntrega.confirmado || _status == StatusEntrega.emColeta)
+          ? Uri.encodeComponent(_estabelecimentoEnd.isNotEmpty ? _estabelecimentoEnd : _estabelecimentoNome)
+          : Uri.encodeComponent(_clienteEnd.isNotEmpty ? _clienteEnd : _clienteNome);
+      uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$dest');
+    }
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   void dispose() {
     _posStream?.cancel();
@@ -567,6 +605,11 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             origem: _estabelecimentoNome,
             destino: _clienteNome,
             posAtual: _posicaoAtual,
+            estabelecimentoLat: _estabelecimentoLat,
+            estabelecimentoLng: _estabelecimentoLng,
+            clienteLat: _clienteLat,
+            clienteLng: _clienteLng,
+            onNavegar: _abrirGoogleMaps,
           ),
 
           // Painel deslizante
@@ -695,49 +738,80 @@ class _MapArea extends StatelessWidget {
   final StatusEntrega status;
   final String origem, destino;
   final Position? posAtual;
+  final double? estabelecimentoLat;
+  final double? estabelecimentoLng;
+  final double? clienteLat;
+  final double? clienteLng;
+  final VoidCallback onNavegar;
 
   const _MapArea({
     required this.status,
     required this.origem,
     required this.destino,
     this.posAtual,
+    this.estabelecimentoLat,
+    this.estabelecimentoLng,
+    this.clienteLat,
+    this.clienteLng,
+    required this.onNavegar,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Determine map center
+    ll.LatLng? center;
+    if (posAtual != null) {
+      center = ll.LatLng(posAtual!.latitude, posAtual!.longitude);
+    } else if (estabelecimentoLat != null && estabelecimentoLng != null) {
+      center = ll.LatLng(estabelecimentoLat!, estabelecimentoLng!);
+    } else {
+      center = ll.LatLng(-23.5505, -46.6333); // São Paulo fallback
+    }
+
+    final List<Marker> markers = [];
+    if (posAtual != null) {
+      markers.add(Marker(
+        point: ll.LatLng(posAtual!.latitude, posAtual!.longitude),
+        width: 32, height: 32,
+        child: const Icon(Icons.navigation_rounded, color: _orange, size: 28),
+      ));
+    }
+    if (estabelecimentoLat != null && estabelecimentoLng != null) {
+      markers.add(Marker(
+        point: ll.LatLng(estabelecimentoLat!, estabelecimentoLng!),
+        width: 36, height: 36,
+        child: const Icon(Icons.storefront_rounded, color: _orange, size: 28),
+      ));
+    }
+    if (clienteLat != null && clienteLng != null) {
+      markers.add(Marker(
+        point: ll.LatLng(clienteLat!, clienteLng!),
+        width: 36, height: 36,
+        child: const Icon(Icons.location_on_rounded, color: _red, size: 28),
+      ));
+    }
+
     return SizedBox(
       height: MediaQuery.of(context).size.height * .38,
       child: Stack(
         children: [
-          Container(
-            color: const Color(0xFF0A150A),
-            child: CustomPaint(painter: _MapGridPainter(), size: Size.infinite),
-          ),
-          Center(
-            child: CustomPaint(
-              size: Size(
-                MediaQuery.of(context).size.width,
-                MediaQuery.of(context).size.height * .38,
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: 15,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
-              painter: _RotaPainter(status: status),
             ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.padocaexpress.app',
+              ),
+              if (markers.isNotEmpty) MarkerLayer(markers: markers),
+            ],
           ),
-          Positioned(
-            top: 80,
-            left: MediaQuery.of(context).size.width * .25,
-            child: _Marcador(label: origem, cor: _orange, emoji: '🏪'),
-          ),
-          Positioned(
-            bottom: 80,
-            right: MediaQuery.of(context).size.width * .2,
-            child: _Marcador(label: destino, cor: _green, emoji: '🏠'),
-          ),
-          if (status != StatusEntrega.entregue)
-            Positioned(
-              top: MediaQuery.of(context).size.height * .38 * .5 - 16,
-              left: MediaQuery.of(context).size.width * .5 - 16,
-              child: _EntregadorPin(),
-            ),
+          // Back button overlay
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 16,
@@ -757,6 +831,7 @@ class _MapArea extends StatelessWidget {
               ),
             ),
           ),
+          // Status label overlay
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 16,
@@ -777,160 +852,38 @@ class _MapArea extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = _green.withValues(alpha: .04)
-      ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 24) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
-    }
-    for (double y = 0; y < size.height; y += 24) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
-}
-
-class _RotaPainter extends CustomPainter {
-  final StatusEntrega status;
-  const _RotaPainter({required this.status});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(size.width * .28, size.height * .25)
-      ..cubicTo(
-        size.width * .35,
-        size.height * .4,
-        size.width * .55,
-        size.height * .55,
-        size.width * .72,
-        size.height * .72,
-      );
-
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = _border
-        ..strokeWidth = 3
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    final pct = status.index / (StatusEntrega.values.length - 1);
-    final pathMetric = path.computeMetrics().first;
-    final percorrida = pathMetric.extractPath(0, pathMetric.length * pct);
-
-    canvas.drawPath(
-      percorrida,
-      Paint()
-        ..color = status == StatusEntrega.entregue ? _green : _orange
-        ..strokeWidth = 3.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_RotaPainter old) => old.status != status;
-}
-
-class _Marcador extends StatelessWidget {
-  final String label, emoji;
-  final Color cor;
-  const _Marcador({required this.label, required this.emoji, required this.cor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _bg0.withValues(alpha: .9),
-            border: Border.all(color: cor.withValues(alpha: .3)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  color: _text1,
-                  fontWeight: FontWeight.w700,
+          // "Navigate with Google Maps" button overlay
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: onNavegar,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _orange,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .4), blurRadius: 10)],
                 ),
-                overflow: TextOverflow.ellipsis,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Navegar',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-        Container(width: 2, height: 6, color: cor),
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
-        ),
-      ],
-    );
-  }
-}
-
-class _EntregadorPin extends StatefulWidget {
-  @override
-  State<_EntregadorPin> createState() => _EntregadorPinState();
-}
-
-class _EntregadorPinState extends State<_EntregadorPin>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _s;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _s = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _c, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _s,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: _orange,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [BoxShadow(color: _orange.withValues(alpha: .5), blurRadius: 12)],
-        ),
-        child: const Center(child: Text('🛵', style: TextStyle(fontSize: 14))),
+        ],
       ),
     );
   }

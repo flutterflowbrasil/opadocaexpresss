@@ -46,23 +46,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) async {
-      // Rotas que exigem autenticação obrigatória
-      const authRequired = [
-        '/carrinho',
-        '/finalizar_pedido',
-        '/cliente/pedidos',
-        '/pagamento',
+      // Rotas públicas: acessíveis sem autenticação
+      const publicRoutes = [
+        '/',
+        '/login',
+        '/esqueceu-senha',
+        '/reset-password',
+        '/privacy',
+        '/pre_cadastro',
+        '/cadastro_cliente',
+        '/cadastro_entregador',
+        '/cadastro-estabelecimento',
       ];
 
       final loc = state.matchedLocation;
+      final isPublic = publicRoutes.any((r) => loc == r || loc.startsWith('$r/'));
 
-      final needsAuth = authRequired.any((r) => loc.startsWith(r)) ||
-          loc.startsWith('/dashboard_estabelecimento') ||
-          loc.startsWith('/dashboard_entregador') ||
-          loc.startsWith('/admin/dashboard');
-
-      // Redireciona para login se não autenticado
-      if (needsAuth && authRepository.currentUser == null) {
+      // Redireciona para login se não autenticado em rota protegida
+      if (!isPublic && authRepository.currentUser == null) {
         return '/login';
       }
 

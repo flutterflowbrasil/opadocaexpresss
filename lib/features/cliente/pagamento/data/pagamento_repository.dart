@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
@@ -82,31 +79,20 @@ class PagamentoRepository {
     Map<String, dynamic>? dadosCartao,
   }) async {
     try {
-      final accessToken = _supabase.auth.currentSession?.accessToken;
-      if (accessToken == null) {
-        throw Exception('Sessão expirada. Faça login novamente.');
-      }
-
-      final url = Uri.parse(
-          '${SupabaseConfig.url}/functions/v1/criar-cobranca-asaas');
-
-      final httpResponse = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({
+      final resp = await _supabase.functions.invoke(
+        'criar-cobranca-asaas',
+        body: {
           'pedido_id': pedidoId,
           if (dadosCartao != null) 'cartao': dadosCartao,
-        }),
+        },
       );
 
-      final data = jsonDecode(httpResponse.body) as Map<String, dynamic>;
-
-      if (httpResponse.statusCode != 200) {
-        throw Exception(data['error'] ?? 'Erro ao processar pagamento');
+      if (resp.status != 200) {
+        final data = resp.data as Map<String, dynamic>?;
+        throw Exception(data?['error'] ?? 'Erro ao processar pagamento');
       }
+
+      final data = resp.data as Map<String, dynamic>;
 
       return CobrancaAsaasModel.fromJson(data);
     } catch (e) {

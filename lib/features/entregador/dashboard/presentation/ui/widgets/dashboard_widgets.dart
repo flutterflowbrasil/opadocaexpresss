@@ -799,6 +799,7 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [

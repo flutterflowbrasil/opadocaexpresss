@@ -139,9 +139,9 @@ class DashboardRepository {
       'respondido_em': DateTime.now().toIso8601String(),
     }).eq('id', despachoId);
 
-    // Atualiza pedido para em_entrega e vincula o entregador
+    // Atualiza pedido para confirmado e vincula o entregador
     await _supabase.from('pedidos').update({
-      'status': 'em_entrega',
+      'status': 'confirmado',
       'entregador_id': despacho['entregador_id'],
     }).eq('id', despacho['pedido_id'] as String);
   }

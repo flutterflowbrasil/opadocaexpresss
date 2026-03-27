@@ -89,6 +89,13 @@ class _EntregadorDashboardScreenState
         Navigator.of(context, rootNavigator: true).maybePop();
         _despachoDialogOpen = false;
       }
+
+      // Despacho aceito com sucesso → navegar para tela de entrega
+      if (previous?.statusDespacho != 'em_pedido' &&
+          next.statusDespacho == 'em_pedido' &&
+          next.pedidoAtualId != null) {
+        context.push('/dashboard_entregador/entrega/${next.pedidoAtualId}');
+      }
     });
 
     return Scaffold(
