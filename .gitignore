@@ -50,3 +50,6 @@ app.*.map.json
 
 # Ignore local secrets (API keys, local SDK paths)
 **/local.properties
+
+# Claude Code worktrees
+.claude/worktrees/
