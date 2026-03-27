@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Resposta da Edge Function `criar-cobranca-asaas`.
 class CobrancaAsaasModel {
   final String paymentId;
@@ -13,11 +15,26 @@ class CobrancaAsaasModel {
   });
 
   factory CobrancaAsaasModel.fromJson(Map<String, dynamic> json) {
-    return CobrancaAsaasModel(
-      paymentId: json['paymentId'] as String,
-      pixQrCode: json['pixQrCode'] as String?,
-      pixCopiaECola: json['pixCopiaECola'] as String?,
-      invoiceUrl: json['invoiceUrl'] as String?,
-    );
+    try {
+      // Se a Edge function retorna 'id' invés de 'paymentId'
+      final extractedId = json['paymentId'] ?? json['id'] ?? '';
+      
+      if (extractedId.toString().isEmpty) {
+        debugPrint('[CobrancaAsaasModel] ATENÇÃO: Nenhum ID de pagamento encontrado. JSON: $json');
+        if (json.containsKey('error')) {
+          throw Exception(json['error']);
+        }
+      }
+
+      return CobrancaAsaasModel(
+        paymentId: extractedId.toString(),
+        pixQrCode: json['pixQrCode'] as String?,
+        pixCopiaECola: json['pixCopiaECola'] as String?,
+        invoiceUrl: json['invoiceUrl'] ?? json['invoiceUrl'] as String?,
+      );
+    } catch (e, st) {
+      debugPrint('[CobrancaAsaasModel.fromJson] ERRO: $e\nJSON: $json\n$st');
+      rethrow;
+    }
   }
 }
