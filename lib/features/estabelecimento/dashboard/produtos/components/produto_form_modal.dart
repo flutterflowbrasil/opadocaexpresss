@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../controllers/produtos_controller.dart';
 import '../models/produto_model.dart';
@@ -72,7 +73,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
 
     if (_isEdicao) {
       final p = widget.produto!;
@@ -234,6 +235,10 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                           icon: Icon(Icons.inventory_2_outlined, size: 18),
                           text: 'Estoque'),
                       Tab(icon: Icon(Icons.tune, size: 18), text: 'Opções'),
+                      Tab(
+                          icon: Text('🍰',
+                              style: TextStyle(fontSize: 16)),
+                          text: 'Ult. Mordida'),
                     ],
                   ),
                 ),
@@ -284,6 +289,8 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                       ),
                       // 4. Opções (informativo por enquanto)
                       const _TabOpcoes(),
+                      // 5. Última Mordida
+                      _TabUltimaMordida(produto: widget.produto),
                     ],
                   ),
                 ),
@@ -1051,4 +1058,257 @@ InputDecoration _inputDecoration(String? hint) {
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB: ÚLTIMA MORDIDA
+// ═══════════════════════════════════════════════════════════════════════════
+class _TabUltimaMordida extends ConsumerStatefulWidget {
+  final ProdutoModel? produto;
+  const _TabUltimaMordida({this.produto});
+
+  @override
+  ConsumerState<_TabUltimaMordida> createState() => _TabUltimaMordidaState();
+}
+
+class _TabUltimaMordidaState extends ConsumerState<_TabUltimaMordida> {
+  final _chamadaCtrl = TextEditingController();
+  int? _desconto;
+  int? _duracaoHoras;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _chamadaCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _podeAtivar => widget.produto != null && widget.produto!.id.isNotEmpty;
+  bool get _estaAtivo => widget.produto?.ultimaMordida ?? false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_podeAtivar) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🍰', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 16),
+              Text(
+                'Salve o produto primeiro',
+                style: GoogleFonts.publicSans(
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'A Última Mordida pode ser ativada após o produto ser cadastrado.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.publicSans(
+                    fontSize: 13, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final fmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final produto = widget.produto!;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Status atual ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _estaAtivo
+                  ? const Color(0xFFFFF3E0)
+                  : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _estaAtivo
+                    ? const Color(0xFFE65100)
+                    : Colors.grey.shade200,
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(_estaAtivo ? '🍰' : '😴',
+                    style: const TextStyle(fontSize: 28)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _estaAtivo
+                            ? 'Última Mordida ATIVA'
+                            : 'Última Mordida inativa',
+                        style: GoogleFonts.publicSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: _estaAtivo
+                              ? const Color(0xFFE65100)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      if (_estaAtivo && produto.ultimaMordidaChamada != null)
+                        Text(
+                          '"${produto.ultimaMordidaChamada}"',
+                          style: GoogleFonts.publicSans(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey.shade600),
+                        ),
+                      if (_estaAtivo && produto.ultimaMordidaPreco != null)
+                        Text(
+                          '${fmt.format(produto.preco)} → ${fmt.format(produto.ultimaMordidaPreco)}',
+                          style: GoogleFonts.publicSans(
+                              fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (!_estaAtivo) ...[
+            // ── Formulário de ativação ──
+            Text('Configurar',
+                style: GoogleFonts.publicSans(
+                    fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _chamadaCtrl,
+              decoration: InputDecoration(
+                labelText: 'Chamada (opcional)',
+                hintText: 'Ex: Última fatia de bolo!',
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              initialValue: _desconto,
+              decoration: InputDecoration(
+                labelText: 'Desconto (%)',
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+              items: [
+                const DropdownMenuItem(
+                    value: null, child: Text('Sem desconto')),
+                ...([5, 10, 15, 20, 25, 30, 40, 50]).map(
+                  (v) => DropdownMenuItem(value: v, child: Text('$v%')),
+                ),
+              ],
+              onChanged: (v) => setState(() => _desconto = v),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              initialValue: _duracaoHoras,
+              decoration: InputDecoration(
+                labelText: 'Duração',
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+              items: const [
+                DropdownMenuItem(
+                    value: null, child: Text('Sem prazo de expiração')),
+                DropdownMenuItem(value: 1, child: Text('1 hora')),
+                DropdownMenuItem(value: 2, child: Text('2 horas')),
+                DropdownMenuItem(value: 3, child: Text('3 horas')),
+                DropdownMenuItem(value: 6, child: Text('6 horas')),
+                DropdownMenuItem(value: 12, child: Text('12 horas')),
+                DropdownMenuItem(
+                    value: 24, child: Text('Até o fim do dia')),
+              ],
+              onChanged: (v) => setState(() => _duracaoHoras = v),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE65100),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _loading
+                    ? null
+                    : () async {
+                        setState(() => _loading = true);
+                        await ref
+                            .read(produtosControllerProvider.notifier)
+                            .ativarUltimaMordida(
+                              produto.id,
+                              descontoPct: _desconto,
+                              chamada: _chamadaCtrl.text.trim().isEmpty
+                                  ? null
+                                  : _chamadaCtrl.text.trim(),
+                              duracaoHoras: _duracaoHoras,
+                            );
+                        setState(() => _loading = false);
+                      },
+                child: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text('🍰 Ativar Última Mordida',
+                        style: GoogleFonts.publicSans(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+              ),
+            ),
+          ] else ...[
+            // ── Desativar ──
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFE65100)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _loading
+                    ? null
+                    : () async {
+                        setState(() => _loading = true);
+                        await ref
+                            .read(produtosControllerProvider.notifier)
+                            .desativarUltimaMordida(produto.id);
+                        setState(() => _loading = false);
+                      },
+                child: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text('Desativar Última Mordida',
+                        style: GoogleFonts.publicSans(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE65100))),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

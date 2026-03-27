@@ -53,8 +53,10 @@ class _EntregadorDashboardScreenState
       }
 
       // Novo despacho recebido → abre modal em qualquer aba
+      // Compara por ID para garantir que um despacho diferente sempre abre o modal,
+      // mesmo que o anterior não tenha sido limpo do state (ex: falha no aceite)
       if (next.despachoRecebido != null &&
-          previous?.despachoRecebido == null &&
+          next.despachoRecebido?.id != previous?.despachoRecebido?.id &&
           !_despachoDialogOpen) {
         _despachoDialogOpen = true;
         showDialog<void>(

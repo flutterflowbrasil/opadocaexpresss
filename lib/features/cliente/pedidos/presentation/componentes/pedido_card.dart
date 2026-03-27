@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/cliente/pedidos/models/pedido_cliente_model.dart';
 import 'package:intl/intl.dart';
@@ -210,9 +211,7 @@ class PedidoCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      // TODO: Ver Detalhes
-                    },
+                    onPressed: () => context.push('/cliente/pedido/${pedido.id}'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: pedido.isAtivo
                           ? primaryColor

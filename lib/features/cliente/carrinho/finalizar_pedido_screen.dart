@@ -13,6 +13,8 @@ import 'package:padoca_express/features/cliente/localizacao/selecionar_endereco_
 import 'package:padoca_express/features/cliente/pagamento/controllers/pagamento_controller.dart';
 import 'package:padoca_express/features/cliente/pagamento/state/pagamento_state.dart';
 import 'package:padoca_express/features/cliente/pagamento/presentation/cartao_pagamento_modal.dart';
+import 'package:padoca_express/features/cliente/pagamento/models/dados_cartao_model.dart';
+import 'package:intl/intl.dart';
 
 class FinalizarPedidoScreen extends ConsumerStatefulWidget {
   const FinalizarPedidoScreen({super.key});
@@ -85,8 +87,22 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
   }
 
   Future<void> _finalizarPedido() async {
-    final carrinho = ref.read(carrinhoControllerProvider);
     final metodo = _metodoPagamentoSelecionado!;
+
+    DadosCartaoModel? dadosCartao;
+    if (metodo == 'cartao_site') {
+      // 1. Coleta dados do cartão
+      if (!mounted) return;
+      dadosCartao = await CartaoPagamentoModal.show(context);
+      if (dadosCartao == null || !mounted) return;
+    }
+
+    // 2. Exibe modal de confirmação com endereço + método antes de processar
+    final confirmed = await _mostrarConfirmacaoPedido(dadosCartao: dadosCartao);
+    if (!confirmed || !mounted) return;
+
+    // 3. Processa pagamento
+    final carrinho = ref.read(carrinhoControllerProvider);
     final endereco = _enderecoSelecionado!;
 
     if (metodo == 'pix_site') {
@@ -96,19 +112,34 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
             metodoPagamento: 'pix',
           );
     } else {
-      // Cartão: abre modal para coletar dados
-      if (!mounted) return;
-      final dadosCartao = await CartaoPagamentoModal.show(context);
-      if (dadosCartao == null || !mounted) return;
-
       await ref.read(pagamentoControllerProvider.notifier).finalizarPedido(
             carrinho: carrinho,
             endereco: endereco,
             metodoPagamento:
-                dadosCartao.isCredito ? 'cartao_credito' : 'cartao_debito',
+                dadosCartao!.isCredito ? 'cartao_credito' : 'cartao_debito',
             dadosCartao: dadosCartao,
           );
     }
+  }
+
+  Future<bool> _mostrarConfirmacaoPedido(
+      {DadosCartaoModel? dadosCartao}) async {
+    final carrinho = ref.read(carrinhoControllerProvider);
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => _ConfirmacaoPedidoSheet(
+        endereco: _enderecoSelecionado!,
+        metodo: _metodoPagamentoSelecionado!,
+        dadosCartao: dadosCartao,
+        subtotal: carrinho.valorTotalProdutos,
+        taxaEntrega: carrinho.estabelecimento?.taxaEntregaValor ?? 0,
+        total: carrinho.valorTotal,
+      ),
+    );
+    return result == true;
   }
 
   @override
@@ -133,8 +164,12 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
           'segundosRestantes': next.segundosRestantes ?? 300,
         });
       } else if (next.status == PagamentoStatus.confirmado) {
-        context.go('/pagamento/sucesso',
-            extra: {'pedidoId': next.pedidoCriadoId ?? ''});
+        final pid = next.pedidoCriadoId ?? '';
+        if (pid.isNotEmpty) {
+          context.go('/cliente/pedido/$pid');
+        } else {
+          context.go('/cliente/pedidos');
+        }
       } else if (next.status == PagamentoStatus.erro &&
           next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -366,6 +401,231 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
                 ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Modal de confirmação do pedido
+// ─────────────────────────────────────────────────────────────────────────────
+class _ConfirmacaoPedidoSheet extends StatelessWidget {
+  final EnderecoCliente endereco;
+  final String metodo;
+  final DadosCartaoModel? dadosCartao;
+  final double subtotal;
+  final double taxaEntrega;
+  final double total;
+
+  static const _primary = Color(0xFFFF7034);
+  static const _secondary = Color(0xFF7D2D35);
+
+  const _ConfirmacaoPedidoSheet({
+    required this.endereco,
+    required this.metodo,
+    required this.subtotal,
+    required this.taxaEntrega,
+    required this.total,
+    this.dadosCartao,
+  });
+
+  String get _labelMetodo {
+    if (metodo == 'pix_site') return 'Pix';
+    if (dadosCartao != null) {
+      final tipo = dadosCartao!.isCredito ? 'Crédito' : 'Débito';
+      return 'Cartão de $tipo';
+    }
+    return 'Cartão';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1C1917) : Colors.white;
+    final fmt = NumberFormat.simpleCurrency(locale: 'pt_BR');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24, 20, 24, MediaQuery.of(context).padding.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: .3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Confirmar Pedido',
+            style: GoogleFonts.outfit(
+              fontSize: 20, fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : _secondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Endereço
+          _SectionRow(
+            icon: Icons.location_on_outlined,
+            label: 'Entrega em',
+            value: '${endereco.logradouro}, ${endereco.numero} — ${endereco.bairro}',
+            isDark: isDark,
+          ),
+          const SizedBox(height: 14),
+
+          // Pagamento
+          _SectionRow(
+            icon: metodo == 'pix_site'
+                ? Icons.pix_outlined
+                : Icons.credit_card_outlined,
+            label: 'Pagamento',
+            value: _labelMetodo,
+            isDark: isDark,
+          ),
+          const SizedBox(height: 20),
+          Divider(color: Colors.grey.withValues(alpha: .15)),
+          const SizedBox(height: 12),
+
+          // Valores
+          _ValorRow('Subtotal', fmt.format(subtotal), isDark: isDark),
+          const SizedBox(height: 8),
+          _ValorRow('Taxa de entrega', fmt.format(taxaEntrega), isDark: isDark),
+          const SizedBox(height: 8),
+          _ValorRow(
+            'Total',
+            fmt.format(total),
+            isDark: isDark,
+            isBold: true,
+            color: _primary,
+          ),
+          const SizedBox(height: 24),
+
+          // Botão confirmar
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 4,
+                shadowColor: _primary.withValues(alpha: .35),
+              ),
+              child: Text(
+                'Confirmar Pedido',
+                style: GoogleFonts.outfit(
+                  fontSize: 16, fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.outfit(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+
+  const _SectionRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20,
+            color: isDark ? Colors.grey[400] : Colors.grey[600]),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: isDark ? Colors.grey[500] : Colors.grey[500])),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF7D2D35))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ValorRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isDark;
+  final bool isBold;
+  final Color? color;
+
+  const _ValorRow(this.label, this.value,
+      {required this.isDark, this.isBold = false, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = color ??
+        (isDark
+            ? (isBold ? Colors.white : Colors.grey[300])
+            : (isBold ? const Color(0xFF7D2D35) : Colors.grey[700]));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: GoogleFonts.outfit(
+                fontSize: isBold ? 15 : 13,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: textColor)),
+        Text(value,
+            style: GoogleFonts.outfit(
+                fontSize: isBold ? 15 : 13,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: textColor)),
+      ],
     );
   }
 }

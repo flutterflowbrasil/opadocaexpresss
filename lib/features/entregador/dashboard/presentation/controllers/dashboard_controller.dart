@@ -206,6 +206,7 @@ class DashboardController extends StateNotifier<DashboardState> {
       debugPrint('[DashboardController] aceitarDespacho error: $e');
       state = state.copyWith(
           isRespondingDespacho: false,
+          clearDespacho: true, // Limpa para próximo despacho poder exibir o modal
           error: 'Erro ao aceitar pedido. Tente novamente.');
     }
   }

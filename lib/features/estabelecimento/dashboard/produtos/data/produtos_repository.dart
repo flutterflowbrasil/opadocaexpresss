@@ -65,4 +65,28 @@ class ProdutosRepository {
         .from('produtos')
         .update({'disponivel': disponivel}).eq('id', produtoId);
   }
+
+  /// Ativa o modo Última Mordida via RPC
+  Future<Map<String, dynamic>> ativarUltimaMordida(
+    String produtoId, {
+    int? descontoPct,
+    String? chamada,
+    int? duracaoHoras,
+  }) async {
+    final result = await _supabase.rpc('fn_ativar_ultima_mordida', params: {
+      'p_produto_id': produtoId,
+      if (descontoPct != null) 'p_desconto_pct': descontoPct,
+      if (chamada != null) 'p_chamada': chamada,
+      if (duracaoHoras != null) 'p_duracao_horas': duracaoHoras,
+      'p_origem': 'manual',
+    });
+    return result as Map<String, dynamic>;
+  }
+
+  /// Desativa o modo Última Mordida via RPC
+  Future<void> desativarUltimaMordida(String produtoId) async {
+    await _supabase.rpc('fn_desativar_ultima_mordida', params: {
+      'p_produto_id': produtoId,
+    });
+  }
 }

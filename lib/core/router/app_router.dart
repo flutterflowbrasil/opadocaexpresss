@@ -32,6 +32,7 @@ import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produ
 import 'package:padoca_express/features/estabelecimento/dashboard/cupons/cupons_screen.dart';
 import 'package:padoca_express/features/estabelecimento/financeiro/financeiro_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
+import 'package:padoca_express/features/cliente/pedidos/presentation/pedido_acompanhar_screen.dart';
 import 'package:padoca_express/features/entregador/carteira/presentation/ui/carteira_screen.dart';
 import 'package:padoca_express/features/entregador/historico/presentation/ui/historico_screen.dart';
 import 'package:padoca_express/features/entregador/entregas/presentation/ui/entrega_andamento_screen.dart';
@@ -210,6 +211,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/cliente/pedidos',
         builder: (context, state) => const MeusPedidosScreen(),
+      ),
+      GoRoute(
+        path: '/cliente/pedido/:pedidoId',
+        builder: (context, state) {
+          final pedidoId = state.pathParameters['pedidoId']!;
+          return PedidoAcompanharScreen(pedidoId: pedidoId);
+        },
       ),
       GoRoute(
         path: '/carrinho',

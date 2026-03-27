@@ -239,6 +239,13 @@ class _ProductListTile extends StatelessWidget {
                       const SizedBox(width: 12),
 
                       // Badges adicionais
+                      if (produto.ultimaMordida) ...[
+                        _SmallBadge(
+                            text: '🍰 Última Mordida',
+                            bg: const Color(0xFFFFF3E0),
+                            fg: const Color(0xFFE65100)),
+                        const SizedBox(width: 4),
+                      ],
                       if (produto.destaque) ...[
                         _SmallBadge(
                             text: '⭐ Destaque',
@@ -274,10 +281,38 @@ class _ProductListTile extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 4),
+                // Botão Última Mordida
+                InkWell(
+                  onTap: () => _showUltimaMordidaSheet(context, ref, produto),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: produto.ultimaMordida
+                          ? const Color(0xFFFFF3E0)
+                          : null,
+                      border: Border.all(
+                        color: produto.ultimaMordida
+                            ? const Color(0xFFE65100)
+                            : Colors.grey.shade200,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '🍰',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: produto.ultimaMordida
+                            ? const Color(0xFFE65100)
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 // Botão Editar
                 InkWell(
                   onTap: () {
-                    // Abre o modal de edição com os dados do produto
                     showProdutoFormModal(context, produto: produto);
                   },
                   borderRadius: BorderRadius.circular(8),
@@ -295,6 +330,316 @@ class _ProductListTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+void _showUltimaMordidaSheet(
+    BuildContext context, WidgetRef ref, ProdutoModel produto) {
+  if (produto.ultimaMordida) {
+    // Já está ativo → oferecer desativar
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _UltimaMordidaDesativarSheet(produto: produto, ref: ref),
+    );
+  } else {
+    // Não está ativo → configurar e ativar
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _UltimaMordidaAtivarSheet(produto: produto, ref: ref),
+    );
+  }
+}
+
+// ── Bottom Sheet: Ativar Última Mordida ──────────────────────────────────────
+class _UltimaMordidaAtivarSheet extends StatefulWidget {
+  final ProdutoModel produto;
+  final WidgetRef ref;
+  const _UltimaMordidaAtivarSheet(
+      {required this.produto, required this.ref});
+
+  @override
+  State<_UltimaMordidaAtivarSheet> createState() =>
+      _UltimaMordidaAtivarSheetState();
+}
+
+class _UltimaMordidaAtivarSheetState
+    extends State<_UltimaMordidaAtivarSheet> {
+  final _chamadaCtrl = TextEditingController();
+  int? _desconto;
+  int? _duracaoHoras;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _chamadaCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🍰', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 10),
+              Text(
+                'Ativar Última Mordida',
+                style: GoogleFonts.publicSans(
+                    fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.produto.nome,
+            style: GoogleFonts.publicSans(
+                fontSize: 13, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 20),
+          // Chamada
+          TextField(
+            controller: _chamadaCtrl,
+            decoration: InputDecoration(
+              labelText: 'Chamada (opcional)',
+              hintText: 'Ex: Última fatia de bolo!',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Desconto
+          DropdownButtonFormField<int?>(
+            initialValue: _desconto,
+            decoration: InputDecoration(
+              labelText: 'Desconto (%)',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Sem desconto')),
+              ...([5, 10, 15, 20, 25, 30, 40, 50]).map(
+                (v) => DropdownMenuItem(value: v, child: Text('$v%')),
+              ),
+            ],
+            onChanged: (v) => setState(() => _desconto = v),
+          ),
+          const SizedBox(height: 12),
+          // Duração
+          DropdownButtonFormField<int?>(
+            initialValue: _duracaoHoras,
+            decoration: InputDecoration(
+              labelText: 'Duração',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem(
+                  value: null, child: Text('Sem prazo de expiração')),
+              const DropdownMenuItem(value: 1, child: Text('1 hora')),
+              const DropdownMenuItem(value: 2, child: Text('2 horas')),
+              const DropdownMenuItem(value: 3, child: Text('3 horas')),
+              const DropdownMenuItem(value: 6, child: Text('6 horas')),
+              const DropdownMenuItem(value: 12, child: Text('12 horas')),
+              const DropdownMenuItem(value: 24, child: Text('Até o fim do dia')),
+            ],
+            onChanged: (v) => setState(() => _duracaoHoras = v),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE65100),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      await widget.ref
+                          .read(produtosControllerProvider.notifier)
+                          .ativarUltimaMordida(
+                            widget.produto.id,
+                            descontoPct: _desconto,
+                            chamada: _chamadaCtrl.text.trim().isEmpty
+                                ? null
+                                : _chamadaCtrl.text.trim(),
+                            duracaoHoras: _duracaoHoras,
+                          );
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(
+                      '🍰 Ativar Última Mordida',
+                      style: GoogleFonts.publicSans(
+                          fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Bottom Sheet: Desativar Última Mordida ───────────────────────────────────
+class _UltimaMordidaDesativarSheet extends StatefulWidget {
+  final ProdutoModel produto;
+  final WidgetRef ref;
+  const _UltimaMordidaDesativarSheet(
+      {required this.produto, required this.ref});
+
+  @override
+  State<_UltimaMordidaDesativarSheet> createState() =>
+      _UltimaMordidaDesativarSheetState();
+}
+
+class _UltimaMordidaDesativarSheetState
+    extends State<_UltimaMordidaDesativarSheet> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final expira = widget.produto.ultimaMordidaExpiraEm;
+    String expiraText = 'Sem prazo';
+    if (expira != null) {
+      final diff = expira.difference(DateTime.now());
+      if (diff.isNegative) {
+        expiraText = 'Expirado';
+      } else if (diff.inMinutes < 60) {
+        expiraText = 'Expira em ${diff.inMinutes} min';
+      } else {
+        expiraText = 'Expira em ${diff.inHours}h';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🍰', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 10),
+              Text(
+                'Última Mordida ativa',
+                style: GoogleFonts.publicSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFE65100)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (widget.produto.ultimaMordidaChamada != null)
+            Text(
+              '"${widget.produto.ultimaMordidaChamada}"',
+              style: GoogleFonts.publicSans(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey.shade700),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (widget.produto.ultimaMordidaDescontoPct != null) ...[
+                _SmallBadge(
+                  text:
+                      '${widget.produto.ultimaMordidaDescontoPct!.toStringAsFixed(0)}% off',
+                  bg: const Color(0xFFFFECB3),
+                  fg: const Color(0xFFE65100),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (widget.produto.ultimaMordidaPreco != null) ...[
+                Text(
+                  fmt.format(widget.produto.preco),
+                  style: GoogleFonts.publicSans(
+                    fontSize: 13,
+                    decoration: TextDecoration.lineThrough,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  fmt.format(widget.produto.ultimaMordidaPreco),
+                  style: GoogleFonts.publicSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFE65100)),
+                ),
+                const SizedBox(width: 8),
+              ],
+              _SmallBadge(
+                text: expiraText,
+                bg: Colors.grey.shade100,
+                fg: Colors.grey.shade600,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFE65100)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      await widget.ref
+                          .read(produtosControllerProvider.notifier)
+                          .desativarUltimaMordida(widget.produto.id);
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(
+                      'Desativar Última Mordida',
+                      style: GoogleFonts.publicSans(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFE65100)),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

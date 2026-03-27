@@ -27,6 +27,15 @@ class ProdutoModel {
   final int? pesoGramas;
   final bool permiteObservacao;
 
+  // ── Última Mordida ──────────────────────────────────────────────────────
+  final bool ultimaMordida;
+  final DateTime? ultimaMordidaAtivadoEm;
+  final DateTime? ultimaMordidaExpiraEm;
+  final double? ultimaMordidaDescontoPct;
+  final double? ultimaMordidaPreco;
+  final String? ultimaMordidaChamada;
+  final String? ultimaMordidaOrigem;
+
   // Campo auxiliar para uso dinâmico em listagens
   final String? categoriaCardapioNome;
 
@@ -58,6 +67,13 @@ class ProdutoModel {
     this.pesoGramas,
     this.permiteObservacao = true,
     this.categoriaCardapioNome,
+    this.ultimaMordida = false,
+    this.ultimaMordidaAtivadoEm,
+    this.ultimaMordidaExpiraEm,
+    this.ultimaMordidaDescontoPct,
+    this.ultimaMordidaPreco,
+    this.ultimaMordidaChamada,
+    this.ultimaMordidaOrigem,
   });
 
   ProdutoModel copyWith({
@@ -88,6 +104,13 @@ class ProdutoModel {
     int? pesoGramas,
     bool? permiteObservacao,
     String? categoriaCardapioNome,
+    bool? ultimaMordida,
+    DateTime? ultimaMordidaAtivadoEm,
+    DateTime? ultimaMordidaExpiraEm,
+    double? ultimaMordidaDescontoPct,
+    double? ultimaMordidaPreco,
+    String? ultimaMordidaChamada,
+    String? ultimaMordidaOrigem,
   }) {
     return ProdutoModel(
       id: id ?? this.id,
@@ -117,8 +140,14 @@ class ProdutoModel {
       slug: slug ?? this.slug,
       pesoGramas: pesoGramas ?? this.pesoGramas,
       permiteObservacao: permiteObservacao ?? this.permiteObservacao,
-      categoriaCardapioNome:
-          categoriaCardapioNome ?? this.categoriaCardapioNome,
+      categoriaCardapioNome: categoriaCardapioNome ?? this.categoriaCardapioNome,
+      ultimaMordida: ultimaMordida ?? this.ultimaMordida,
+      ultimaMordidaAtivadoEm: ultimaMordidaAtivadoEm ?? this.ultimaMordidaAtivadoEm,
+      ultimaMordidaExpiraEm: ultimaMordidaExpiraEm ?? this.ultimaMordidaExpiraEm,
+      ultimaMordidaDescontoPct: ultimaMordidaDescontoPct ?? this.ultimaMordidaDescontoPct,
+      ultimaMordidaPreco: ultimaMordidaPreco ?? this.ultimaMordidaPreco,
+      ultimaMordidaChamada: ultimaMordidaChamada ?? this.ultimaMordidaChamada,
+      ultimaMordidaOrigem: ultimaMordidaOrigem ?? this.ultimaMordidaOrigem,
     );
   }
 
@@ -160,6 +189,18 @@ class ProdutoModel {
       permiteObservacao: json['permite_observacao'] as bool? ?? true,
       // Se houver um inner join no campo 'categorias_cardapio'
       categoriaCardapioNome: json['categorias_cardapio']?['nome'] as String?,
+      ultimaMordida: json['ultima_mordida'] as bool? ?? false,
+      ultimaMordidaAtivadoEm: json['ultima_mordida_ativado_em'] != null
+          ? DateTime.tryParse(json['ultima_mordida_ativado_em'] as String)
+          : null,
+      ultimaMordidaExpiraEm: json['ultima_mordida_expira_em'] != null
+          ? DateTime.tryParse(json['ultima_mordida_expira_em'] as String)
+          : null,
+      ultimaMordidaDescontoPct:
+          (json['ultima_mordida_desconto_pct'] as num?)?.toDouble(),
+      ultimaMordidaPreco: (json['ultima_mordida_preco'] as num?)?.toDouble(),
+      ultimaMordidaChamada: json['ultima_mordida_chamada'] as String?,
+      ultimaMordidaOrigem: json['ultima_mordida_origem'] as String?,
     );
   }
 

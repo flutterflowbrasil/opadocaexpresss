@@ -145,6 +145,51 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     }
   }
 
+  /// Ativa o modo Última Mordida em um produto.
+  Future<void> ativarUltimaMordida(
+    String produtoId, {
+    int? descontoPct,
+    String? chamada,
+    int? duracaoHoras,
+  }) async {
+    try {
+      await _repository.ativarUltimaMordida(
+        produtoId,
+        descontoPct: descontoPct,
+        chamada: chamada,
+        duracaoHoras: duracaoHoras,
+      );
+      // Recarrega os produtos para refletir os novos campos
+      final produto = state.produtos.firstWhere((p) => p.id == produtoId);
+      await _recarregarProduto(produtoId, produto.estabelecimentoId);
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao ativar Última Mordida: $e');
+    }
+  }
+
+  /// Desativa o modo Última Mordida em um produto.
+  Future<void> desativarUltimaMordida(String produtoId) async {
+    try {
+      await _repository.desativarUltimaMordida(produtoId);
+      final produto = state.produtos.firstWhere((p) => p.id == produtoId);
+      await _recarregarProduto(produtoId, produto.estabelecimentoId);
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao desativar Última Mordida: $e');
+    }
+  }
+
+  Future<void> _recarregarProduto(
+      String produtoId, String estabelecimentoId) async {
+    final todos =
+        await _repository.fetchProdutos(estabelecimentoId);
+    state = state.copyWith(produtos: todos);
+    aplicarFiltros(
+      query: state.searchQuery,
+      categoriaId: state.selectedCategoriaId,
+      status: state.selectedStatusFilter,
+    );
+  }
+
   /// Cria ou atualiza um produto via upsert e atualiza a lista local.
   Future<void> salvarProduto(ProdutoModel produto) async {
     state = state.copyWith(isLoading: true, clearError: true);

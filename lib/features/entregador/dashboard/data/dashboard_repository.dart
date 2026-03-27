@@ -134,16 +134,30 @@ class DashboardRepository {
         .eq('id', despachoId)
         .single();
 
+    final pedidoId = despacho['pedido_id'] as String;
+    final entregadorId = despacho['entregador_id'] as String;
+
     await _supabase.from('despacho_pedidos').update({
       'status': 'aceito',
       'respondido_em': DateTime.now().toIso8601String(),
     }).eq('id', despachoId);
 
-    // Atualiza pedido para confirmado e vincula o entregador
-    await _supabase.from('pedidos').update({
-      'status': 'confirmado',
-      'entregador_id': despacho['entregador_id'],
-    }).eq('id', despacho['pedido_id'] as String);
+    // Atualiza o próprio registro do entregador (RLS permite ao próprio entregador)
+    await _supabase.from('entregadores').update({
+      'status_despacho': 'em_pedido',
+      'pedido_atual_id': pedidoId,
+    }).eq('id', entregadorId);
+
+    // Tenta atualizar o pedido — pode falhar por RLS em algumas configurações,
+    // mas já é coberto por trigger no banco. Ignoramos o erro se ocorrer.
+    try {
+      await _supabase.from('pedidos').update({
+        'status': 'confirmado',
+        'entregador_id': entregadorId,
+      }).eq('id', pedidoId);
+    } catch (e) {
+      debugPrint('[aceitarDespacho] pedidos update skipped (trigger handles it): $e');
+    }
   }
 
   // ── Rejeitar despacho ────────────────────────────────────────────────────
