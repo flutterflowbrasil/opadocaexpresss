@@ -25,7 +25,9 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
   }
 
   Future<void> carregarPedidos() async {
-    state = state.copyWith(isLoading: true, error: null);
+    if (state.pedidos.isEmpty) {
+      state = state.copyWith(isLoading: true, error: null);
+    }
 
     try {
       final user = _authRepository.currentUser;
@@ -53,7 +55,7 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
   }
 
   void _iniciarRealtime(String estabId) {
-    _pedidosChannel?.unsubscribe();
+    if (_pedidosChannel != null) return;
     _pedidosChannel = _supabase
         .channel('kanban-pedidos-$estabId')
         .onPostgresChanges(
@@ -119,6 +121,7 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
 
 final pedidosKanbanControllerProvider = StateNotifierProvider.autoDispose<
     PedidosKanbanController, PedidosKanbanState>((ref) {
+  ref.keepAlive(); // Mantém o estado vivo para navegação instantânea
   final repo = ref.watch(pedidosKanbanRepositoryProvider);
   final auth = ref.watch(authRepositoryProvider);
   return PedidosKanbanController(repo, auth, Supabase.instance.client);

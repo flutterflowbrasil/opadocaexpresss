@@ -44,13 +44,13 @@ enum _Passo {
       case _Passo.confirmado:
         return 'Pedido recebido pelo estabelecimento';
       case _Passo.preparando:
-        return 'Seu pedido está sendo preparado';
+        return 'Seu pedido está sendo preparado com carinho';
       case _Passo.pronto:
         return 'Pedido pronto, aguardando entregador';
       case _Passo.aCaminho:
-        return 'Entregador a caminho';
+        return 'Entregador a caminho do seu endereço';
       case _Passo.entregue:
-        return 'Pedido entregue!';
+        return '🎉 Bom apetite!';
     }
   }
 
@@ -72,6 +72,8 @@ enum _Passo {
 
 _Passo _statusToStep(String status) {
   switch (status) {
+    case 'pendente':
+      return _Passo.confirmado; // aguardando confirmação do estab
     case 'confirmado':
       return _Passo.confirmado;
     case 'preparando':

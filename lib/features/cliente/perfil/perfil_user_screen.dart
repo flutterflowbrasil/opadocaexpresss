@@ -186,17 +186,6 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                           );
                         },
                       ),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.grey[800] : Colors.orange[50],
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.payments_outlined,
-                        title: 'Formas de Pagamento',
-                        isDark: isDark,
-                        primaryColor: primaryColor,
-                        secondaryColor: secondaryColor,
-                      ),
                     ],
                   ),
                 ),

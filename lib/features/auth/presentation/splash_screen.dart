@@ -16,14 +16,14 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _controller;
 
   // ── Anexo 2 — Logo: Ease Out · 600ms · delay 0ms ──────────────────────────
-  late final Animation<double> _logoFade;    // 0 → 1
-  late final Animation<double> _logoScale;   // 0.8x → 1x
-  late final Animation<double> _logoSlideX;  // -70px → 0px
-  late final Animation<double> _logoRotate;  // -2 turns → 2 turns (em radianos)
+  late final Animation<double> _logoFade; // 0 → 1
+  late final Animation<double> _logoScale; // 0.8x → 1x
+  late final Animation<double> _logoSlideX; // -70px → 0px
+  late final Animation<double> _logoRotate; // -2 turns → 2 turns (em radianos)
 
   // ── Anexo 1 — Texto: Ease In Out · 600ms · delay 200ms ────────────────────
-  late final Animation<double> _textFade;    // 0 → 1
-  late final Animation<double> _textScale;   // 1.1x → 1x
+  late final Animation<double> _textFade; // 0 → 1
+  late final Animation<double> _textScale; // 1.1x → 1x
 
   /// Duração total do controller: 200ms (delay texto) + 600ms = 800ms
   static const int _totalMs = 800;
@@ -50,17 +50,17 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Logo animations
-    _logoFade   = Tween<double>(begin: 0.0, end: 1.0).animate(logoCurve);
-    _logoScale  = Tween<double>(begin: 0.8, end: 1.0).animate(logoCurve);
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(logoCurve);
+    _logoScale = Tween<double>(begin: 0.8, end: 1.0).animate(logoCurve);
     _logoSlideX = Tween<double>(begin: -70.0, end: 0.0).animate(logoCurve);
     // -2 turns → +2 turns em radianos (4 rotações completas, decelerada pelo Ease Out)
     _logoRotate = Tween<double>(
       begin: -2.0 * 2.0 * math.pi,
-      end:    2.0 * 2.0 * math.pi,
+      end: 2.0 * 2.0 * math.pi,
     ).animate(logoCurve);
 
     // Texto animations
-    _textFade  = Tween<double>(begin: 0.0, end: 1.0).animate(textCurve);
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(textCurve);
     _textScale = Tween<double>(begin: 1.1, end: 1.0).animate(textCurve);
 
     _controller.forward();
@@ -93,9 +93,12 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
         child: ResponsiveLayout(
-          mobile:  (context) => _buildContent(context, logoFraction: 0.30, fontSize: 28),
-          tablet:  (context) => _buildContent(context, logoFraction: 0.22, fontSize: 32),
-          desktop: (context) => _buildContent(context, logoFraction: 0.18, fontSize: 36),
+          mobile: (context) =>
+              _buildContent(context, logoFraction: 0.30, fontSize: 28),
+          tablet: (context) =>
+              _buildContent(context, logoFraction: 0.22, fontSize: 32),
+          desktop: (context) =>
+              _buildContent(context, logoFraction: 0.18, fontSize: 36),
         ),
       ),
     );
@@ -208,7 +211,7 @@ class _SplashScreenState extends State<SplashScreen>
         const Padding(
           padding: EdgeInsets.only(bottom: 48),
           child: Text(
-            'PADOCA EXPRESS',
+            'ÔPADOCA EXPRESS',
             style: TextStyle(
               color: Color(0xCCFFFFFF),
               fontSize: 14,

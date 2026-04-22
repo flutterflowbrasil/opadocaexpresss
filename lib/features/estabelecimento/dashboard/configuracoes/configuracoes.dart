@@ -14,6 +14,7 @@ import 'componentes_config/bancarios_tab.dart';
 import 'componentes_config/horarios_tab.dart';
 import 'componentes_config/avancado_tab.dart';
 import 'componentes_config/responsavel_tab.dart';
+import 'componentes_config/notificacoes_tab.dart';
 
 class ConfiguracoesScreen extends ConsumerStatefulWidget {
   const ConfiguracoesScreen({super.key});
@@ -30,7 +31,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this);
+    _tabController = TabController(length: 9, vsync: this);
   }
 
   @override
@@ -68,6 +69,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
                         AvancadoTab(isDark: isDark),
                         ResponsavelTab(isDark: isDark),
                         BancariosTab(isDark: isDark),
+                        NotificacoesTab(isDark: isDark),
                       ],
                     ),
                   ),
@@ -244,6 +246,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
           Tab(text: 'Avançado'),
           Tab(text: 'Responsável'),
           Tab(text: 'Bancário'),
+          Tab(text: 'Notificações'),
         ],
       ),
     );

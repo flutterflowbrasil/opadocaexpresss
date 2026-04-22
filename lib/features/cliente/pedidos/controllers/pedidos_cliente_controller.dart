@@ -26,6 +26,8 @@ class PedidosClienteController extends StateNotifier<PedidosClienteState> {
       // 1. Buscar o ID do Cliente logado
       final clienteId = await _repository.getClienteId(user.id);
 
+      if (!mounted) return;
+
       if (clienteId == null) {
         state = state.copyWith(
             isLoading: false, error: 'Perfil de cliente não encontrado');
@@ -34,6 +36,8 @@ class PedidosClienteController extends StateNotifier<PedidosClienteState> {
 
       // 2. Buscar os Pedidos no Repository
       final todosPedidos = await _repository.getPedidosCliente(clienteId);
+
+      if (!mounted) return;
 
       // 3. Separar Ativos de Anteriores (Baseado na regra do Model)
       final ativos = todosPedidos.where((p) => p.isAtivo).toList();
@@ -45,6 +49,7 @@ class PedidosClienteController extends StateNotifier<PedidosClienteState> {
         pedidosAnteriores: anteriores,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),

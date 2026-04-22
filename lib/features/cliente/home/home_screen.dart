@@ -6,15 +6,27 @@ import 'package:padoca_express/features/cliente/home/home_content.dart';
 import 'package:padoca_express/features/cliente/perfil/perfil_user_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:padoca_express/features/cliente/notificacoes/controllers/notificacoes_controller.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializa o serviço de notificações em tempo real
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificacoesControllerProvider.notifier).init();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

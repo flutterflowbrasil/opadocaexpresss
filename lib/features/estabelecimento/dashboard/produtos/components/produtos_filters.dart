@@ -178,7 +178,8 @@ class ProdutosFilters extends ConsumerWidget {
                   title: 'Todos',
                   isActive: selectedCatId == null,
                   count: ref.read(produtosControllerProvider).produtos.length,
-                  onTap: () => controller.aplicarFiltros(categoriaId: null),
+                  onTap: () => controller.aplicarFiltros(
+                      categoriaId: null, setCategoriaId: true),
                 ),
                 ...categorias.where((c) => c.ativa).map((cat) {
                   // Count total the produtos sem filtro textual para cada tab
@@ -193,8 +194,8 @@ class ProdutosFilters extends ConsumerWidget {
                       title: cat.nome,
                       isActive: selectedCatId == cat.id,
                       count: badgeCount,
-                      onTap: () =>
-                          controller.aplicarFiltros(categoriaId: cat.id),
+                      onTap: () => controller.aplicarFiltros(
+                          categoriaId: cat.id, setCategoriaId: true),
                     ),
                   );
                 }),

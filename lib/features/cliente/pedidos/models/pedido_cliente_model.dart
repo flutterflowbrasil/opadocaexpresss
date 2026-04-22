@@ -110,7 +110,7 @@ class PedidoClienteModel {
       case 'pendente':
         return 'aguardando';
       case 'confirmado':
-        return 'preparando';
+        return 'confirmado';
       case 'preparando':
         return 'preparando';
       case 'pronto':
@@ -124,11 +124,20 @@ class PedidoClienteModel {
       case 'cancelado_sistema':
         return 'cancelado';
       default:
-        return status;
+        return status.replaceAll('_', ' ');
     }
   }
 
   bool get isAtivo {
+    // Pedidos ativos = tudo exceto entregue e cancelados
     return status != 'entregue' && !status.startsWith('cancelado');
   }
+
+  /// Retorna estado formatado em MAIÚSCULO (ex: 'sp' → 'SP')
+  String get enderecoEstadoFmt {
+    final snap = _estadoFromJsonIfAny;
+    return snap.toUpperCase();
+  }
+
+  String get _estadoFromJsonIfAny => '';
 }

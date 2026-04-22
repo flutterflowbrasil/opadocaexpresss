@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'produtos_state.dart';
 import '../data/produtos_repository.dart';
 import '../models/produto_model.dart';
+import '../../../models/categoria_cardapio_model.dart';
 
 final produtosControllerProvider =
     StateNotifierProvider.autoDispose<ProdutosController, ProdutosState>((ref) {
+  ref.keepAlive(); // Mantém o estado vivo para navegação instantânea
   final repository = ref.read(produtosRepositoryProvider);
   return ProdutosController(repository);
 });
@@ -16,8 +18,10 @@ class ProdutosController extends StateNotifier<ProdutosState> {
 
   /// Carrega os dados primários usando a Injeção de Dependências
   Future<void> loadDados(String estabelecimentoId) async {
-    state = state.copyWith(
-        isLoading: true, clearError: true); // Anula o erro anterior, se houver
+    // Se já existem produtos, faz um refresh silencioso (instantâneo na UI)
+    if (state.produtos.isEmpty) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    }
 
     try {
       // Usamos Future.wait para paralelizar chamadas independentes ao invés de await sequencial.
@@ -53,12 +57,14 @@ class ProdutosController extends StateNotifier<ProdutosState> {
   void aplicarFiltros(
       {String? query,
       String? categoriaId,
+      bool setCategoriaId = false,
       String? status,
       bool setStatus = false}) {
     // Guarda o filtro atual para persistir na UI
     state = state.copyWith(
       searchQuery: query != null ? () => query : () => state.searchQuery,
-      selectedCategoriaId: categoriaId != null
+      // Se `setCategoriaId` for true, força o valor (inclusive null), senão mantém o atual
+      selectedCategoriaId: (categoriaId != null || setCategoriaId)
           ? () => categoriaId
           : () => state.selectedCategoriaId,
       // Se `setStatus` for true, força o valor (inclusive null), senão mantém o atual
@@ -189,6 +195,50 @@ class ProdutosController extends StateNotifier<ProdutosState> {
       status: state.selectedStatusFilter,
     );
   }
+
+  // ── Categorias ─────────────────────────────────────────────────────────────
+
+  /// Cria ou atualiza uma categoria do cardápio.
+  Future<void> salvarCategoria(CategoriaCardapioModel categoria) async {
+    try {
+      final saved = await _repository.saveCategoria(categoria);
+      final isNew = !state.categorias.any((c) => c.id == saved.id);
+      final updated = isNew
+          ? [...state.categorias, saved]
+          : state.categorias
+              .map((c) => c.id == saved.id ? saved : c)
+              .toList();
+      state = state.copyWith(categorias: updated);
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao salvar categoria: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove uma categoria do cardápio.
+  Future<void> deletarCategoria(String categoriaId) async {
+    try {
+      await _repository.deleteCategoria(categoriaId);
+      final updated =
+          state.categorias.where((c) => c.id != categoriaId).toList();
+      // Se o filtro atual era por esta categoria, limpa o filtro
+      final newCatFilter = state.selectedCategoriaId == categoriaId
+          ? null
+          : state.selectedCategoriaId;
+      state = state.copyWith(categorias: updated);
+      aplicarFiltros(
+        query: state.searchQuery,
+        categoriaId: newCatFilter,
+        status: state.selectedStatusFilter,
+        setStatus: newCatFilter == null && state.selectedCategoriaId != null,
+      );
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao remover categoria: $e');
+      rethrow;
+    }
+  }
+
+  // ── Produtos ────────────────────────────────────────────────────────────────
 
   /// Cria ou atualiza um produto via upsert e atualiza a lista local.
   Future<void> salvarProduto(ProdutoModel produto) async {

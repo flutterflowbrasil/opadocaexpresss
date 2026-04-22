@@ -177,7 +177,13 @@ class DashboardController extends StateNotifier<DashboardState> {
   Future<void> _fetchMetricsForPeriod() async {
     if (state.estabelecimentoId == null) return;
 
-    state = state.copyWith(isLoading: true, error: null);
+    // Apenas ativa tela de loading completa se for a primeira carga ou se não houver dados.
+    // mudarPeriodo já seta isLoading = true por conta própria.
+    if (!state.isLoading && state.totalPedidos == 0 && state.vendasTotal == 0.0) {
+      state = state.copyWith(isLoading: true, error: null);
+    } else {
+      state = state.copyWith(error: null);
+    }
     try {
       DateTime inicio;
       DateTime fim = DateTime.now();
@@ -282,10 +288,12 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 }
 
-// Memory Leak Prevention: Use autoDispose sem keepAlive na Controller principal
+// Memory Leak Prevention: Como agora exigimos navegação instantânea,
+// o keepAlive foi adicionado para manter o cache em memória ativo.
 final dashboardControllerProvider =
     StateNotifierProvider.autoDispose<DashboardController, DashboardState>(
         (ref) {
+  ref.keepAlive(); // Mantém vivo para navegação rápida
   final repository = ref.watch(dashboardRepositoryProvider);
   return DashboardController(repository);
 });

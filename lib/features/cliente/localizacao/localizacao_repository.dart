@@ -132,62 +132,108 @@ class LocalizacaoRepository {
         .eq('id', enderecoId);
   }
 
-  // ── Geocodificação via Nominatim (OpenStreetMap) — sem API key ───────────
+  // ── Geocodificação via Nominatim (OpenStreetMap) com Fallback ────────────
+  // Utilizamos um User-Agent de browser mobile para evitar bloqueios de API 
+  // comuns em requisições Dart a partir de IPs de operadoras de celular.
   static const _nominatimHeaders = {
-    'User-Agent': 'PadocaExpressApp/1.0 (contato@padocaexpress.com.br)',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+    'Accept': 'application/json',
     'Accept-Language': 'pt-BR,pt;q=0.9',
   };
 
-  /// Reverse geocode: lat/lng → endereço completo via Nominatim.
+  /// Reverse geocode: lat/lng → endereço completo via Nominatim com fallback para Photon.
   Future<Map<String, dynamic>?> reverseGeocode(double lat, double lng) async {
     try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
-        'lat': '$lat',
+      // 1. Tenta via Nominatim primário
+      try {
+        final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+          'lat': '$lat',
+          'lon': '$lng',
+          'format': 'json',
+          'accept-language': 'pt-BR',
+          'addressdetails': '1',
+        });
+
+        final res = await http
+            .get(uri, headers: _nominatimHeaders)
+            .timeout(const Duration(seconds: 8));
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body) as Map<String, dynamic>;
+          final address = data['address'] as Map<String, dynamic>?;
+          if (address != null) {
+            final cep = (address['postcode'] as String? ?? '')
+                .replaceAll(RegExp(r'\D'), '');
+            final logradouro = address['road'] ??
+                address['pedestrian'] ??
+                address['cycleway'] ??
+                address['path'] ??
+                '';
+            final bairro = address['suburb'] ??
+                address['neighbourhood'] ??
+                address['quarter'] ??
+                address['district'] ??
+                '';
+            final cidade = address['city'] ??
+                address['town'] ??
+                address['village'] ??
+                address['municipality'] ??
+                '';
+            // Recupera o estado (UF). 
+            // O Nominatim do Brasil retorna 'ISO3166-2-lvl4' ex: 'BR-SP'
+            String estado = '';
+            final isoCode = address['ISO3166-2-lvl4'] as String?;
+            if (isoCode != null && isoCode.startsWith('BR-')) {
+              estado = isoCode.substring(3);
+            } else {
+              estado = address['state_code'] as String? ?? address['state'] as String? ?? '';
+            }
+
+            return {
+              'cep': cep,
+              'logradouro': logradouro,
+              'bairro': bairro,
+              'cidade': cidade,
+              'estado': estado,
+              'formatted': data['display_name'] ?? '',
+            };
+          }
+        }
+      } catch (e) {
+        debugPrint('[LocalizacaoRepository] Nominatim reverse fail: $e');
+      }
+
+      // 2. Tenta via Photon (Komoot) se Nominatim falhar (rate limit ou bloqueio)
+      final uriPhoton = Uri.https('photon.komoot.io', '/reverse', {
         'lon': '$lng',
-        'format': 'json',
-        'accept-language': 'pt-BR',
-        'addressdetails': '1',
+        'lat': '$lat',
       });
+      final resPhoton = await http
+          .get(uriPhoton, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 8));
 
-      final res = await http
-          .get(uri, headers: _nominatimHeaders)
-          .timeout(const Duration(seconds: 10));
-
-      if (res.statusCode != 200) return null;
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final address = data['address'] as Map<String, dynamic>?;
-      if (address == null) return null;
-
-      final cep = (address['postcode'] as String? ?? '')
-          .replaceAll(RegExp(r'\D'), '');
-      final logradouro = address['road'] ??
-          address['pedestrian'] ??
-          address['cycleway'] ??
-          address['path'] ??
-          '';
-      final bairro = address['suburb'] ??
-          address['neighbourhood'] ??
-          address['quarter'] ??
-          address['district'] ??
-          '';
-      final cidade = address['city'] ??
-          address['town'] ??
-          address['village'] ??
-          address['municipality'] ??
-          '';
-      // state_code retorna "SP", "RJ", etc. para o Brasil
-      final estado = address['state_code'] as String? ?? '';
-
-      return {
-        'cep': cep,
-        'logradouro': logradouro,
-        'bairro': bairro,
-        'cidade': cidade,
-        'estado': estado,
-        'formatted': data['display_name'] ?? '',
-      };
+      if (resPhoton.statusCode == 200) {
+        final data = jsonDecode(resPhoton.body);
+        final features = data['features'] as List?;
+        if (features != null && features.isNotEmpty) {
+          final prop = features[0]['properties'] as Map<String, dynamic>;
+          
+          // Trata estado no Photon
+          String estadoPhoton = prop['state'] ?? '';
+          
+          return {
+            'cep': (prop['postcode'] as String? ?? '').replaceAll(RegExp(r'\D'), ''),
+            'logradouro': prop['street'] ?? prop['name'] ?? '',
+            'bairro': prop['district'] ?? prop['locality'] ?? '',
+            'cidade': prop['city'] ?? prop['town'] ?? '',
+            'estado': estadoPhoton,
+            'formatted': prop['name'] ?? '',
+          };
+        }
+      }
+      return null;
     } catch (e) {
-      debugPrint('[LocalizacaoRepository] reverseGeocode erro: $e');
+      debugPrint('[LocalizacaoRepository] reverseGeocode fallback erro: $e');
       return null;
     }
   }

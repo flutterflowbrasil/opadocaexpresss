@@ -9,6 +9,7 @@ import 'configuracoes_state.dart';
 final configuracoesControllerProvider = StateNotifierProvider.autoDispose<
     ConfiguracoesController, ConfiguracoesState>(
   (ref) {
+    ref.keepAlive(); // Mantém o estado vivo para navegação instantânea
     final repository = ref.watch(configuracoesRepositoryProvider);
     final supabaseClient = Supabase.instance.client;
     return ConfiguracoesController(repository, supabaseClient);
@@ -25,7 +26,9 @@ class ConfiguracoesController extends StateNotifier<ConfiguracoesState> {
   }
 
   Future<void> carregarDados() async {
-    state = state.copyWith(isLoading: true, error: null);
+    if (state.originalEstab == null) {
+      state = state.copyWith(isLoading: true, error: null);
+    }
     try {
       final user = _supabaseClient.auth.currentUser;
       if (user == null) throw Exception('Usuário não autenticado');

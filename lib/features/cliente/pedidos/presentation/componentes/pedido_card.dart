@@ -24,16 +24,23 @@ class PedidoCard extends StatelessWidget {
     // Tratamentos de cor de status
     Color statusBgColor;
     Color statusTextColor;
+    final st = pedido.statusDisplay;
 
-    if (pedido.statusDisplay == 'entregue') {
+    if (st == 'entregue') {
       statusBgColor = isDark
           ? Colors.green[900]!.withValues(alpha: 0.3)
           : Colors.green[100]!;
       statusTextColor = isDark ? Colors.green[400]! : Colors.green[700]!;
-    } else if (pedido.statusDisplay == 'cancelado') {
+    } else if (st == 'cancelado') {
       statusBgColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
       statusTextColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+    } else if (st == 'pronto') {
+      statusBgColor = isDark
+          ? Colors.blue[900]!.withValues(alpha: 0.3)
+          : Colors.blue[50]!;
+      statusTextColor = isDark ? Colors.blue[300]! : Colors.blue[700]!;
     } else {
+      // aguardando / confirmado / preparando / a caminho
       statusBgColor = isDark
           ? Colors.orange[900]!.withValues(alpha: 0.3)
           : Colors.orange[100]!;
@@ -144,13 +151,13 @@ class PedidoCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.credit_card, // Icone generico por hora
+                          _iconPagamento(pedido.pagamentoMetodo),
                           size: 14,
                           color: isDark ? Colors.grey[500] : Colors.grey[400],
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          pedido.pagamentoMetodo == 'pix' ? 'Pix' : 'Cartão',
+                          _labelPagamento(pedido.pagamentoMetodo),
                           style: GoogleFonts.outfit(
                             fontSize: 10,
                             color: isDark ? Colors.grey[500] : Colors.grey[400],
@@ -233,34 +240,37 @@ class PedidoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (!pedido.isAtivo && pedido.statusDisplay != 'cancelado') ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Pedir Novamente
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text(
-                        'Pedir Novamente',
-                        style: GoogleFonts.outfit(
-                            fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ]
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  IconData _iconPagamento(String? metodo) {
+    switch (metodo) {
+      case 'pix':
+        return Icons.pix_outlined;
+      case 'cartao_credito':
+        return Icons.credit_card_outlined;
+      case 'cartao_debito':
+        return Icons.payment_outlined;
+      default:
+        return Icons.attach_money_outlined;
+    }
+  }
+
+  String _labelPagamento(String? metodo) {
+    switch (metodo) {
+      case 'pix':
+        return 'Pix';
+      case 'cartao_credito':
+        return 'Crédito';
+      case 'cartao_debito':
+        return 'Débito';
+      default:
+        return metodo?.isNotEmpty == true ? metodo! : 'N/D';
+    }
   }
 }

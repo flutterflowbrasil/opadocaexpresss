@@ -7,6 +7,7 @@ import 'models/financeiro_models.dart';
 final financeiroControllerProvider =
     StateNotifierProvider.autoDispose<FinanceiroController, FinanceiroState>(
         (ref) {
+  ref.keepAlive(); // Mantém o estado vivo para navegação instantânea
   final repo = ref.watch(financeiroRepositoryProvider);
   return FinanceiroController(repo)..carregarDadosIniciais();
 });
@@ -17,7 +18,9 @@ class FinanceiroController extends StateNotifier<FinanceiroState> {
   FinanceiroController(this._repository) : super(FinanceiroState());
 
   Future<void> carregarDadosIniciais() async {
-    state = state.copyWith(isLoading: true, error: null);
+    if (state.estabelecimento == null) {
+      state = state.copyWith(isLoading: true, error: null);
+    }
 
     try {
       final estab = await _repository.buscarEstabelecimento();

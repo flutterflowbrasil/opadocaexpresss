@@ -160,6 +160,7 @@ class _DashboardHome extends ConsumerWidget {
                         tipoVeiculo: state.vehicleType,
                         online: state.isOnline,
                         fotoPerfilUrl: state.fotoPerfilUrl,
+                        statusDespacho: state.statusDespacho,
                       ),
                     ),
 
@@ -197,16 +198,24 @@ class _DashboardHome extends ConsumerWidget {
                       ),
                     ),
 
-                    // ── Pedido ativo ────────────────────────────────────
-                    if (state.pedidoAtivo != null)
+                    // ── Entrega ativa ───────────────────────────────────
+                    if (state.statusDespacho == 'em_pedido' &&
+                        state.pedidoAtualId != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                        child: PedidoAtivoCard(
-                          pedido: state.pedidoAtivo!,
-                          onConfirmar: () => ref
-                              .read(dashboardControllerProvider.notifier)
-                              .confirmarEntrega(),
-                        ),
+                        child: state.pedidoAtivo != null
+                            ? PedidoAtivoCard(
+                                pedido: state.pedidoAtivo!,
+                                onRetomar: () => context.push(
+                                  '/dashboard_entregador/entrega/${state.pedidoAtualId}',
+                                ),
+                              )
+                            : EntregaAtivaBanner(
+                                pedidoId: state.pedidoAtualId!,
+                                onRetomar: () => context.push(
+                                  '/dashboard_entregador/entrega/${state.pedidoAtualId}',
+                                ),
+                              ),
                       ),
 
                     // ── Meta semanal (quando online) ────────────────────

@@ -96,7 +96,13 @@ class PagamentoController extends StateNotifier<PagamentoState> {
       const taxaServicoPct = 0.05; // 5% — conforme plataforma_configuracoes
       final taxaServicoApp =
           double.parse((subtotal * taxaServicoPct).toStringAsFixed(2));
-      final total = subtotal + taxaEntrega + taxaServicoApp;
+      final desconto = carrinho.desconto;
+      // Total = subtotal + taxas - desconto cupom (nunca negativo)
+      final total = (subtotal + taxaEntrega + taxaServicoApp - desconto)
+          .clamp(0.0, double.infinity);
+
+      // Cupom (se aplicado)
+      final cupom = carrinho.cupomAplicado;
 
       // 1. INSERT pedido
       final pedidoId = await _repository.inserirPedido(
@@ -110,6 +116,8 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         pagamentoMetodo: metodoPagamento,
         enderecoEntregaId: enderecoId,
         enderecoSnapshot: endereco.toJson(),
+        cupomId: cupom?.id,
+        descontoCupom: desconto > 0 ? desconto : null,
       );
 
       // 2. Criar cobrança no Asaas via Edge Function

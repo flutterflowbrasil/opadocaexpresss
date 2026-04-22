@@ -1,27 +1,46 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:padoca_express/features/cliente/carrinho/data/cupom_repository.dart';
+import 'package:padoca_express/features/cliente/carrinho/models/cupom_model.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Estado do Carrinho
+// ─────────────────────────────────────────────────────────────────────────────
 class CarrinhoState {
   final List<ItemCarrinhoModel> itens;
-  final EstabelecimentoModel?
-      estabelecimento; // O carrinho atual pertence a qual padaria?
+  final EstabelecimentoModel? estabelecimento;
+  final CupomModel? cupomAplicado;
+  final bool isValidandoCupom;
+  final String? cupomErro;
 
-  CarrinhoState({
+  const CarrinhoState({
     this.itens = const [],
     this.estabelecimento,
+    this.cupomAplicado,
+    this.isValidandoCupom = false,
+    this.cupomErro,
   });
 
   CarrinhoState copyWith({
     List<ItemCarrinhoModel>? itens,
     EstabelecimentoModel? estabelecimento,
+    CupomModel? cupomAplicado,
+    bool clearCupom = false,
+    bool? isValidandoCupom,
+    String? cupomErro,
+    bool clearCupomErro = false,
   }) {
     return CarrinhoState(
       itens: itens ?? this.itens,
       estabelecimento: estabelecimento ?? this.estabelecimento,
+      cupomAplicado: clearCupom ? null : (cupomAplicado ?? this.cupomAplicado),
+      isValidandoCupom: isValidandoCupom ?? this.isValidandoCupom,
+      cupomErro: clearCupomErro ? null : (cupomErro ?? this.cupomErro),
     );
   }
 
@@ -34,6 +53,7 @@ class CarrinhoState {
           ? EstabelecimentoModel.fromJson(
               json['estabelecimento'] as Map<String, dynamic>)
           : null,
+      // Cupom NÃO é persistido localmente por segurança — re-validado sempre
     );
   }
 
@@ -46,20 +66,36 @@ class CarrinhoState {
 
   int get quantidadeTotal =>
       itens.fold(0, (total, item) => total + item.quantidade);
+
   double get valorTotalProdutos =>
       itens.fold(0.0, (total, item) => total + item.subtotal);
-  double get valorTotal =>
-      valorTotalProdutos + (estabelecimento?.taxaEntregaValor ?? 0.0);
+
+  double get desconto {
+    if (cupomAplicado == null) return 0;
+    final taxaEntrega = estabelecimento?.taxaEntregaValor ?? 0;
+    return cupomAplicado!
+        .calcularDesconto(valorTotalProdutos, taxaEntrega: taxaEntrega);
+  }
+
+  double get valorTotal {
+    final base =
+        valorTotalProdutos + (estabelecimento?.taxaEntregaValor ?? 0.0);
+    return (base - desconto).clamp(0, double.infinity);
+  }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Controller
+// ─────────────────────────────────────────────────────────────────────────────
 class CarrinhoController extends StateNotifier<CarrinhoState> {
   static const _storageKey = 'padoca_carrinho_state';
-  // A1: Migrado de SharedPreferences para FlutterSecureStorage (criptografado)
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  CarrinhoController() : super(CarrinhoState()) {
+  final CupomRepository _cupomRepo;
+
+  CarrinhoController(this._cupomRepo) : super(const CarrinhoState()) {
     _loadState();
   }
 
@@ -69,9 +105,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
       if (data != null) {
         state = CarrinhoState.fromJson(jsonDecode(data));
       }
-    } catch (_) {
-      // Ignorar e manter o carrinho vazio em caso de erro na desserialização
-    }
+    } catch (_) {}
   }
 
   Future<void> _updateState(CarrinhoState newState) async {
@@ -81,14 +115,13 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
         key: _storageKey,
         value: jsonEncode(newState.toJson()),
       );
-    } catch (_) {
-      // Falha ao salvar no storage local
-    }
+    } catch (_) {}
   }
+
+  // ── Produtos ───────────────────────────────────────────────────────────────
 
   void adicionarProduto(ProdutoModel produto, int quantidade,
       {String? observacao, EstabelecimentoModel? estabelecimento}) {
-    // Se está adicionando de outro estabelecimento, limpa o carrinho atual
     if (state.estabelecimento != null &&
         estabelecimento != null &&
         state.estabelecimento!.id != estabelecimento.id) {
@@ -99,21 +132,17 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
         item.produto.id == produto.id && item.observacao == observacao);
 
     if (index >= 0) {
-      // Produto já existe, apenas incrementa a quantidade
       final item = state.itens[index];
       final novaLista = List<ItemCarrinhoModel>.from(state.itens);
       novaLista[index] =
           item.copyWith(quantidade: item.quantidade + quantidade);
-
       _updateState(state.copyWith(
           itens: novaLista,
           estabelecimento: estabelecimento ?? state.estabelecimento));
     } else {
-      // Novo produto no carrinho
       final novaLista = List<ItemCarrinhoModel>.from(state.itens)
         ..add(ItemCarrinhoModel(
             produto: produto, quantidade: quantidade, observacao: observacao));
-
       _updateState(state.copyWith(
           itens: novaLista,
           estabelecimento: estabelecimento ?? state.estabelecimento));
@@ -154,23 +183,60 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
       final item = state.itens[index];
       final novaLista = List<ItemCarrinhoModel>.from(state.itens);
       novaLista[index] = item.copyWith(quantidade: novaQuantidade);
-
       _updateState(state.copyWith(itens: novaLista));
     }
   }
 
   Future<void> limparCarrinho() async {
-    state = CarrinhoState();
+    state = const CarrinhoState();
     try {
       await _storage.delete(key: _storageKey);
-    } catch (_) {
-      // Falha ao limpar storage local
+    } catch (_) {}
+  }
+
+  // ── Cupom ──────────────────────────────────────────────────────────────────
+
+  /// Tenta aplicar um cupom pelo código digitado.
+  Future<void> aplicarCupom(String codigo) async {
+    if (codigo.trim().isEmpty) return;
+
+    state = state.copyWith(
+      isValidandoCupom: true,
+      clearCupomErro: true,
+    );
+
+    final resultado = await _cupomRepo.validarCupom(
+      codigo: codigo,
+      subtotalProdutos: state.valorTotalProdutos,
+      estabelecimentoId: state.estabelecimento?.id,
+    );
+
+    if (resultado is CupomValido) {
+      state = state.copyWith(
+        cupomAplicado: resultado.cupom,
+        isValidandoCupom: false,
+        clearCupomErro: true,
+      );
+    } else if (resultado is CupomInvalido) {
+      state = state.copyWith(
+        clearCupom: true,
+        isValidandoCupom: false,
+        cupomErro: resultado.mensagem,
+      );
     }
+  }
+
+  void removerCupom() {
+    state = state.copyWith(clearCupom: true, clearCupomErro: true);
+    debugPrint('[Carrinho] Cupom removido');
   }
 }
 
-// Global Provider para o Carrinho (in-memory)
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider
+// ─────────────────────────────────────────────────────────────────────────────
 final carrinhoControllerProvider =
     StateNotifierProvider<CarrinhoController, CarrinhoState>((ref) {
-  return CarrinhoController();
+  final cupomRepo = ref.watch(cupomRepositoryProvider);
+  return CarrinhoController(cupomRepo);
 });

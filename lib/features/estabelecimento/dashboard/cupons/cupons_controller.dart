@@ -5,6 +5,7 @@ import 'data/cupons_repository.dart';
 
 final cuponsControllerProvider =
     StateNotifierProvider.autoDispose<CuponsController, CuponsState>((ref) {
+  ref.keepAlive(); // Mantém o estado vivo para navegação instantânea
   final repository = ref.watch(cuponsRepositoryProvider);
   // Precisamos do estabelecimento logado atual para amarrar os cupons à ele
   final estabState = ref.watch(dashboardControllerProvider);
@@ -94,7 +95,9 @@ class CuponsController extends StateNotifier<CuponsState> {
   Future<void> carregarCupons() async {
     if (_estabelecimentoId == null) return;
 
-    state = state.copyWith(isLoading: true, cleanError: true);
+    if (state.cupons.isEmpty) {
+      state = state.copyWith(isLoading: true, cleanError: true);
+    }
     try {
       final lista = await _repository.fetchCupons(_estabelecimentoId);
       state = state.copyWith(isLoading: false, cupons: lista);

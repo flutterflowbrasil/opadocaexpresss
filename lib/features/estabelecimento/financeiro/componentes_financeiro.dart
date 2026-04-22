@@ -112,9 +112,10 @@ class KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return CardContainer(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,7 +138,7 @@ class KpiCard extends StatelessWidget {
                   )
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             if (loading) ...[
               Container(
                   height: 28,
@@ -153,20 +154,32 @@ class KpiCard extends StatelessWidget {
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(5))),
             ] else ...[
-              Text(value,
-                  style: GoogleFonts.publicSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF111827),
-                      height: 1)),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: GoogleFonts.publicSans(
-                      fontSize: 11, color: const Color(0xFF9CA3AF))),
-              if (sub != null)
-                Text(sub!,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value,
                     style: GoogleFonts.publicSans(
-                        fontSize: 10, color: const Color(0xFF9CA3AF))),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF111827),
+                        height: 1)),
+              ),
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: GoogleFonts.publicSans(
+                        fontSize: 11, color: const Color(0xFF9CA3AF))),
+              ),
+              if (sub != null)
+                Flexible(
+                  child: Text(sub!,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: GoogleFonts.publicSans(
+                          fontSize: 10, color: const Color(0xFF9CA3AF))),
+                ),
             ],
           ],
         ),
@@ -185,6 +198,11 @@ class SparklinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
+
+    if (data.length == 1) {
+      canvas.drawCircle(Offset(size.width / 2, size.height / 2), 3, Paint()..color = color);
+      return;
+    }
 
     final maxVal = data.reduce(max) == 0 ? 1 : data.reduce(max);
     final minVal = data.reduce(min);

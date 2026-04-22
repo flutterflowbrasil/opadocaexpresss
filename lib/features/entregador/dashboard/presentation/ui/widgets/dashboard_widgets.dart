@@ -128,6 +128,134 @@ class _ShimmerBox extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ENTREGA ATIVA BANNER — aparece quando há pedido ativo mas dados ainda carregando
+// ═══════════════════════════════════════════════════════════════════════════
+class EntregaAtivaBanner extends StatefulWidget {
+  final String pedidoId;
+  final VoidCallback onRetomar;
+
+  const EntregaAtivaBanner({
+    super.key,
+    required this.pedidoId,
+    required this.onRetomar,
+  });
+
+  @override
+  State<EntregaAtivaBanner> createState() => _EntregaAtivaBannerState();
+}
+
+class _EntregaAtivaBannerState extends State<EntregaAtivaBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.2, end: 0.55).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _glow,
+      builder: (_, __) => GestureDetector(
+        onTap: widget.onRetomar,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1A0A02), Color(0xFF0D0600)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: orangeColor.withValues(alpha: _glow.value),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: orangeColor.withValues(alpha: _glow.value * 0.5),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: orangeColor.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Text('🛵', style: TextStyle(fontSize: 26)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Entrega em andamento',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: text1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Toque para retomar a entrega ativa',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: orangeColor.withValues(alpha: .8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: orangeColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Retomar',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HEADER
 // ═══════════════════════════════════════════════════════════════════════════
 class DashboardHeader extends StatelessWidget {
@@ -135,6 +263,7 @@ class DashboardHeader extends StatelessWidget {
   final String tipoVeiculo;
   final bool online;
   final String? fotoPerfilUrl;
+  final String statusDespacho;
 
   const DashboardHeader({
     super.key,
@@ -142,6 +271,7 @@ class DashboardHeader extends StatelessWidget {
     required this.tipoVeiculo,
     required this.online,
     this.fotoPerfilUrl,
+    this.statusDespacho = 'livre',
   });
 
   @override
@@ -193,15 +323,27 @@ class DashboardHeader extends StatelessWidget {
                     height: 6,
                     margin: const EdgeInsets.only(right: 5),
                     decoration: BoxDecoration(
-                      color: online ? greenColor : text3,
+                      color: statusDespacho == 'em_pedido'
+                          ? orangeColor
+                          : online
+                              ? greenColor
+                              : text3,
                       shape: BoxShape.circle,
                     ),
                   ),
                   Text(
-                    online ? 'Online · Aguardando' : 'Offline · $tipoVeiculo',
+                    statusDespacho == 'em_pedido'
+                        ? 'Em entrega · Ativo'
+                        : online
+                            ? 'Online · Aguardando'
+                            : 'Offline · $tipoVeiculo',
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: online ? greenColor : text3,
+                      color: statusDespacho == 'em_pedido'
+                          ? orangeColor
+                          : online
+                              ? greenColor
+                              : text3,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -960,12 +1102,12 @@ class _DespachoChip extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════
 class PedidoAtivoCard extends StatelessWidget {
   final PedidoAtivo pedido;
-  final VoidCallback onConfirmar;
+  final VoidCallback onRetomar;
 
   const PedidoAtivoCard({
     super.key,
     required this.pedido,
-    required this.onConfirmar,
+    required this.onRetomar,
   });
 
   @override
@@ -1041,30 +1183,38 @@ class PedidoAtivoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          // Botão principal: retomar entrega ativa
           SizedBox(
             width: double.infinity,
-            height: 44,
+            height: 48,
             child: GestureDetector(
-              onTap: onConfirmar,
+              onTap: onRetomar,
               child: Container(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                      colors: [blueColor, Color(0xFF2563EB)]),
+                      colors: [orangeColor, orangeDColor]),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                        color: blueColor.withValues(alpha: .3),
-                        blurRadius: 12)
+                        color: orangeColor.withValues(alpha: .35),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4))
                   ],
                 ),
-                child: Center(
-                  child: Text(
-                    'Confirmar Entrega',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white),
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.navigation_rounded,
+                        color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Retomar entrega',
+                      style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white),
+                    ),
+                  ],
                 ),
               ),
             ),

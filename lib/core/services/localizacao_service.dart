@@ -25,9 +25,6 @@ Future<Position?> obterLocalizacao() async {
 
     // 2. Verifica permissão atual
     var permission = await Geolocator.checkPermission();
-    if (kDebugMode) {
-      debugPrint('[Localizacao] Status da permissão atual: $permission');
-    }
 
     // 3. Pede permissão apenas se ainda não foi solicitada
     if (permission == LocationPermission.denied) {
@@ -35,9 +32,6 @@ Future<Position?> obterLocalizacao() async {
         debugPrint('[Localizacao] Solicitando permissão ao usuário...');
       }
       permission = await Geolocator.requestPermission();
-      if (kDebugMode) {
-        debugPrint('[Localizacao] Resposta da solicitação: $permission');
-      }
       if (permission == LocationPermission.denied) {
         return null;
       }
@@ -52,10 +46,6 @@ Future<Position?> obterLocalizacao() async {
     }
 
     // 5. Obtém a posição usando o utilitário seguro para a plataforma
-    if (kDebugMode) {
-      debugPrint(
-          '[Localizacao] Obtendo posição com utilitário específico da plataforma...');
-    }
     Position? position;
     try {
       position = await getWebSafePosition();
@@ -64,9 +54,6 @@ Future<Position?> obterLocalizacao() async {
         debugPrint('[Localizacao] Erro em getWebSafePosition: $e');
       }
       if (!kIsWeb) {
-        if (kDebugMode) {
-          debugPrint('[Localizacao] Tentando getLastKnownPosition...');
-        }
         try {
           position = await Geolocator.getLastKnownPosition();
         } catch (e2) {
@@ -75,10 +62,6 @@ Future<Position?> obterLocalizacao() async {
           }
         }
       }
-    }
-    if (kDebugMode) {
-      debugPrint(
-          '[Localizacao] Posição obtida: ${position?.latitude}, ${position?.longitude}');
     }
     return position;
   } catch (e, stack) {

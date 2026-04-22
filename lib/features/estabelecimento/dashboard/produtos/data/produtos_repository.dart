@@ -89,4 +89,29 @@ class ProdutosRepository {
       'p_produto_id': produtoId,
     });
   }
+
+  // ── Categorias ─────────────────────────────────────────────────────────────
+
+  /// Cria ou atualiza uma categoria do cardápio
+  Future<CategoriaCardapioModel> saveCategoria(
+      CategoriaCardapioModel categoria) async {
+    final data = categoria.toJson();
+    if (categoria.id.isEmpty) data.remove('id');
+
+    final response = await _supabase
+        .from('categorias_cardapio')
+        .upsert(data)
+        .select()
+        .single();
+
+    return CategoriaCardapioModel.fromJson(response);
+  }
+
+  /// Remove uma categoria do cardápio
+  Future<void> deleteCategoria(String categoriaId) async {
+    await _supabase
+        .from('categorias_cardapio')
+        .delete()
+        .eq('id', categoriaId);
+  }
 }

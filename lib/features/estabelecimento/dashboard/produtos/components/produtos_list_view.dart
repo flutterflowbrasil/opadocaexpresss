@@ -25,9 +25,8 @@ class ProdutosListView extends ConsumerWidget {
     }
 
     return CustomScrollView(
-      // B3: Removido shrinkWrap:true e NeverScrollableScrollPhysics
-      // O scroll é controlado pelo CustomScrollView pai em produtos_screen.dart
-      shrinkWrap: false,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       slivers: [
         for (final entry in mapCategorias.entries) ...[
           // Cabeçalho da Categoria

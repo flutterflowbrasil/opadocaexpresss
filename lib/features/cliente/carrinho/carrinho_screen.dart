@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/item_carrinho_card.dart';
+import 'package:padoca_express/features/cliente/carrinho/componentes/cupom_section.dart';
 
 class CarrinhoScreen extends ConsumerWidget {
   const CarrinhoScreen({super.key});
@@ -88,6 +89,7 @@ class CarrinhoScreen extends ConsumerWidget {
     final estabelecimento = estadoCarrinho.estabelecimento!;
     final taxaEntrega = estabelecimento.taxaEntregaValor;
     final subtotal = estadoCarrinho.valorTotalProdutos;
+    final desconto = estadoCarrinho.desconto;
     final total = estadoCarrinho.valorTotal;
 
     return Scaffold(
@@ -170,11 +172,21 @@ class CarrinhoScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   const Divider(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+
+                  // ── Cupom de desconto ────────────────────────────
+                  CupomSection(isDark: isDark),
+
+                  const SizedBox(height: 4),
                   _buildResumoRow('Subtotal', subtotal, isDark: isDark),
                   const SizedBox(height: 8),
                   _buildResumoRow('Taxa de entrega', taxaEntrega,
                       isDark: isDark),
+                  if (desconto > 0) ...[  
+                    const SizedBox(height: 8),
+                    _buildResumoRow('Desconto (cupom)', -desconto,
+                        isDark: isDark, isDesconto: true),
+                  ],
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,7 +290,15 @@ class CarrinhoScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildResumoRow(String title, double valor, {required bool isDark}) {
+  Widget _buildResumoRow(String title, double valor,
+      {required bool isDark, bool isDesconto = false}) {
+    final isGratuito = valor == 0 && !isDesconto;
+    final displayValor = isDesconto ? valor.abs() : valor;
+    final prefix = isDesconto ? '- R\$ ' : (isGratuito ? '' : 'R\$ ');
+    final valueStr = isGratuito
+        ? 'Grátis'
+        : '$prefix${displayValor.toStringAsFixed(2).replaceAll('.', ',')}';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -286,17 +306,19 @@ class CarrinhoScreen extends ConsumerWidget {
           title,
           style: GoogleFonts.outfit(
             fontSize: 15,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            color: isDesconto
+                ? const Color(0xFF22C55E)
+                : (isDark ? Colors.grey[400] : Colors.grey[600]),
           ),
         ),
         Text(
-          valor == 0
-              ? 'Grátis'
-              : 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+          valueStr,
           style: GoogleFonts.outfit(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.black87,
+            color: isDesconto
+                ? const Color(0xFF22C55E)
+                : (isDark ? Colors.white : Colors.black87),
           ),
         ),
       ],

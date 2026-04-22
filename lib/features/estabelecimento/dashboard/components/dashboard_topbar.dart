@@ -1,7 +1,11 @@
+// lib/features/estabelecimento/dashboard/components/dashboard_topbar.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../dashboard_controller.dart';
+import 'package:padoca_express/features/estabelecimento/notificacoes/notificacao_dash_controller.dart';
+import 'package:padoca_express/features/estabelecimento/notificacoes/widgets/notif_modal.dart';
 
 class DashboardTopbar extends ConsumerWidget {
   final String estabelecimentoNome;
@@ -15,9 +19,18 @@ class DashboardTopbar extends ConsumerWidget {
     required this.dateText,
   });
 
+  /// Retorna saudação + emoji de acordo com o horário atual
+  static String _saudacao() {
+    final hora = DateTime.now().hour;
+    if (hora >= 5 && hora < 12) return 'Bom dia 🌅';
+    if (hora >= 12 && hora < 18) return 'Boa tarde ☀️';
+    return 'Boa noite 🌙';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWideScreen = MediaQuery.of(context).size.width >= 768;
+    final notifState = ref.watch(notificacaoDashProvider);
 
     return Container(
       color: Colors.white,
@@ -55,7 +68,7 @@ class DashboardTopbar extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bom dia, $estabelecimentoNome 👋',
+                    '${_saudacao()}, $estabelecimentoNome',
                     style: GoogleFonts.publicSans(
                       fontSize: isWideScreen ? 16 : 14,
                       fontWeight: FontWeight.w700,
@@ -105,35 +118,33 @@ class DashboardTopbar extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
 
-                // Notification Bell
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border:
-                        Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(Icons.notifications_none,
-                          color: Color(0xFF6B7280), size: 18),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF97316),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                        ),
+                // ── Notification Bell com Badge ──────────────────────
+                InkWell(
+                  onTap: () => showNotifModal(context),
+                  borderRadius: BorderRadius.circular(9),
+                  child: Badge(
+                    isLabelVisible: notifState.naoLidas > 0,
+                    label: Text(
+                      notifState.naoLidas > 9
+                          ? '9+'
+                          : '${notifState.naoLidas}',
+                      style: GoogleFonts.publicSans(
+                          fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: const Color(0xFFF97316),
+                    offset: const Offset(-4, 4),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(
+                            color: const Color(0xFFEAE8E4), width: 1.5),
+                        borderRadius: BorderRadius.circular(9),
                       ),
-                    ],
+                      child: const Icon(Icons.notifications_outlined,
+                          color: Color(0xFF6B7280), size: 18),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),

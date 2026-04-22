@@ -139,7 +139,7 @@ class _AdicionarEnderecoModalState
     super.dispose();
   }
 
-  // ── Busca CEP via ViaCEP ──────────────────────────────────────────────────
+  // ── Busca CEP via API (BrasilAPI com Fallback para ViaCEP) ───────────────
   Future<void> _buscarCep() async {
     final cep = _cepCtrl.text.replaceAll(RegExp(r'\D'), '');
     if (cep.length != 8) {
@@ -147,13 +147,58 @@ class _AdicionarEnderecoModalState
       return;
     }
     setState(() { _buscandoCep = true; _erroCep = null; });
+    
     try {
-      final res = await http
-          .get(Uri.parse('https://viacep.com.br/ws/$cep/json/'))
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      // Usamos Headers genéricos para evitar bloqueio em mobile (ex: ViaCEP restringe Dart)
+      final headers = {
+        'User-Agent': 'PadocaExpressApp/1.0',
+        'Accept': 'application/json',
+      };
 
-      if (data['erro'] == true) {
+      Map<String, dynamic> data = {};
+      bool found = false;
+
+      // Tentativa 1: BrasilAPI
+      try {
+        final res = await http
+            .get(Uri.parse('https://brasilapi.com.br/api/cep/v1/$cep'), headers: headers)
+            .timeout(const Duration(seconds: 6));
+        
+        if (res.statusCode == 200) {
+          final resData = jsonDecode(res.body) as Map<String, dynamic>;
+          if (!resData.containsKey('errors')) {
+            data = {
+              'logradouro': resData['street'] ?? '',
+              'bairro': resData['neighborhood'] ?? '',
+              'localidade': resData['city'] ?? '',
+              'uf': resData['state'] ?? '',
+            };
+            found = true;
+          }
+        }
+      } catch (_) {
+        // Falhou BrasilAPI, tentaremos ViaCEP
+      }
+
+      // Tentativa 2: ViaCEP (Fallback) se BrasilAPI falhar
+      if (!found) {
+        final res = await http
+            .get(Uri.parse('https://viacep.com.br/ws/$cep/json/'), headers: headers)
+            .timeout(const Duration(seconds: 6));
+            
+        final resData = jsonDecode(res.body) as Map<String, dynamic>;
+        if (resData['erro'] != true && res.statusCode == 200) {
+          data = {
+            'logradouro': resData['logradouro'] ?? '',
+            'bairro': resData['bairro'] ?? '',
+            'localidade': resData['localidade'] ?? '',
+            'uf': resData['uf'] ?? '',
+          };
+          found = true;
+        }
+      }
+
+      if (!found) {
         setState(() => _erroCep = 'CEP não encontrado');
         return;
       }

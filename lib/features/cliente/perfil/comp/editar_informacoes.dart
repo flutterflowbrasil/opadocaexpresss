@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:typed_data';
 
 class EditarInformacoesModal extends ConsumerStatefulWidget {
@@ -442,7 +443,7 @@ class _EditarInformacoesModalState
                         const SizedBox(height: 16),
                         _buildInputField('Alterar E-mail', _emailController,
                             isDark, primaryColor, burgundyColor,
-                            icon: Icons.edit, enabled: false),
+                            icon: Icons.edit, enabled: false, onTap: _showEditEmailDialog),
 
                         const SizedBox(height: 40),
 
@@ -491,6 +492,194 @@ class _EditarInformacoesModalState
     );
   }
 
+  Future<void> _showEditEmailDialog() async {
+    final TextEditingController newEmailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isUpdating = false;
+
+    // Definição da URL de redirecionamento. Em produção, você passará o domínio customizado via --dart-define=APP_URL=...
+    const String redirectUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://padoca-express.web.app/login');
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        const primaryColor = Color(0xFFFF7034);
+        const burgundyColor = Color(0xFF7D2D35);
+        final textColor = isDark ? Colors.white : burgundyColor;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF23150F) : const Color(0xFFF9F5F0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Alterar E-mail',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Digite o novo endereço de e-mail. Você receberá um link de confirmação neste novo e-mail para validar a alteração.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: newEmailController,
+                      style: GoogleFonts.plusJakartaSans(color: isDark ? Colors.white : Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'Novo e-mail',
+                        labelStyle: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF18181B) : Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: primaryColor, width: 2),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'O e-mail é obrigatório';
+                        }
+                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                        if (!emailRegex.hasMatch(value.trim())) {
+                          return 'Digite um e-mail válido';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isUpdating ? null : () => Navigator.pop(ctx),
+                  child: Text(
+                    'Cancelar',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.white60 : Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isUpdating
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setStateDialog(() => isUpdating = true);
+                            try {
+                              final novoEmail = newEmailController.text.trim();
+                              final userId = _supabase.auth.currentUser?.id;
+                              
+                              if (userId == null) throw Exception('Usuário não autenticado');
+
+                              // 1. Verificar se o e-mail já existe na tabela usuarios
+                              final existingUser = await _supabase
+                                  .from('usuarios')
+                                  .select('id')
+                                  .eq('email', novoEmail)
+                                  .maybeSingle();
+
+                              if (existingUser != null) {
+                                if (!context.mounted) return;
+                                setStateDialog(() => isUpdating = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Este e-mail já está em uso por outro usuário.'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // 2. Atualizar no Supabase Auth
+                              await _supabase.auth.updateUser(
+                                UserAttributes(
+                                  email: novoEmail,
+                                ),
+                                emailRedirectTo: redirectUrl,
+                              );
+
+                              // 3. Atualizar na tabela usuarios
+                              await _supabase.from('usuarios').update({
+                                'email': novoEmail,
+                              }).eq('id', userId);
+                              
+                              // 4. Buscar o tipo de usuário para redirecionar corretamente
+                              final userData = await _supabase
+                                  .from('usuarios')
+                                  .select('tipo_usuario')
+                                  .eq('id', userId)
+                                  .single();
+                                  
+                              final tipoUsuario = userData['tipo_usuario'] as String?;
+                              
+                              if (!context.mounted) return;
+                              Navigator.pop(ctx); // Fechar o modal
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('E-mail de confirmação enviado. Verifique sua caixa de entrada.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              
+                              // Redirecionar para a página correspondente
+                              if (tipoUsuario == 'cliente') {
+                                context.go('/home');
+                              } else if (tipoUsuario == 'estabelecimento') {
+                                context.go('/dashboard_estabelecimento');
+                              } else if (tipoUsuario == 'entregador') {
+                                context.go('/dashboard_entregador');
+                              } else if (tipoUsuario == 'admin') {
+                                context.go('/admin/dashboard');
+                              }
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Erro ao atualizar e-mail: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              setStateDialog(() => isUpdating = false);
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: isUpdating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          'Atualizar E-mail',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSectionTitle(String title, bool isDark) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -508,25 +697,9 @@ class _EditarInformacoesModalState
 
   Widget _buildInputField(String label, TextEditingController controller,
       bool isDark, Color primaryColor, Color burgundyColor,
-      {String? placeholder, IconData? icon, bool enabled = true}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label.toUpperCase(),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-              color: isDark
-                  ? Colors.white60
-                  : burgundyColor.withValues(alpha: 0.6),
-            ),
-          ),
-        ),
-        TextField(
+      {String? placeholder, IconData? icon, bool enabled = true, VoidCallback? onTap}) {
+    
+    Widget textField = TextField(
           controller: controller,
           enabled: enabled,
           style: GoogleFonts.plusJakartaSans(
@@ -562,7 +735,34 @@ class _EditarInformacoesModalState
                     color: burgundyColor.withValues(alpha: 0.4), size: 20)
                 : null,
           ),
+        );
+
+    if (onTap != null) {
+      textField = GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: IgnorePointer(child: textField),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label.toUpperCase(),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: isDark
+                  ? Colors.white60
+                  : burgundyColor.withValues(alpha: 0.6),
+            ),
+          ),
         ),
+        textField,
       ],
     );
   }

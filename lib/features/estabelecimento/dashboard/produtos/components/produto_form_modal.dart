@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../controllers/produtos_controller.dart';
 import '../models/produto_model.dart';
@@ -68,6 +71,11 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   bool _controleEstoque = false;
   final _estoqueCtrl = TextEditingController();
 
+  // Foto
+  Uint8List? _fotoBytes;
+  String _fotoExtensao = 'jpg';
+  String? _fotoUrl; // URL existente (edição)
+
   bool get _isEdicao => widget.produto != null;
 
   @override
@@ -93,7 +101,38 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       _temPromo = p.precoPromocional != null && p.precoPromocional! > 0;
       _controleEstoque = p.controleEstoque;
       _estoqueCtrl.text = p.quantidadeEstoque?.toString() ?? '';
+      _fotoUrl = p.fotoPrincipalUrl;
     }
+  }
+
+  // ── Seletor de imagem ─────────────────────────────────────────────────────
+  Future<void> _pickImagem() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1200,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final ext = picked.name.split('.').last.toLowerCase();
+    setState(() {
+      _fotoBytes = bytes;
+      _fotoExtensao = ext.isEmpty ? 'jpg' : ext;
+      _fotoUrl = null; // descarta URL antiga; nova imagem tem precedência
+    });
+  }
+
+  // ── Upload da foto para o Supabase Storage ────────────────────────────────
+  Future<String?> _uploadFoto() async {
+    if (_fotoBytes == null) return _fotoUrl;
+    final path = 'produtos/${const Uuid().v4()}.$_fotoExtensao';
+    await Supabase.instance.client.storage.from('imagens').uploadBinary(
+          path,
+          _fotoBytes!,
+          fileOptions: FileOptions(contentType: 'image/$_fotoExtensao'),
+        );
+    return Supabase.instance.client.storage.from('imagens').getPublicUrl(path);
   }
 
   @override
@@ -126,6 +165,15 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
             ?.estabelecimentoId ??
         '';
 
+    // Faz upload da foto (se selecionada) antes de salvar o produto
+    String? fotoUrl;
+    try {
+      fotoUrl = await _uploadFoto();
+    } catch (_) {
+      // Upload falhou — salva o produto sem a nova foto
+      fotoUrl = _fotoUrl;
+    }
+
     final preco = double.tryParse(_precoCtrl.text.replaceAll(',', '.')) ?? 0.0;
     final precoPromo = _temPromo
         ? double.tryParse(_precoPromoCtrl.text.replaceAll(',', '.'))
@@ -151,8 +199,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       quantidadeEstoque: estoque,
       tempoPreparoAdicionalMin: int.tryParse(_tempoPreparoCtrl.text) ?? 0,
       ordemExibicao: int.tryParse(_ordemCtrl.text) ?? 0,
-      // Preservar campos imutáveis na edição
-      fotoPrincipalUrl: widget.produto?.fotoPrincipalUrl,
+      fotoPrincipalUrl: fotoUrl,
       totalVendidos: widget.produto?.totalVendidos ?? 0,
       opcoes: widget.produto?.opcoes ?? [],
     );
@@ -260,6 +307,9 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                         disponivel: _disponivel,
                         destaque: _destaque,
                         permiteObservacao: _permiteObservacao,
+                        fotoBytes: _fotoBytes,
+                        fotoUrl: _fotoUrl,
+                        onPickFoto: _pickImagem,
                         onTipoChanged: (v) =>
                             setState(() => _tipoProduto = v ?? 'simples'),
                         onCategoriaChanged: (v) =>
@@ -472,6 +522,10 @@ class _TabBasico extends StatelessWidget {
   final bool disponivel;
   final bool destaque;
   final bool permiteObservacao;
+  // Foto
+  final Uint8List? fotoBytes;
+  final String? fotoUrl;
+  final VoidCallback onPickFoto;
   final ValueChanged<String?> onTipoChanged;
   final ValueChanged<String?> onCategoriaChanged;
   final ValueChanged<bool> onAtivoChanged;
@@ -490,6 +544,9 @@ class _TabBasico extends StatelessWidget {
     required this.disponivel,
     required this.destaque,
     required this.permiteObservacao,
+    required this.fotoBytes,
+    required this.fotoUrl,
+    required this.onPickFoto,
     required this.onTipoChanged,
     required this.onCategoriaChanged,
     required this.onAtivoChanged,
@@ -500,26 +557,89 @@ class _TabBasico extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final temFoto = fotoBytes != null || fotoUrl != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Foto (placeholder — upload futuro)
+          // ── Foto Principal ──
           _SectionLabel('Foto Principal',
-              subtitle: 'Opcional. Upload via URL por enquanto.'),
-          const SizedBox(height: 8),
-          Container(
-            height: 80,
-            width: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Colors.grey.shade300, style: BorderStyle.solid),
-            ),
-            child: Icon(Icons.add_photo_alternate_outlined,
-                color: Colors.grey.shade400, size: 32),
+              subtitle: 'Recomendado: 1200×900px, JPG ou PNG.'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Preview / Placeholder
+              GestureDetector(
+                onTap: onPickFoto,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: temFoto
+                          ? const Color(0xFFec5b13).withValues(alpha: .5)
+                          : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    image: fotoBytes != null
+                        ? DecorationImage(
+                            image: MemoryImage(fotoBytes!),
+                            fit: BoxFit.cover,
+                          )
+                        : fotoUrl != null
+                            ? DecorationImage(
+                                image: NetworkImage(fotoUrl!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                  ),
+                  child: temFoto
+                      ? null
+                      : Icon(Icons.add_photo_alternate_outlined,
+                          color: Colors.grey.shade400, size: 36),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: onPickFoto,
+                      icon: const Icon(Icons.upload_rounded, size: 16),
+                      label: Text(
+                        temFoto ? 'Trocar imagem' : 'Selecionar imagem',
+                        style: GoogleFonts.publicSans(fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFec5b13),
+                        side: const BorderSide(color: Color(0xFFec5b13)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      temFoto
+                          ? '✓ Imagem selecionada'
+                          : 'Nenhuma imagem selecionada',
+                      style: GoogleFonts.publicSans(
+                        fontSize: 11,
+                        color: temFoto
+                            ? Colors.green.shade600
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 

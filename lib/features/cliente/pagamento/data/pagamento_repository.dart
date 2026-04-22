@@ -37,6 +37,9 @@ class PagamentoRepository {
     required String pagamentoMetodo,
     required String enderecoEntregaId,
     required Map<String, dynamic> enderecoSnapshot,
+    // Cupom (opcional)
+    String? cupomId,
+    double? descontoCupom,
   }) async {
     try {
       final itensJson = itens
@@ -64,6 +67,9 @@ class PagamentoRepository {
         'status': 'pendente',
         'endereco_entrega_id': enderecoEntregaId,
         'endereco_entrega_snapshot': enderecoSnapshot,
+        if (cupomId != null) 'cupom_id': cupomId,
+        if (descontoCupom != null && descontoCupom > 0)
+          'desconto_cupom': descontoCupom,
       }).select('id').single();
 
       return result['id'] as String;

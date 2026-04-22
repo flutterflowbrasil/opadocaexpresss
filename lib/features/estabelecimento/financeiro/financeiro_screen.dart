@@ -79,7 +79,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
     for (var p in state.entregues) {
       final d = p.createdAt;
       final k =
-          isSemanal ? 'S\${(d.day/7).ceil()}-\${d.month}' : fmtDataShort(d);
+          isSemanal ? 'S${(d.day/7).ceil()}-${d.month}' : fmtDataShort(d);
       buckets[k] = (buckets[k] ?? 0.0) + p.total;
     }
     // Pega as últimas 14 instâncias pro gráfico
@@ -147,7 +147,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                               Text(
                                   state.isLoading
                                       ? 'Carregando...'
-                                      : '\${fmtNum(state.entregues.length)} pedidos entregues',
+                                      : '${fmtNum(state.entregues.length)} pedidos entregues',
                                   style: GoogleFonts.publicSans(
                                       fontSize: 11,
                                       color: const Color(0xFF9CA3AF))),
@@ -252,15 +252,13 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                           ),
 
                         // --- 1. KPIs ROW ---
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 400),
-                          child: GridView.count(
-                            crossAxisCount: isMobile ? 2 : 5,
-                            childAspectRatio: isMobile ? 1.5 : 1.3,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
+                        GridView.count(
+                          crossAxisCount: isMobile ? 2 : 5,
+                          childAspectRatio: isMobile ? 1.4 : 1.1,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                             children: [
                               KpiCard(
                                 loading: state.isLoading,
@@ -294,7 +292,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                                 loading: state.isLoading,
                                 label: 'Taxa cancelamento',
                                 value:
-                                    '\${state.taxaCancelamento.toStringAsFixed(1)}%',
+                                    '${state.taxaCancelamento.toStringAsFixed(1)}%',
                                 color: state.taxaCancelamento > 10
                                     ? const Color(0xFFEF4444)
                                     : const Color(0xFFF59E0B),
@@ -310,14 +308,13 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                                     state.estabelecimento?.faturamentoTotal ??
                                         0),
                                 sub:
-                                    '\${fmtNum(state.estabelecimento?.totalPedidos ?? 0)} pedidos',
+                                    '${fmtNum(state.estabelecimento?.totalPedidos ?? 0)} pedidos',
                                 color: const Color(0xFFF97316),
                                 bg: const Color(0xFFFFF7ED),
                                 icon: Icons.trending_up,
                               ),
                             ],
                           ),
-                        ),
 
                         const SizedBox(height: 14),
 
@@ -374,7 +371,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                                     ),
                                     if (_tabExtra == 'transacoes' &&
                                         !state.isLoading)
-                                      Text('\${validTx.length} transações',
+                                      Text('${validTx.length} transações',
                                           style: GoogleFonts.publicSans(
                                               fontSize: 11,
                                               color: const Color(0xFF9CA3AF))),
@@ -625,7 +622,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
               ),
               Text(
                   isNeg && val != 0
-                      ? '- \${fmtMoeda(val.abs())}'
+                      ? '- ${fmtMoeda(val.abs())}'
                       : fmtMoeda(val),
                   style: GoogleFonts.publicSans(
                       fontSize: 12,
@@ -669,7 +666,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
           CardHead(
             title: 'Evolução do faturamento',
             icon: Icons.show_chart,
-            sub: '\${barData.length} períodos no intervalo',
+            sub: '${barData.length} períodos no intervalo',
             right: Text(fmtMoeda(state.faturamentoBruto),
                 style: GoogleFonts.publicSans(
                     fontSize: 13,
@@ -833,7 +830,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                             SizedBox(
                                 width: 48,
                                 child: Text(
-                                    "\${(m['pct'] as double).toStringAsFixed(1)}%",
+                                    '${(m['pct'] as double).toStringAsFixed(1)}%',
                                     textAlign: TextAlign.right,
                                     style: GoogleFonts.publicSans(
                                         fontSize: 11,
@@ -944,7 +941,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                       children: [
                         SizedBox(
                             width: 80,
-                            child: Text("#\${s.numeroPedido ?? '-'}",
+                            child: Text('#${s.numeroPedido ?? '-'}',
                                 style: GoogleFonts.publicSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -1057,7 +1054,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
               children: [
                 SizedBox(
                     width: 80,
-                    child: Text('#\${p.numeroPedido}',
+                    child: Text('#${p.numeroPedido}',
                         style: GoogleFonts.publicSans(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1081,7 +1078,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                 Expanded(
                     child: Text(
                         p.descontoCupom > 0
-                            ? '- \${fmtMoeda(p.descontoCupom)}'
+                            ? '- ${fmtMoeda(p.descontoCupom)}'
                             : '—',
                         style: GoogleFonts.publicSans(
                             fontSize: 12,
@@ -1120,7 +1117,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('\${_txPage + 1} / \$txPages',
+                  child: Text('${_txPage + 1} / $txPages',
                       style: GoogleFonts.publicSans(
                           fontSize: 12, color: const Color(0xFF9CA3AF))),
                 ),
@@ -1184,7 +1181,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                               state
                                   .estabelecimento!.dadosBancarios!['agencia']),
                           _buildBankField('Conta',
-                              "\${state.estabelecimento!.dadosBancarios!['conta'] ?? ''}-\${state.estabelecimento!.dadosBancarios!['conta_digito'] ?? ''}"),
+                              '${state.estabelecimento!.dadosBancarios!['conta'] ?? ''}-${state.estabelecimento!.dadosBancarios!['conta_digito'] ?? ''}'),
                           _buildBankField(
                               'Tipo',
                               state.estabelecimento!

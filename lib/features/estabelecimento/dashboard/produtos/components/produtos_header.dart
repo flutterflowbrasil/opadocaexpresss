@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../dashboard_controller.dart';
+import 'categorias_modal.dart';
 import 'produto_form_modal.dart';
 
-class ProdutosHeader extends StatelessWidget {
+class ProdutosHeader extends ConsumerWidget {
   const ProdutosHeader({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isNarrow = MediaQuery.of(context).size.width < 768;
+    final estabId = ref
+        .watch(dashboardControllerProvider.select((s) => s.estabelecimentoId));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
@@ -58,14 +64,17 @@ class ProdutosHeader extends StatelessWidget {
               ],
             ),
 
-          // Botões de Ação Dinâmicos
+          // Botões de Ação
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: Abrir Modal de Categorias (próxima feature)
-                },
+                onPressed: estabId == null
+                    ? null
+                    : () => showCategoriasModal(
+                          context,
+                          estabelecimentoId: estabId,
+                        ),
                 icon: const Icon(Icons.category, size: 18),
                 label: isNarrow
                     ? const SizedBox.shrink()
@@ -83,9 +92,7 @@ class ProdutosHeader extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                onPressed: () {
-                  showProdutoFormModal(context);
-                },
+                onPressed: () => showProdutoFormModal(context),
                 icon: const Icon(Icons.add, size: 18),
                 label: isNarrow
                     ? const SizedBox.shrink()

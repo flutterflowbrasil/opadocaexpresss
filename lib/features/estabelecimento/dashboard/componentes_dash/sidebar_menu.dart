@@ -214,58 +214,67 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
             isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           // Quando expandido: mostra logo; quando colapsado: só o botão de menu
-          if (!isCollapsed) ...[
-            // Ícone de padoca
-            Flexible(
-              flex: 0,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: DashboardColors.primary,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: DashboardColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text('🥐', style: TextStyle(fontSize: 12)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
+          if (!isCollapsed)
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Ôpadoca',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12, // Diminuindo ainda mais a font do logo
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1,
-                    ),
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: 160,
+                  maxWidth: 160,
+                  child: Row(
+                    children: [
+                      // Ícone de padoca
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: DashboardColors.primary,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: DashboardColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text('🥐', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Ôpadoca',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12, // Diminuindo ainda mais a font do logo
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'EXPRESS',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                                color: DashboardColors.primary,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'EXPRESS',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: DashboardColors.primary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ],
           // Botão de toggle — sempre visível
           _ToggleButton(isCollapsed: isCollapsed, onTap: onToggle),
         ],

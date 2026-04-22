@@ -13,6 +13,10 @@ import 'components/dashboard_charts_cards.dart';
 import 'components/dashboard_ranking_cards.dart';
 import 'components/financial_summary_card.dart';
 
+// Notificações
+import 'package:padoca_express/features/estabelecimento/notificacoes/notificacao_dash_service.dart';
+import 'package:padoca_express/features/estabelecimento/notificacoes/widgets/notif_toast_overlay.dart';
+
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -25,10 +29,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
   }
 
+  late final NotificacaoDashService _notifService;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifService = ref.read(notificacaoDashServiceProvider);
+    // Inicia escuta de novos pedidos após o primeiro frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryStartListening();
+    });
+  }
+
+  void _tryStartListening() {
+    final estabId = ref.read(dashboardControllerProvider).estabelecimentoId;
+    if (estabId != null) {
+      _notifService.startListening(estabId);
+    }
+    // Caso o ID ainda não esteja disponível, o listener abaixo vai pegar
+  }
+
+  @override
+  void dispose() {
+    _notifService.stopListening();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
     final isWideScreen = MediaQuery.of(context).size.width >= 768;
+
+    // Inicia o serviço quando o ID do estabelecimento ficar disponível
+    ref.listen<DashboardState>(dashboardControllerProvider, (prev, next) {
+      if (prev?.estabelecimentoId == null && next.estabelecimentoId != null) {
+        _notifService.startListening(next.estabelecimentoId!);
+      }
+    });
 
     Widget bodyContent;
 
@@ -224,14 +261,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 },
               ),
             ),
-      body: Row(
+      body: Stack(
         children: [
-          if (isWideScreen)
-            SidebarMenu(
-              activeId: 'dashboard',
-              onItemSelected: (_) {},
-            ),
-          Expanded(child: bodyContent),
+          Row(
+            children: [
+              if (isWideScreen)
+                SidebarMenu(
+                  activeId: 'dashboard',
+                  onItemSelected: (_) {},
+                ),
+              Expanded(child: bodyContent),
+            ],
+          ),
+          // Toast de notificações flutuante
+          Positioned.fill(child: NotifToastOverlay()),
         ],
       ),
       bottomNavigationBar: null,

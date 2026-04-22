@@ -66,12 +66,6 @@ class _CategoryItemState extends State<CategoryItem>
                 height: 70,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  border: widget.onTap != null
-                      ? Border.all(
-                          color: primaryColor.withValues(alpha: 0.35),
-                          width: 2,
-                        )
-                      : null,
                   image: DecorationImage(
                     image: NetworkImage(widget.imageUrl),
                     fit: BoxFit.cover,

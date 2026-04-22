@@ -40,7 +40,6 @@ class MapsLoader {
       // → _maps_stub.dart no mobile (no-op)
       await loadMapsApi(key);
       _loaded = true;
-      _log('Google Maps JS API carregada com sucesso.');
     } catch (e) {
       _log('Erro ao carregar Maps API: $e');
     }

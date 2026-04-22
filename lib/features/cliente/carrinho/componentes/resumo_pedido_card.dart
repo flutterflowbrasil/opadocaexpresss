@@ -134,6 +134,38 @@ class ResumoPedidoCard extends StatelessWidget {
                     color: _secondaryColor.withValues(alpha: 0.1),
                     thickness: 1),
               ),
+              // Desconto do cupom (se houver)
+              if (estadoCarrinho.desconto > 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_offer_outlined,
+                            size: 14, color: Color(0xFF22C55E)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Desconto (${estadoCarrinho.cupomAplicado?.codigo ?? 'Cupom'})',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: const Color(0xFF22C55E),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '- R\$ ${estadoCarrinho.desconto.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: const Color(0xFF22C55E),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
+import 'package:padoca_express/features/cliente/notificacoes/controllers/notificacoes_controller.dart';
 
 /// AppBar reutilizável do cliente.
 /// - Mobile: endereço | busca compacta | ícones
@@ -51,14 +52,14 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
       child: SafeArea(
         bottom: false,
         child: isDesktop || isTablet
-            ? _buildDesktopBar(context, cardBg, cartCount)
-            : _buildMobileBar(context, cardBg, cartCount),
+            ? _buildDesktopBar(context, cardBg, cartCount, ref)
+            : _buildMobileBar(context, cardBg, cartCount, ref),
       ),
     );
   }
 
   // ─── Mobile ───────────────────────────────────────────────────────────────
-  Widget _buildMobileBar(BuildContext context, Color cardBg, int cartCount) {
+  Widget _buildMobileBar(BuildContext context, Color cardBg, int cartCount, WidgetRef ref) {
     return Row(
       children: [
         if (showBackButton) ...[
@@ -88,11 +89,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
         const SizedBox(width: 8),
 
         // Ícones de ação
-        _ActionButton(
-          icon: Icons.notifications_outlined,
-          isDark: isDark,
-          onTap: onNotificationTap,
-        ),
+        _buildNotificationButton(context, ref),
         const SizedBox(width: 8),
         _buildCartButton(context, cartCount),
       ],
@@ -100,7 +97,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
   }
 
   // ─── Desktop / Tablet ─────────────────────────────────────────────────────
-  Widget _buildDesktopBar(BuildContext context, Color cardBg, int cartCount) {
+  Widget _buildDesktopBar(BuildContext context, Color cardBg, int cartCount, WidgetRef ref) {
     return Row(
       children: [
         if (showBackButton) ...[
@@ -182,11 +179,7 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
         const SizedBox(width: 16),
 
         // Ícones
-        _ActionButton(
-          icon: Icons.notifications_outlined,
-          isDark: isDark,
-          onTap: onNotificationTap,
-        ),
+        _buildNotificationButton(context, ref),
         const SizedBox(width: 10),
         _buildCartButton(context, cartCount),
       ],
@@ -208,6 +201,124 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
       textColor: Colors.white,
       offset: const Offset(-4, 4),
       child: btn,
+    );
+  }
+
+  Widget _buildNotificationButton(BuildContext context, WidgetRef ref) {
+    final notificacoes = ref.watch(notificacoesControllerProvider);
+    final unreadCount = notificacoes.length;
+    
+    final btn = _ActionButton(
+      icon: Icons.notifications_outlined,
+      isDark: isDark,
+      onTap: () {
+        if (onNotificationTap != null) {
+          onNotificationTap!();
+        } else {
+          _showNotificationsModal(context, ref, notificacoes);
+        }
+      },
+    );
+
+    if (unreadCount == 0) return btn;
+
+    return Badge(
+      label: Text(unreadCount > 9 ? '9+' : unreadCount.toString()),
+      backgroundColor: Colors.redAccent,
+      textColor: Colors.white,
+      offset: const Offset(-4, 4),
+      child: btn,
+    );
+  }
+
+  void _showNotificationsModal(BuildContext context, WidgetRef ref, List<AppNotificationModel> notificacoes) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF27272A) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Notificações',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF7D2D35),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: notificacoes.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      'Você não tem novas notificações no momento.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        fontSize: 16,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: notificacoes.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (ctx, index) {
+                      final notif = notificacoes[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFFFF7034).withValues(alpha: 0.2),
+                          child: Icon(
+                            notif.status == 'pronto' ? Icons.check_circle_outline : Icons.delivery_dining,
+                            color: const Color(0xFFFF7034),
+                          ),
+                        ),
+                        title: Text(
+                          notif.title,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        subtitle: Text(
+                          notif.body,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        onTap: () {
+                          // Remove a notificação lida e fecha modal
+                          ref.read(notificacoesControllerProvider.notifier).removeNotification(notif.pedidoId);
+                          Navigator.of(ctx).pop();
+                          // Direciona
+                          context.push('/cliente/pedido/${notif.pedidoId}');
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: notificacoes.isEmpty ? null : [
+             TextButton(
+               onPressed: () {
+                 ref.read(notificacoesControllerProvider.notifier).clearAll();
+                 Navigator.of(ctx).pop();
+               },
+               child: Text('Limpar Todas', style: GoogleFonts.outfit(color: const Color(0xFFFF7034))),
+             )
+          ],
+        );
+      },
     );
   }
 }
