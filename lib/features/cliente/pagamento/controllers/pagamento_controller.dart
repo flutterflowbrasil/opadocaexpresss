@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
@@ -50,7 +51,10 @@ class PagamentoController extends StateNotifier<PagamentoState> {
 
       // Reobter a cobrança (Edge Function é idempotente para o mesmo pedido_id)
       final cobranca =
-          await _repository.criarCobrancaAsaas(pedidoId: pedidoId);
+          await _repository.criarCobrancaAsaas(
+        pedidoId: pedidoId,
+        metodoPagamento: 'pix',
+      );
 
       state = state.copyWith(
         pedidoCriadoId: pedidoId,
@@ -118,11 +122,13 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         enderecoSnapshot: endereco.toJson(),
         cupomId: cupom?.id,
         descontoCupom: desconto > 0 ? desconto : null,
+        observacaoGeral: carrinho.observacaoGeral,
       );
 
       // 2. Criar cobrança no Asaas via Edge Function
       final cobranca = await _repository.criarCobrancaAsaas(
         pedidoId: pedidoId,
+        metodoPagamento: metodoPagamento,
         dadosCartao: dadosCartao?.toJson(),
       );
 
@@ -200,48 +206,17 @@ class PagamentoController extends StateNotifier<PagamentoState> {
 
   // ── Validação CPF mod-11 (client-side) ────────────────────────────────────
   static bool validarCpf(String cpf) {
-    final d = cpf.replaceAll(RegExp(r'\D'), '');
-    if (d.length != 11 || RegExp(r'^(\d)\1{10}$').hasMatch(d)) return false;
-    for (final check in [9, 10]) {
-      int sum = 0;
-      for (int i = 0; i < check; i++) {
-        sum += int.parse(d[i]) * (check + 1 - i);
-      }
-      int rem = (sum * 10) % 11;
-      if (rem >= 10) rem = 0;
-      if (rem != int.parse(d[check])) return false;
-    }
-    return true;
+    return BrazilianDocumentValidator.isValidCpf(cpf);
   }
 
   // ── Validação CNPJ mod-11 ─────────────────────────────────────────────────
   static bool validarCnpj(String cnpj) {
-    final d = cnpj.replaceAll(RegExp(r'\D'), '');
-    if (d.length != 14 || RegExp(r'^(\d)\1{13}$').hasMatch(d)) return false;
-
-    const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-
-    for (final par in [(pesos1, 12), (pesos2, 13)]) {
-      final pesos = par.$1;
-      final pos = par.$2;
-      int sum = 0;
-      for (int i = 0; i < pesos.length; i++) {
-        sum += int.parse(d[i]) * pesos[i];
-      }
-      int rem = sum % 11;
-      final expected = rem < 2 ? 0 : 11 - rem;
-      if (expected != int.parse(d[pos])) return false;
-    }
-    return true;
+    return BrazilianDocumentValidator.isValidCnpj(cnpj);
   }
 
   /// Valida CPF (11 dígitos) ou CNPJ (14 dígitos) automaticamente.
   static bool validarCpfOuCnpj(String value) {
-    final d = value.replaceAll(RegExp(r'\D'), '');
-    if (d.length == 11) return validarCpf(d);
-    if (d.length == 14) return validarCnpj(d);
-    return false;
+    return BrazilianDocumentValidator.isValidCpfOrCnpj(value);
   }
 }
 

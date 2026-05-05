@@ -5,7 +5,6 @@ class PedidoFinanceiro {
   final double total;
   final double subtotalProdutos;
   final double taxaEntrega;
-  final double taxaServicoApp;
   final double descontoCupom;
   final String? pagamentoMetodo;
   final String? pagamentoStatus;
@@ -18,7 +17,6 @@ class PedidoFinanceiro {
     required this.total,
     required this.subtotalProdutos,
     required this.taxaEntrega,
-    required this.taxaServicoApp,
     required this.descontoCupom,
     this.pagamentoMetodo,
     this.pagamentoStatus,
@@ -33,7 +31,6 @@ class PedidoFinanceiro {
       total: (json['total'] as num?)?.toDouble() ?? 0.0,
       subtotalProdutos: (json['subtotal_produtos'] as num?)?.toDouble() ?? 0.0,
       taxaEntrega: (json['taxa_entrega'] as num?)?.toDouble() ?? 0.0,
-      taxaServicoApp: (json['taxa_servico_app'] as num?)?.toDouble() ?? 0.0,
       descontoCupom: (json['desconto_cupom'] as num?)?.toDouble() ?? 0.0,
       pagamentoMetodo: json['pagamento_metodo'] as String?,
       pagamentoStatus: json['pagamento_status'] as String?,
@@ -48,18 +45,12 @@ class SplitFinanceiro {
   final String id;
   final String status;
   final double estabelecimentoValor;
-  final double entregadorValorTotal;
-  final double plataformaValor;
-  final double valorTotal;
   final String? numeroPedido;
 
   SplitFinanceiro({
     required this.id,
     required this.status,
     required this.estabelecimentoValor,
-    required this.entregadorValorTotal,
-    required this.plataformaValor,
-    required this.valorTotal,
     this.numeroPedido,
   });
 
@@ -75,10 +66,6 @@ class SplitFinanceiro {
       status: json['status'] as String? ?? '',
       estabelecimentoValor:
           (json['estabelecimento_valor'] as num?)?.toDouble() ?? 0.0,
-      entregadorValorTotal:
-          (json['entregador_valor_total'] as num?)?.toDouble() ?? 0.0,
-      plataformaValor: (json['plataforma_valor'] as num?)?.toDouble() ?? 0.0,
-      valorTotal: (json['valor_total'] as num?)?.toDouble() ?? 0.0,
       numeroPedido: numPedido,
     );
   }

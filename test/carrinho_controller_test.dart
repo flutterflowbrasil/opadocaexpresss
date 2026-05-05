@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:padoca_express/features/cliente/carrinho/data/cupom_repository.dart';
 
+class MockCupomRepository extends Mock implements CupomRepository {}
 void main() {
   setUp(() {
     // A1: Mock do FlutterSecureStorage (carrinho migrado de SharedPreferences)
@@ -12,7 +15,8 @@ void main() {
 
   test('Deve adicionar produto e calcular o total e subtotais corretamente',
       () async {
-    final controller = CarrinhoController();
+    final mockCupomRepo = MockCupomRepository();
+    final controller = CarrinhoController(mockCupomRepo);
 
     final estab = EstabelecimentoModel(
       id: 'estab_1',
@@ -46,7 +50,8 @@ void main() {
   });
 
   test('Deve atualizar a quantidade e refletir no valor total', () async {
-    final controller = CarrinhoController();
+    final mockCupomRepo = MockCupomRepository();
+    final controller = CarrinhoController(mockCupomRepo);
 
     final estab = EstabelecimentoModel(
       id: 'estab_1',
@@ -79,7 +84,8 @@ void main() {
   });
 
   test('Deve esvaziar carrinho e remover estabelecimento', () async {
-    final controller = CarrinhoController();
+    final mockCupomRepo = MockCupomRepository();
+    final controller = CarrinhoController(mockCupomRepo);
 
     final estab = EstabelecimentoModel(
       id: 'estab_1',

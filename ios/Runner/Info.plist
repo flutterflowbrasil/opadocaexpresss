@@ -47,6 +47,8 @@
 	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Precisamos acessar a câmera para capturar selfies e documentos do cadastro.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 </dict>

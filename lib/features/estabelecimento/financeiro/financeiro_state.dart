@@ -59,9 +59,6 @@ class FinanceiroState {
   double get taxasEntrega =>
       entregues.fold(0.0, (sum, p) => sum + p.taxaEntrega);
 
-  double get taxasApp =>
-      entregues.fold(0.0, (sum, p) => sum + p.taxaServicoApp);
-
   double get descontosCupom =>
       entregues.fold(0.0, (sum, p) => sum + p.descontoCupom);
 
@@ -71,25 +68,11 @@ class FinanceiroState {
   double get taxaCancelamento =>
       pedidos.isEmpty ? 0 : (cancelados.length / pedidos.length) * 100;
 
-  // Receita Líquida Estimada: se há splits, usa o split correto, senão tira 15%
+  // Receita do estabelecimento: usa o repasse real quando existir.
   double get receitaLiquida {
     if (splits.isNotEmpty) {
       return splits.fold(0.0, (sum, s) => sum + s.estabelecimentoValor);
     }
-    return faturamentoBruto * 0.85;
-  }
-
-  double get taxaPlataformaEstimativa {
-    if (splits.isNotEmpty) {
-      return splits.fold(0.0, (sum, s) => sum + s.plataformaValor);
-    }
-    return faturamentoBruto * 0.05; // app fica com 5%? Depende do Padoca
-  }
-
-  double get repasseEntregadores {
-    if (splits.isNotEmpty) {
-      return splits.fold(0.0, (sum, s) => sum + s.entregadorValorTotal);
-    }
-    return taxasEntrega * 0.8;
+    return faturamentoBruto;
   }
 }

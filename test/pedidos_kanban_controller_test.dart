@@ -14,14 +14,36 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockUser extends Mock implements User {}
 
+class MockSupabaseClient extends Mock implements SupabaseClient {}
+
+class MockRealtimeChannel extends Mock implements RealtimeChannel {}
+
 void main() {
   late PedidosKanbanController controller;
   late MockPedidosKanbanRepository mockRepo;
   late MockAuthRepository mockAuthObj;
+  late MockSupabaseClient mockSupabase;
+  late MockRealtimeChannel mockChannel;
+
+  setUpAll(() {
+    registerFallbackValue(PostgresChangeEvent.all);
+  });
 
   setUp(() {
     mockRepo = MockPedidosKanbanRepository();
     mockAuthObj = MockAuthRepository();
+    mockSupabase = MockSupabaseClient();
+    mockChannel = MockRealtimeChannel();
+
+    when(() => mockSupabase.channel(any())).thenReturn(mockChannel);
+    when(() => mockChannel.onPostgresChanges(
+          event: any(named: 'event'),
+          schema: any(named: 'schema'),
+          table: any(named: 'table'),
+          filter: any(named: 'filter'),
+          callback: any(named: 'callback'),
+        )).thenReturn(mockChannel);
+    when(() => mockChannel.subscribe(any(), any())).thenReturn(mockChannel);
   });
 
   final fakePedido = PedidoKanbanModel(
@@ -47,7 +69,7 @@ void main() {
     when(() => mockRepo.buscarPedidosDia('estab123'))
         .thenAnswer((_) async => [fakePedido]);
 
-    controller = PedidosKanbanController(mockRepo, mockAuthObj);
+    controller = PedidosKanbanController(mockRepo, mockAuthObj, mockSupabase);
     // controller calls carregarPedidos in constructor so it runs async immediately.
 
     // allow async task to complete
@@ -70,7 +92,7 @@ void main() {
     when(() => mockRepo.atualizarStatus('pt-1', 'confirmado'))
         .thenAnswer((_) async {});
 
-    controller = PedidosKanbanController(mockRepo, mockAuthObj);
+    controller = PedidosKanbanController(mockRepo, mockAuthObj, mockSupabase);
     await Future.delayed(Duration.zero);
 
     // Act
@@ -92,7 +114,7 @@ void main() {
     when(() => mockRepo.atualizarStatus('pt-1', 'preparando'))
         .thenThrow(Exception('Falha Banco'));
 
-    controller = PedidosKanbanController(mockRepo, mockAuthObj);
+    controller = PedidosKanbanController(mockRepo, mockAuthObj, mockSupabase);
     await Future.delayed(Duration.zero);
 
     // Act
@@ -127,7 +149,7 @@ void main() {
     when(() => mockRepo.buscarPedidosDia('estab123'))
         .thenAnswer((_) async => [fakePronto]);
 
-    controller = PedidosKanbanController(mockRepo, mockAuthObj);
+    controller = PedidosKanbanController(mockRepo, mockAuthObj, mockSupabase);
     await Future.delayed(Duration.zero);
 
     expect(controller.state.getPorStatus('pronto').length, 1);

@@ -281,34 +281,36 @@ class _ProductListTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 // Botão Última Mordida
-                InkWell(
-                  onTap: () => _showUltimaMordidaSheet(context, ref, produto),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: produto.ultimaMordida
-                          ? const Color(0xFFFFF3E0)
-                          : null,
-                      border: Border.all(
+                if (produto.permiteUltimaMordida || produto.ultimaMordida) ...[
+                  InkWell(
+                    onTap: () => _showUltimaMordidaSheet(context, ref, produto),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
                         color: produto.ultimaMordida
-                            ? const Color(0xFFE65100)
-                            : Colors.grey.shade200,
+                            ? const Color(0xFFFFF3E0)
+                            : null,
+                        border: Border.all(
+                          color: produto.ultimaMordida
+                              ? const Color(0xFFE65100)
+                              : Colors.grey.shade200,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '🍰',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: produto.ultimaMordida
-                            ? const Color(0xFFE65100)
-                            : Colors.grey.shade400,
+                      child: Text(
+                        '🍰',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: produto.ultimaMordida
+                              ? const Color(0xFFE65100)
+                              : Colors.grey.shade400,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                ],
                 // Botão Editar
                 InkWell(
                   onTap: () {

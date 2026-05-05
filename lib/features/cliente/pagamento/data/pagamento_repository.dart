@@ -40,6 +40,8 @@ class PagamentoRepository {
     // Cupom (opcional)
     String? cupomId,
     double? descontoCupom,
+    // Observação geral (opcional)
+    String? observacaoGeral,
   }) async {
     try {
       final itensJson = itens
@@ -70,6 +72,8 @@ class PagamentoRepository {
         if (cupomId != null) 'cupom_id': cupomId,
         if (descontoCupom != null && descontoCupom > 0)
           'desconto_cupom': descontoCupom,
+        if (observacaoGeral != null && observacaoGeral.isNotEmpty)
+          'observacao_geral': observacaoGeral,
       }).select('id').single();
 
       return result['id'] as String;
@@ -79,16 +83,18 @@ class PagamentoRepository {
     }
   }
 
-  // ── Chamar Edge Function criar-cobranca-asaas ─────────────────────────────
+  // ── Chamar Edge Function asaas-criar-pagamento-pedido ─────────────────────
   Future<CobrancaAsaasModel> criarCobrancaAsaas({
     required String pedidoId,
+    required String metodoPagamento,
     Map<String, dynamic>? dadosCartao,
   }) async {
     try {
       final resp = await _supabase.functions.invoke(
-        'criar-cobranca-asaas',
+        'asaas-criar-pagamento-pedido',
         body: {
           'pedido_id': pedidoId,
+          'metodo_pagamento': metodoPagamento,
           if (dadosCartao != null) 'cartao': dadosCartao,
         },
       );
@@ -117,7 +123,7 @@ class PagamentoRepository {
           .select('id, created_at, total')
           .eq('cliente_id', clienteId)
           .eq('pagamento_metodo', 'pix')
-          .eq('pagamento_status', 'pendente')
+          .inFilter('pagamento_status', ['pendente', 'aguardando_pagamento'])
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();

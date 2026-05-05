@@ -110,6 +110,7 @@ class ConfigTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool isRequired;
   final bool readOnly;
+  final bool enabled;
 
   const ConfigTextField({
     super.key,
@@ -126,6 +127,7 @@ class ConfigTextField extends StatelessWidget {
     this.keyboardType,
     this.isRequired = false,
     this.readOnly = false,
+    this.enabled = true,
   });
 
   @override
@@ -162,6 +164,7 @@ class ConfigTextField extends StatelessWidget {
           maxLines: maxLines,
           keyboardType: keyboardType,
           readOnly: readOnly,
+          enabled: enabled,
           style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             hintText: placeholder,

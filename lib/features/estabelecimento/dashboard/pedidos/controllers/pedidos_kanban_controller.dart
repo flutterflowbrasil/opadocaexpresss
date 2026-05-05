@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../auth/data/auth_repository.dart';
@@ -90,15 +89,6 @@ class PedidosKanbanController extends StateNotifier<PedidosKanbanState> {
     // Save
     try {
       await _repository.atualizarStatus(pedidoId, novoStatus);
-
-      // Quando pedido fica pronto, despacha automaticamente para entregadores disponíveis
-      if (novoStatus == 'pronto') {
-        try {
-          await _repository.despacharParaEntregadoresDisponiveis(pedidoId);
-        } catch (e) {
-          debugPrint('🚨 [KanbanController] ERRO AO DESPACHAR: $e');
-        }
-      }
     } catch (e) {
       // Rollback
       final rollbackList = List<PedidoKanbanModel>.from(state.pedidos);

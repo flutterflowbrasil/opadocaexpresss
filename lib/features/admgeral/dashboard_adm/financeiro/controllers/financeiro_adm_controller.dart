@@ -37,7 +37,6 @@ class FinanceiroAdmController extends StateNotifier<FinanceiroAdmState> {
       final results = await Future.wait([
         _repo.buscarPedidos(),
         _repo.buscarSplits(),
-        _repo.buscarSaques(),
         _repo.buscarSubcontas(),
       ]);
 
@@ -46,8 +45,7 @@ class FinanceiroAdmController extends StateNotifier<FinanceiroAdmState> {
         isLoading: false,
         pedidos: results[0] as List<PedidoFinanceiro>,
         splits: results[1] as List<SplitPagamento>,
-        saques: results[2] as List<EntregadorSaque>,
-        subcontas: results[3] as List<AsaasSubconta>,
+        subcontas: results[2] as List<AsaasSubconta>,
         lastSync: DateTime.now(),
       );
     } catch (e) {

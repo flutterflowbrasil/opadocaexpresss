@@ -28,7 +28,7 @@ class _CloseStoreModalState extends State<_CloseStoreModal> {
   final List<String> motivos = [
     'Cozinha cheia',
     'Falta de insumo',
-    'Sem entregadores',
+    'Alta demanda',
     'Problema técnico',
     'Intervalo',
     'Outro',

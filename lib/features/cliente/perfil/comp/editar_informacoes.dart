@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
+import 'package:padoca_express/core/utils/account_uniqueness_validator.dart';
+import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 import 'dart:typed_data';
 
 class EditarInformacoesModal extends ConsumerStatefulWidget {
@@ -184,10 +187,41 @@ class _EditarInformacoesModalState
       return;
     }
 
+    final cpfError = BrazilianDocumentValidator.optionalCpfFormValidator(
+      _cpfController.text,
+    );
+    if (cpfError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(cpfError)),
+      );
+      return;
+    }
+
+    final birthDateError =
+        BrazilianDocumentValidator.optionalAdultBrazilianDateFormValidator(
+      _dataNascimentoController.text,
+    );
+    if (birthDateError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(birthDateError)),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('Usuário não logado');
+
+      final uniquenessValidator = AccountUniquenessValidator(_supabase);
+      await uniquenessValidator.ensureEmailAvailable(
+        _emailController.text,
+        ignoreUserId: userId,
+      );
+      await uniquenessValidator.ensureCpfAvailable(
+        _cpfController.text,
+        ignoreUserId: userId,
+      );
 
       // Handle Image Upload First
       String? uploadedImageUrl;
@@ -226,7 +260,7 @@ class _EditarInformacoesModalState
         final updates = {
           'cpf': _cpfController.text.trim().isEmpty
               ? null
-              : _cpfController.text.trim(),
+              : BrazilianDocumentValidator.onlyDigits(_cpfController.text),
           'data_nascimento': _dataNascimentoController.text.trim().isEmpty
               ? null
               : _dataNascimentoController.text.trim(),
@@ -244,7 +278,7 @@ class _EditarInformacoesModalState
           'usuario_id': userId,
           'cpf': _cpfController.text.trim().isEmpty
               ? null
-              : _cpfController.text.trim(),
+              : BrazilianDocumentValidator.onlyDigits(_cpfController.text),
           'data_nascimento': _dataNascimentoController.text.trim().isEmpty
               ? null
               : _dataNascimentoController.text.trim(),
@@ -261,7 +295,7 @@ class _EditarInformacoesModalState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar dados: $e')),
+          SnackBar(content: Text(SupabaseErrorHandler.parseError(e))),
         );
       }
     } finally {

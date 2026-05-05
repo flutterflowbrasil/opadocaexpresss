@@ -38,13 +38,6 @@ class PedidosKanbanRepository {
                 nome_completo_fantasia,
                 telefone
               )
-            ),
-            entregadores!pedidos_entregador_id_fkey (
-              veiculo_modelo,
-              veiculo_placa,
-              usuarios (
-                nome_completo_fantasia
-              )
             )
           ''')
           .eq('estabelecimento_id', estabelecimentoId)
@@ -76,48 +69,4 @@ class PedidosKanbanRepository {
     }
   }
 
-  Future<void> atualizarEntregador(
-      String pedidoId, String? entregadorId) async {
-    try {
-      await _supabase
-          .from('pedidos')
-          .update({'entregador_id': entregadorId}).eq('id', pedidoId);
-    } catch (e) {
-      throw Exception('Falha ao atualizar o entregador selecionado');
-    }
-  }
-
-  /// Despacha o pedido para todos os entregadores online e livres.
-  /// Chamado automaticamente quando o pedido passa para 'pronto'.
-  Future<void> despacharParaEntregadoresDisponiveis(String pedidoId) async {
-    try {
-      final entregadores = await _supabase
-          .from('entregadores')
-          .select('id')
-          .eq('status_online', true)
-          .eq('status_despacho', 'livre')
-          .limit(5);
-
-      if ((entregadores as List).isEmpty) {
-        throw Exception('Sem entregadores online/livres OU Estabelecimento sem RLS para tabela "entregadores".');
-      }
-
-      final agora = DateTime.now();
-      final expiraEm = agora.add(const Duration(minutes: 2)).toIso8601String();
-      final ofertadoEm = agora.toIso8601String();
-
-      for (final ent in entregadores) {
-        await _supabase.from('despacho_pedidos').insert({
-          'pedido_id': pedidoId,
-          'entregador_id': ent['id'] as String,
-          'status': 'aguardando',
-          'ofertado_em': ofertadoEm,
-          'expira_em': expiraEm,
-          'distancia_km': 0,
-        });
-      }
-    } catch (e) {
-      throw Exception('Falha ao despachar pedido: $e');
-    }
-  }
 }

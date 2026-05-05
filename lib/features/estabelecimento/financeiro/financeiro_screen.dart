@@ -271,11 +271,11 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                               ),
                               KpiCard(
                                 loading: state.isLoading,
-                                label: 'Receita líquida',
+                                label: 'Receita do estabelecimento',
                                 value: fmtMoeda(state.receitaLiquida),
                                 sub: state.splits.isNotEmpty
-                                    ? 'via splits reais'
-                                    : 'estimativa 85%',
+                                    ? 'via repasses reais'
+                                    : 'faturamento do período',
                                 color: const Color(0xFF3B82F6),
                                 bg: const Color(0xFFEFF6FF),
                                 icon: Icons.account_balance_wallet_outlined,
@@ -363,8 +363,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                                       children: [
                                         _buildTabBtn(
                                             'metodos', 'Métodos de pagamento'),
-                                        _buildTabBtn(
-                                            'splits', 'Splits & repasses'),
+                                        _buildTabBtn('splits', 'Repasses'),
                                         _buildTabBtn(
                                             'transacoes', 'Transações'),
                                       ],
@@ -485,8 +484,6 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                     state.taxasEntrega,
                     const Color(0xFF3B82F6),
                     (state.taxasEntrega / denom) * 100),
-                _buildBreakdownRow('Taxa do app', state.taxasApp,
-                    const Color(0xFFF59E0B), (state.taxasApp / denom) * 100),
                 _buildBreakdownRow(
                     'Descontos (cupons)',
                     -state.descontosCupom,
@@ -506,7 +503,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Receita líquida estimada',
+                          Text('Receita do estabelecimento',
                               style: GoogleFonts.publicSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -523,67 +520,11 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                           width: double.infinity,
                           margin: const EdgeInsets.only(top: 4),
                           child: Text(
-                              'Baseado em 85% do bruto (sem splits registrados)',
+                              'Baseado no faturamento bruto do período',
                               style: GoogleFonts.publicSans(
                                   fontSize: 10,
                                   color: const Color(0xFF6EE7B7))),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(11),
-                      border: Border.all(color: const Color(0xFFFED7AA))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.hub_outlined,
-                            size: 14, color: Color(0xFFF97316)),
-                        const SizedBox(width: 6),
-                        Text('Plataforma',
-                            style: GoogleFonts.publicSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF92400E)))
-                      ]),
-                      Text(fmtMoeda(state.taxaPlataformaEstimativa),
-                          style: GoogleFonts.publicSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFFF97316))),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(11),
-                      border: Border.all(color: const Color(0xFFBFDBFE))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.local_shipping_outlined,
-                            size: 14, color: Color(0xFF3B82F6)),
-                        const SizedBox(width: 6),
-                        Text('Repasse entregadores',
-                            style: GoogleFonts.publicSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1E40AF)))
-                      ]),
-                      Text(fmtMoeda(state.repasseEntregadores),
-                          style: GoogleFonts.publicSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF3B82F6))),
                     ],
                   ),
                 ),
@@ -861,12 +802,12 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
           children: [
             const Text('🔀', style: TextStyle(fontSize: 32)),
             const SizedBox(height: 10),
-            Text('Sem splits registrados no período',
+            Text('Sem repasses registrados no período',
                 style: GoogleFonts.publicSans(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF374151))),
-            Text('Os splits são criados automaticamente via pagamento online.',
+            Text('Os repasses são criados automaticamente via pagamento online.',
                 style: GoogleFonts.publicSans(
                     fontSize: 11, color: const Color(0xFF9CA3AF))),
           ],
@@ -875,9 +816,6 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
     }
 
     final sEst = state.splits.fold(0.0, (s, x) => s + x.estabelecimentoValor);
-    final sPlat = state.splits.fold(0.0, (s, x) => s + x.plataformaValor);
-    final sEnt = state.splits.fold(0.0, (s, x) => s + x.entregadorValorTotal);
-    final sTotal = state.splits.fold(0.0, (s, x) => s + x.valorTotal);
 
     return Padding(
       padding: const EdgeInsets.all(18),
@@ -886,14 +824,7 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
           Row(
             children: [
               _buildSplitMetric(
-                  'Estabelecimento', sEst, const Color(0xFF10B981)),
-              const SizedBox(width: 10),
-              _buildSplitMetric('Plataforma', sPlat, const Color(0xFFF97316)),
-              const SizedBox(width: 10),
-              _buildSplitMetric('Entregadores', sEnt, const Color(0xFF3B82F6)),
-              const SizedBox(width: 10),
-              _buildSplitMetric(
-                  'Total splits', sTotal, const Color(0xFF8B5CF6)),
+                  'Valor do estabelecimento', sEst, const Color(0xFF10B981)),
             ],
           ),
           const SizedBox(height: 16),
@@ -920,12 +851,6 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                       SizedBox(
                           width: 80,
                           child: Text('ESTABELEC.', style: _tbHeadStyle())),
-                      SizedBox(
-                          width: 80,
-                          child: Text('PLATAFORMA', style: _tbHeadStyle())),
-                      SizedBox(
-                          width: 80,
-                          child: Text('TOTAL', style: _tbHeadStyle())),
                     ],
                   ),
                 ),
@@ -954,20 +879,6 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF10B981)))),
-                        SizedBox(
-                            width: 80,
-                            child: Text(fmtMoeda(s.plataformaValor),
-                                style: GoogleFonts.publicSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFFF97316)))),
-                        SizedBox(
-                            width: 80,
-                            child: Text(fmtMoeda(s.valorTotal),
-                                style: GoogleFonts.publicSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF111827)))),
                       ],
                     ),
                   );

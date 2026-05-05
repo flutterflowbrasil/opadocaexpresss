@@ -35,6 +35,16 @@ class ConfiguracoesRepository {
         .eq('id', model.id);
   }
 
+  Future<void> updateEmailComercial(
+    String estabelecimentoId,
+    String email,
+  ) async {
+    await _client
+        .from('estabelecimentos')
+        .update({'email_comercial': email})
+        .eq('id', estabelecimentoId);
+  }
+
   // Futuro: Adicionar upload de imagens para Storage
   Future<String> uploadImagem(
       String path, List<int> bytes, String fileName) async {

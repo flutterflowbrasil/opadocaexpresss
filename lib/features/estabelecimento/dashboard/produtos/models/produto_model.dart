@@ -261,4 +261,54 @@ class ProdutoModel {
         destaque.hashCode ^
         categoriaCardapioId.hashCode;
   }
+
+  /// Verifica se a categoria do produto permite aplicar a promoção de "Última Mordida".
+  /// Remove categorias como Bebidas, Molhos, Doces pequenos, Combos e itens abstratos.
+  bool get permiteUltimaMordida {
+    final nomeCat = categoriaCardapioNome?.toLowerCase() ?? '';
+    
+    // Categorias que NÃO devem exibir o botão
+    final List<String> categoriasExcluidas = [
+      'bebida', 'refrigerante', 'suco', 'água', 'agua', 'café', 'cafe',
+      'molho', 'adicional', 'extra', 'complemento',
+      'doce', 'bala', 'chiclete', 'confeito',
+      'gelo', 'talher', 'embalagem', 'descartável',
+      'combo', 'kit',
+      'marmita', 'prato', 'executivo',
+      'porção', 'porcao', 'compartilhável', 'compartilhavel',
+      'promoç', 'promoc', 'pedido',
+    ];
+
+    for (final excluido in categoriasExcluidas) {
+      if (nomeCat.contains(excluido)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /// Verifica se a categoria do produto permite adicionar observações.
+  /// Remove categorias industriais, molhos, pães, etc.
+  bool get aceitaObservacaoCategoria {
+    if (!permiteObservacao) return false;
+    
+    final nomeCat = categoriaCardapioNome?.toLowerCase() ?? '';
+    
+    // Categorias que NÃO devem aceitar observações no carrinho
+    final List<String> categoriasExcluidas = [
+      'bebida', 'refrigerante', 'suco', 'água', 'agua', 'energético', 'energetico', 'cerveja', 'long neck',
+      'molho', 'adicional', 'ketchup', 'maionese',
+      'bala', 'chocolate', 'doce', 'embalado', 'pronto',
+      'pão', 'pao', 'pães', 'paes',
+    ];
+
+    for (final excluido in categoriasExcluidas) {
+      if (nomeCat.contains(excluido)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

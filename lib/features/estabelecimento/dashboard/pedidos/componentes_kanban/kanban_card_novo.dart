@@ -214,51 +214,6 @@ class KanbanCardNovo extends StatelessWidget {
                   ],
                 ),
 
-                if (pedido.entregador != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7ED),
-                        border: Border.all(color: const Color(0xFFFED7AA)),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [Color(0xFFF97316), Color(0xFFEA580C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(pedido.entregador!.foto ?? 'E',
-                              style: GoogleFonts.publicSans(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(pedido.entregador!.nome,
-                              style: GoogleFonts.publicSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFC2410C)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                        const Icon(Icons.motorcycle,
-                            size: 12, color: Color(0xFFF97316)),
-                      ],
-                    ),
-                  )
-                ],
-
                 const SizedBox(height: 8),
 
                 // Actions
@@ -372,7 +327,7 @@ class KanbanCardNovo extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ] else if (pedido.status == 'pronto' && pedido.entregador == null) ...[
+                    ] else if (pedido.status == 'pronto') ...[
                       const SizedBox(width: 6),
                       Expanded(
                         child: Container(
@@ -385,17 +340,11 @@ class KanbanCardNovo extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF97316)),
-                                ),
-                              ),
+                              const Icon(Icons.check_circle_outline,
+                                  size: 13, color: Color(0xFFF97316)),
                               const SizedBox(width: 6),
                               Flexible(
-                                child: Text('Aguardando Entregador',
+                                child: Text('Pronto para retirada',
                                     style: GoogleFonts.publicSans(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,

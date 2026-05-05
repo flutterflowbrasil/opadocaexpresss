@@ -10,6 +10,7 @@ class ConfiguracoesState {
   final EstabelecimentoModel? editedEstab;
   final Uint8List? newLogoBytes;
   final Uint8List? newBannerBytes;
+  final bool horariosAlterados;
 
   const ConfiguracoesState({
     this.isLoading = false,
@@ -19,9 +20,11 @@ class ConfiguracoesState {
     this.editedEstab,
     this.newLogoBytes,
     this.newBannerBytes,
+    this.horariosAlterados = false,
   });
 
   bool get hasChanges {
+    if (horariosAlterados) return true;
     if (newLogoBytes != null || newBannerBytes != null) return true;
     if (originalEstab == null || editedEstab == null) return false;
     return originalEstab != editedEstab;
@@ -35,6 +38,7 @@ class ConfiguracoesState {
     EstabelecimentoModel? editedEstab,
     Uint8List? newLogoBytes,
     Uint8List? newBannerBytes,
+    bool? horariosAlterados,
     bool clearLogoBytes = false,
     bool clearBannerBytes = false,
   }) {
@@ -47,6 +51,7 @@ class ConfiguracoesState {
       newLogoBytes: clearLogoBytes ? null : (newLogoBytes ?? this.newLogoBytes),
       newBannerBytes:
           clearBannerBytes ? null : (newBannerBytes ?? this.newBannerBytes),
+      horariosAlterados: horariosAlterados ?? this.horariosAlterados,
     );
   }
 
@@ -61,7 +66,8 @@ class ConfiguracoesState {
           originalEstab == other.originalEstab &&
           editedEstab == other.editedEstab &&
           newLogoBytes == other.newLogoBytes &&
-          newBannerBytes == other.newBannerBytes;
+          newBannerBytes == other.newBannerBytes &&
+          horariosAlterados == other.horariosAlterados;
 
   @override
   int get hashCode =>
@@ -71,5 +77,6 @@ class ConfiguracoesState {
       originalEstab.hashCode ^
       editedEstab.hashCode ^
       newLogoBytes.hashCode ^
-      newBannerBytes.hashCode;
+      newBannerBytes.hashCode ^
+      horariosAlterados.hashCode;
 }

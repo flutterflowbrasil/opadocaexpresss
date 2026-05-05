@@ -119,7 +119,7 @@ class ConfigTabFinanceiro extends ConsumerWidget {
             ),
             ConfigRow(
               label: 'Retenção temporária',
-              descricao: 'Dias de bloqueio do saldo antes de liberar para saque',
+              descricao: 'Dias de controle financeiro antes da conciliacao Asaas',
               editavel: editable('retencao_temporaria'),
               control: ConfigNumInput(
                 value: val('retencao_temporaria'),

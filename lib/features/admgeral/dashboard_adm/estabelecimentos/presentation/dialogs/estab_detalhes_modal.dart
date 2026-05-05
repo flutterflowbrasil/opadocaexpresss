@@ -54,7 +54,6 @@ class _EstabDetalhesModalState extends State<EstabDetalhesModal> {
 
   static const _docLista = [
     ('contrato_social', 'Contrato Social'),
-    ('alvara_funcionamento', 'Alvará de Funcionamento'),
     ('comprovante_endereco', 'Comprovante de Endereço'),
   ];
 
@@ -82,11 +81,13 @@ class _EstabDetalhesModalState extends State<EstabDetalhesModal> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Center(
-        child: Container(
-          width: 600,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.88,
-          ),
+        child: GestureDetector(
+          onTap: () {},
+          child: Container(
+            width: 600,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -321,6 +322,7 @@ class _EstabDetalhesModalState extends State<EstabDetalhesModal> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

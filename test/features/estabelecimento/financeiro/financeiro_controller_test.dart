@@ -31,7 +31,7 @@ void main() {
         total: 100.0,
         subtotalProdutos: 90.0,
         taxaEntrega: 10.0,
-        taxaServicoApp: 5.0,
+
         descontoCupom: 0.0,
         pagamentoMetodo: 'pix',
         createdAt: DateTime.now(),
@@ -43,7 +43,7 @@ void main() {
         total: 50.0,
         subtotalProdutos: 40.0,
         taxaEntrega: 10.0,
-        taxaServicoApp: 2.0,
+
         descontoCupom: 5.0,
         pagamentoMetodo: 'cartao_credito',
         createdAt: DateTime.now(),
@@ -55,7 +55,7 @@ void main() {
         total: 200.0,
         subtotalProdutos: 180.0,
         taxaEntrega: 20.0,
-        taxaServicoApp: 10.0,
+
         descontoCupom: 0.0,
         pagamentoMetodo: 'pix',
         createdAt: DateTime.now(),

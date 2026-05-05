@@ -69,7 +69,7 @@ class FinanceiroAdmRepository {
   /// Busca subcontas Asaas de estabelecimentos e entregadores (READ-ONLY).
   Future<List<AsaasSubconta>> buscarSubcontas() async {
     try {
-      final response = await _supabase.from('asaas_subcontas').select(
+      final response = await _supabase.from('v_asaas_subcontas_app').select(
         'id, entidade_tipo, entidade_id, asaas_account_id, asaas_wallet_id, '
         'status_conta, created_at',
       ).order('created_at', ascending: false);

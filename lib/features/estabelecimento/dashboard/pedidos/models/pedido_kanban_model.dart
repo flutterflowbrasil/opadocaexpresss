@@ -30,31 +30,6 @@ class PedidoProdutoItemModel {
 }
 
 @immutable
-class PedidoEntregadorModel {
-  final String nome;
-  final String? veiculo;
-  final String? foto;
-
-  const PedidoEntregadorModel({
-    required this.nome,
-    this.veiculo,
-    this.foto,
-  });
-
-  factory PedidoEntregadorModel.fromJson(Map<String, dynamic> json) {
-    String nomeStr =
-        json['usuarios']?['nome_completo_fantasia'] ?? 'Entregador';
-    String veiculoStr =
-        "${json['veiculo_modelo'] ?? 'Veículo'} • ${json['veiculo_placa'] ?? 'S/P'}";
-    return PedidoEntregadorModel(
-      nome: nomeStr,
-      veiculo: veiculoStr,
-      foto: nomeStr.isNotEmpty ? nomeStr[0].toUpperCase() : 'E',
-    );
-  }
-}
-
-@immutable
 class PedidoKanbanModel {
   final String id;
   final int numero;
@@ -66,7 +41,6 @@ class PedidoKanbanModel {
   final String pgto;
   final String status;
   final DateTime at;
-  final PedidoEntregadorModel? entregador;
   final String end;
 
   const PedidoKanbanModel({
@@ -80,7 +54,6 @@ class PedidoKanbanModel {
     required this.pgto,
     required this.status,
     required this.at,
-    this.entregador,
     required this.end,
   });
 
@@ -107,13 +80,6 @@ class PedidoKanbanModel {
           listItens.add(PedidoProdutoItemModel.fromJson(row));
         }
       }
-    }
-
-    // Parser Entregador
-    PedidoEntregadorModel? entregadorModel;
-    if (json['entregadores'] != null && json['entregadores'] is Map) {
-      entregadorModel = PedidoEntregadorModel.fromJson(
-          json['entregadores'] as Map<String, dynamic>);
     }
 
     // Pagamento
@@ -143,7 +109,6 @@ class PedidoKanbanModel {
       at: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
-      entregador: entregadorModel,
       end: enderecoStr,
     );
   }
@@ -162,7 +127,6 @@ class PedidoKanbanModel {
       pgto: pgto,
       status: status ?? this.status,
       at: at,
-      entregador: entregador,
       end: end,
     );
   }

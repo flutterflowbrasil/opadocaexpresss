@@ -69,4 +69,29 @@ class ProdutoModel {
       'opcoes': opcoes.map((o) => o.toJson()).toList(),
     };
   }
+
+  /// Verifica se o produto permite adicionar observações.
+  /// Baseado na flag do BD e em palavras-chave do nome do produto/categoria.
+  bool get aceitaObservacaoCategoria {
+    if (!permiteObservacoes) return false;
+    
+    final nomeLower = nome.toLowerCase();
+    
+    // Categorias/Nomes que NÃO devem aceitar observações no carrinho
+    final List<String> excluidos = [
+      'bebida', 'refrigerante', 'suco', 'água', 'agua', 'energético', 'energetico', 'cerveja', 'long neck',
+      'coca', 'lata',
+      'molho', 'adicional', 'ketchup', 'maionese',
+      'bala', 'chocolate', 'doce', 'embalado', 'pronto',
+      'pão', 'pao', 'pães', 'paes',
+    ];
+
+    for (final excluido in excluidos) {
+      if (nomeLower.contains(excluido)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

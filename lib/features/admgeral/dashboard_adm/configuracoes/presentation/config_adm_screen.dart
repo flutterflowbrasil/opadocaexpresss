@@ -11,7 +11,6 @@ import 'widgets/config_tab_despacho.dart';
 import 'widgets/config_tab_notificacoes.dart';
 import 'widgets/config_tab_cupons.dart';
 import 'widgets/config_tab_cancelamento.dart';
-import 'widgets/config_tab_saques.dart';
 import 'widgets/config_tab_sistema.dart';
 
 class ConfigAdmScreen extends ConsumerWidget {
@@ -232,7 +231,6 @@ class _TabContent extends ConsumerWidget {
       'notificacoes' => const ConfigTabNotificacoes(),
       'cupons' => const ConfigTabCupons(),
       'cancelamento' => const ConfigTabCancelamento(),
-      'saques' => const ConfigTabSaques(),
       'sistema' => const ConfigTabSistema(),
       _ => const ConfigTabFinanceiro(),
     };

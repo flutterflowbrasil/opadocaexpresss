@@ -48,8 +48,8 @@ class EntregadorListItem extends StatelessWidget {
     final st = _statusConfig[e.statusCadastro] ?? _statusConfig['pendente']!;
     final selfie = e.selfieRevisao;
     final selfieConf = selfie != null ? _selfieConfig[selfie.status] : null;
-    final docPct = EntregadorAdmModel.docTotal > 0
-        ? e.docCount / EntregadorAdmModel.docTotal
+    final docPct = e.docTotal > 0
+        ? e.docCount / e.docTotal
         : 0.0;
 
     return InkWell(
@@ -179,11 +179,11 @@ class EntregadorListItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${e.docCount}/${EntregadorAdmModel.docTotal}',
+                    '${e.docCount}/${e.docTotal}',
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: e.docCount == EntregadorAdmModel.docTotal
+                      color: e.docCount == e.docTotal
                           ? const Color(0xFF10B981)
                           : const Color(0xFFF59E0B),
                     ),
@@ -195,7 +195,7 @@ class EntregadorListItem extends StatelessWidget {
                       value: docPct,
                       minHeight: 4,
                       backgroundColor: const Color(0xFFE5E7EB),
-                      color: e.docCount == EntregadorAdmModel.docTotal
+                      color: e.docCount == e.docTotal
                           ? const Color(0xFF10B981)
                           : const Color(0xFFF59E0B),
                     ),

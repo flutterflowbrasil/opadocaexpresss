@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
 
@@ -383,9 +384,16 @@ class _CadastroEstabelecimentoStep1ScreenState
                                 ? _cpfFormatter
                                 : _cnpjFormatter,
                           ],
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Campo obrigatório'
-                              : null,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Campo obrigatório';
+                            }
+                            return _tipoPessoa == 'fisica'
+                                ? BrazilianDocumentValidator
+                                    .cpfFormValidator(v)
+                                : BrazilianDocumentValidator
+                                    .cnpjFormValidator(v);
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),

@@ -1,9 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/gestures.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_cliente/cadastro_cliente_controller.dart';
 import 'package:padoca_express/shared/widgets/responsive_layout.dart';
 
@@ -18,7 +19,6 @@ class CadastroClienteScreen extends ConsumerStatefulWidget {
 class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores de texto
   final _nomeController = TextEditingController();
   final _telefoneController = TextEditingController();
   final _emailController = TextEditingController();
@@ -28,10 +28,15 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _acceptedTerms = false;
+  bool _showValidationErrors = false;
 
   final _phoneFormatter = MaskTextInputFormatter(
     mask: '(##) #####-####',
-    filter: {"#": RegExp(r'[0-9]')},
+    filter: {'#': RegExp(r'[0-9]')},
+  );
+
+  final _passwordRegex = RegExp(
+    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$',
   );
 
   @override
@@ -44,20 +49,19 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
     super.dispose();
   }
 
-  // Regex para validação de senha forte
-  // Pelo menos 1 maiúscula, 1 minúscula, 1 número, 1 caractere especial
-  final _passwordRegex = RegExp(
-    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$',
-  );
-
-  void _cadastrar() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _cadastrar() async {
+    FocusScope.of(context).unfocus();
+    if (!_showValidationErrors) {
+      setState(() => _showValidationErrors = true);
+    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Você precisa aceitar os termos de serviço.'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -71,13 +75,10 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
       telefone: _telefoneController.text.trim(),
       senha: _senhaController.text,
     );
-
-    // O estado será observado no build para feedback
   }
 
   @override
   Widget build(BuildContext context) {
-    // Observa o estado do cadastro para feedback
     ref.listen(cadastroClienteControllerProvider, (previous, next) {
       if (next.error != null) {
         if (!context.mounted) return;
@@ -99,111 +100,33 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        // Redireciona para home
         context.go('/home');
       }
     });
 
     final state = ref.watch(cadastroClienteControllerProvider);
-    final primaryColor = const Color(0xFFFF7034);
-    final burgundyColor = const Color(0xFF7D2D35);
+    const primaryColor = Color(0xFFFF7034);
+    const burgundyColor = Color(0xFF8E2A2B);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final bgLight = const Color(0xFFF9F5F0);
-    final bgDark = const Color(0xFF1C1917);
-    final cardLight = Colors.white;
-    final cardDark = const Color(0xFF292524);
+    final bg = isDark ? const Color(0xFF1A1614) : const Color(0xFFF9F5F0);
     final textColor = isDark ? const Color(0xFFFFE0B2) : burgundyColor;
 
     return Scaffold(
-      backgroundColor: isDark ? bgDark : bgLight,
-      appBar: AppBar(
-        backgroundColor: isDark ? bgDark : bgLight,
-        elevation: 0,
-        scrolledUnderElevation: 0, // Mantém a cor sólida ao rolar
-        automaticallyImplyLeading: false,
-        titleSpacing: 0,
-        centerTitle: true,
-        title: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF292524) : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF44403C)
-                              : Colors.grey[200]!,
-                        ),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back,
-                          color: isDark ? Colors.grey[200] : Colors.grey[700],
-                          size: 20,
-                        ),
-                        onPressed: () => context.pop(),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.bakery_dining,
-                        color: isDark ? primaryColor : burgundyColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'ÔPADOCA EXPRESS',
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isDark ? Colors.grey[100] : burgundyColor,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      backgroundColor: bg,
       body: SafeArea(
         child: ResponsiveLayout(
           mobile: (context) => _buildContent(
-            context,
-            isDesktop: false,
             primaryColor: primaryColor,
             burgundyColor: burgundyColor,
             textColor: textColor,
             isDark: isDark,
-            cardColor: isDark ? cardDark : cardLight,
             isLoading: state.isLoading,
           ),
           desktop: (context) => _buildContent(
-            context,
-            isDesktop: true,
             primaryColor: primaryColor,
             burgundyColor: burgundyColor,
             textColor: textColor,
             isDark: isDark,
-            cardColor: isDark ? cardDark : cardLight,
             isLoading: state.isLoading,
           ),
         ),
@@ -211,169 +134,99 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
     );
   }
 
-  Widget _buildContent(
-    BuildContext context, {
-    required bool isDesktop,
+  Widget _buildContent({
     required Color primaryColor,
     required Color burgundyColor,
     required Color textColor,
     required bool isDark,
-    required Color cardColor,
     required bool isLoading,
   }) {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: Form(
             key: _formKey,
+            autovalidateMode: _showValidationErrors
+                ? AutovalidateMode.onUserInteraction
+                : AutovalidateMode.disabled,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 32),
-
-                // Title Section
-                Center(
-                  child: Container(
-                    width: 96,
-                    height: 96,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                _Header(
+                  title: 'Cadastro de Cliente',
+                  subtitle: 'Crie sua conta e faça seus pedidos com facilidade.',
+                  isDark: isDark,
+                  textColor: textColor,
+                  primaryColor: primaryColor,
+                  burgundyColor: burgundyColor,
                 ),
-
                 const SizedBox(height: 24),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.person_add,
-                      color: isDark ? primaryColor : burgundyColor,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Cadastro de Cliente',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Crie sua conta e faça seus pedidos com facilidade.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Form
-                _buildLabel('Nome Completo', isDark, burgundyColor),
-                const SizedBox(height: 6),
-                _buildTextFormField(
+                _buildInput(
                   controller: _nomeController,
+                  label: 'Nome Completo',
                   icon: Icons.person_outline,
                   hint: 'Digite seu nome completo',
                   isDark: isDark,
                   primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().length < 3) {
                       return 'Por favor, insira seu nome completo';
                     }
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 16),
-
-                _buildLabel('Telefone/WhatsApp', isDark, burgundyColor),
-                const SizedBox(height: 6),
-                _buildTextFormField(
+                _buildInput(
                   controller: _telefoneController,
-                  icon: Icons.phone_outlined,
+                  label: 'Telefone/WhatsApp',
+                  icon: Icons.call_outlined,
                   hint: '(11) 99999-9999',
                   isDark: isDark,
                   primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [_phoneFormatter],
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    final digits =
+                        (value ?? '').replaceAll(RegExp(r'\D'), '');
+                    if (digits.length < 10) {
                       return 'Por favor, insira seu telefone';
                     }
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 16),
-
-                _buildLabel('E-mail', isDark, burgundyColor),
-                const SizedBox(height: 6),
-                _buildTextFormField(
+                _buildInput(
                   controller: _emailController,
+                  label: 'E-mail',
                   icon: Icons.mail_outline,
                   hint: 'seu@email.com',
                   isDark: isDark,
                   primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor, insira seu e-mail';
-                    }
-                    // M2: Validação robusta com regex RFC-compatível
+                    final email = value?.trim() ?? '';
                     final emailRegex = RegExp(
                       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
                     );
-                    if (!emailRegex.hasMatch(value.trim())) {
+                    if (!emailRegex.hasMatch(email)) {
                       return 'Por favor, insira um e-mail válido';
                     }
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 16),
-
-                _buildLabel('Senha', isDark, burgundyColor),
-                const SizedBox(height: 6),
-                _buildTextFormField(
+                _buildInput(
                   controller: _senhaController,
+                  label: 'Senha',
                   icon: Icons.lock_outline,
                   hint: 'Mínimo 6 caracteres',
                   isDark: isDark,
                   primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
                   obscureText: !_isPasswordVisible,
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isPasswordVisible
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: Colors.grey[400],
                     ),
                     onPressed: () => setState(
                       () => _isPasswordVisible = !_isPasswordVisible,
@@ -384,30 +237,24 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                       return 'Por favor, insira uma senha';
                     }
                     if (!_passwordRegex.hasMatch(value)) {
-                      return 'A senha deve conter:\n• Pelo menos 1 letra maiúscula\n• Pelo menos 1 letra minúscula\n• Pelo menos 1 número\n• Pelo menos 1 caractere especial';
+                      return 'A senha deve conter letra maiúscula, minúscula, número e caractere especial';
                     }
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 16),
-
-                _buildLabel('Confirmar Senha', isDark, burgundyColor),
-                const SizedBox(height: 6),
-                _buildTextFormField(
+                _buildInput(
                   controller: _confirmarSenhaController,
+                  label: 'Confirmar Senha',
                   icon: Icons.lock_outline,
                   hint: 'Digite a senha novamente',
                   isDark: isDark,
                   primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
                   obscureText: !_isConfirmPasswordVisible,
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isConfirmPasswordVisible
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: Colors.grey[400],
                     ),
                     onPressed: () => setState(
                       () => _isConfirmPasswordVisible =
@@ -424,136 +271,63 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 20),
-
-                // Terms Checkbox
+                const SizedBox(height: 18),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: Checkbox(
-                        value: _acceptedTerms,
-                        activeColor: primaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        onChanged: (value) =>
-                            setState(() => _acceptedTerms = value ?? false),
-                      ),
+                    Checkbox(
+                      value: _acceptedTerms,
+                      activeColor: primaryColor,
+                      onChanged: (value) =>
+                          setState(() => _acceptedTerms = value ?? false),
                     ),
-                    const SizedBox(width: 8),
                     Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: isDark ? Colors.grey[400] : Colors.grey[500],
-                          ),
-                          children: [
-                            const TextSpan(text: 'Eu aceito os '),
-                            TextSpan(
-                              text:
-                                  'termos de serviço e política de privacidade',
-                              style: GoogleFonts.outfit(
-                                color: primaryColor,
-                                fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.underline,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  context.push('/privacy');
-                                },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[600],
                             ),
-                            const TextSpan(text: ' da Padoca Express.'),
-                          ],
+                            children: [
+                              const TextSpan(text: 'Eu aceito os '),
+                              TextSpan(
+                                text:
+                                    'termos de serviço e política de privacidade',
+                                style: GoogleFonts.outfit(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () => context.push('/privacy'),
+                              ),
+                              const TextSpan(text: ' da Padoca Express.'),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
-
-                // Info Box
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF1E1E1E).withValues(alpha: 0.4)
-                        : Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.shopping_cart_outlined,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Pronto para fazer seus pedidos!',
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: isDark ? primaryColor : burgundyColor,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Pães frescos, doces e muito mais direto na sua casa.',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Register Button
                 ElevatedButton.icon(
                   onPressed: isLoading ? null : _cadastrar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 4,
-                    shadowColor: primaryColor.withValues(alpha: 0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: isLoading
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 22,
+                          height: 22,
                           child: CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -562,23 +336,17 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
                       : const Icon(Icons.person_add_alt_1_outlined),
                   label: Text(
                     isLoading ? 'Cadastrando...' : 'Cadastrar',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                   ),
                 ),
-
-                const SizedBox(height: 32),
-
-                // Login Link
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       'Já tem uma conta? ',
                       style: GoogleFonts.outfit(
-                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
                         fontSize: 14,
                       ),
                     ),
@@ -604,98 +372,171 @@ class _CadastroClienteScreenState extends ConsumerState<CadastroClienteScreen> {
     );
   }
 
-  Widget _buildLabel(String text, bool isDark, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text,
-        style: GoogleFonts.outfit(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isDark ? const Color(0xFFD4D4D8) : color,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextFormField({
+  Widget _buildInput({
     required TextEditingController controller,
+    required String label,
     required IconData icon,
     required String hint,
     required bool isDark,
     required Color primaryColor,
-    required Color burgundyColor,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     bool obscureText = false,
     Widget? suffixIcon,
-    TextInputType? keyboardType,
-    List<dynamic>? inputFormatters,
     String? Function(String?)? validator,
   }) {
-    // Cast list to TextInputFormatter
-    final formatters = inputFormatters?.cast<MaskTextInputFormatter>();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF27272A) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
       child: TextFormField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        inputFormatters: formatters,
+        inputFormatters: inputFormatters,
         validator: validator,
         style: GoogleFonts.outfit(
-          color: isDark ? Colors.white : Colors.grey[800],
+          color: isDark ? Colors.grey[100] : Colors.grey[800],
         ),
         decoration: InputDecoration(
-          prefixIcon: Icon(
-            icon,
-            color: isDark ? Colors.grey[600] : Colors.grey[400],
-          ),
+          labelText: label,
           hintText: hint,
-          hintStyle: GoogleFonts.outfit(
-            color: isDark ? Colors.grey[600] : Colors.grey[400],
-          ),
+          prefixIcon: Icon(icon, size: 20),
           suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: isDark ? const Color(0xFF171717) : Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: isDark ? Colors.grey[700]! : const Color(0xFFE5E7EB),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: isDark ? Colors.grey[700]! : const Color(0xFFE5E7EB),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: primaryColor, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryColor, width: 2),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.red, width: 1.5),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.red, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 20,
-            horizontal: 16,
-          ),
-          filled: true,
-          fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         ),
       ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool isDark;
+  final Color textColor;
+  final Color primaryColor;
+  final Color burgundyColor;
+
+  const _Header({
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+    required this.textColor,
+    required this.primaryColor,
+    required this.burgundyColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: textColor),
+              onPressed: () => context.pop(),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.bakery_dining,
+                    color: isDark ? primaryColor : burgundyColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ÔPADOCA EXPRESS',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: textColor,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 48),
+          ],
+        ),
+        const SizedBox(height: 22),
+        Container(
+          width: 82,
+          height: 82,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF262626) : Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_add, color: textColor, size: 28),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            height: 1.45,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
+        ),
+      ],
     );
   }
 }

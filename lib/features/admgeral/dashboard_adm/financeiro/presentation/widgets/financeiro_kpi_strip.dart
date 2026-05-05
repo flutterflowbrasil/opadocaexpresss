@@ -24,8 +24,9 @@ class FinanceiroKpiStrip extends ConsumerWidget {
     final splitsPendentes = ref.watch(
       financeiroAdmControllerProvider.select((s) => s.splitsPendentes),
     );
-    final totalSaques = ref.watch(
-      financeiroAdmControllerProvider.select((s) => s.totalSaquesConcluidos),
+    final subcontasAtivas = ref.watch(
+      financeiroAdmControllerProvider
+          .select((s) => s.subcontas.where((c) => c.statusConta == 'active').length),
     );
 
     return Wrap(
@@ -54,8 +55,8 @@ class FinanceiroKpiStrip extends ConsumerWidget {
           iconBg: const Color(0xFFFFFBEB),
         ),
         _KpiCard(
-          label: 'Saques Concluídos',
-          value: _fmtBrl(totalSaques),
+          label: 'Subcontas Ativas',
+          value: subcontasAtivas.toString(),
           icon: Icons.pix_outlined,
           iconColor: const Color(0xFF3B82F6),
           iconBg: const Color(0xFFEFF6FF),

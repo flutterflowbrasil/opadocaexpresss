@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:padoca_express/core/services/asaas_onboarding_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/estab_adm_model.dart';
 
@@ -8,8 +9,10 @@ final estabsAdmRepositoryProvider = Provider<EstabsAdmRepository>((ref) {
 
 class EstabsAdmRepository {
   final SupabaseClient _client;
+  final AsaasOnboardingService _asaasOnboarding;
 
-  EstabsAdmRepository(this._client);
+  EstabsAdmRepository(this._client)
+      : _asaasOnboarding = AsaasOnboardingService(_client);
 
   Future<List<EstabAdmModel>> listarEstabelecimentos() async {
     final response = await _client
@@ -40,6 +43,10 @@ class EstabsAdmRepository {
     }
     if (novoStatus == 'aprovado') {
       body['motivo_suspensao'] = null;
+      await _asaasOnboarding.ensureSubaccount(
+        entityType: AsaasEntityType.estabelecimento,
+        entityId: id,
+      );
     }
     await _client.from('estabelecimentos').update(body).eq('id', id);
   }

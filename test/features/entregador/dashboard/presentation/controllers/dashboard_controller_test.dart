@@ -53,7 +53,7 @@ void main() {
       'loadDashboard updates state correctly with success profile and earnings',
       () async {
     // Arrange
-    when(() => mockRepo.fetchDriverProfile('user123')).thenAnswer((_) async => {
+    when(() => mockRepo.fetchDriverProfile()).thenAnswer((_) async => {
           'id': 'entregador123',
           'status_online': true,
           'raio_atuacao_km': 10,
@@ -65,7 +65,7 @@ void main() {
           ],
         });
 
-    when(() => mockRepo.fetchEarnings('entregador123'))
+    when(() => mockRepo.fetchEarnings())
         .thenAnswer((_) async => {
               'pedidosHoje': [
                 {'entregador_valor_total': 15.0}
@@ -102,7 +102,7 @@ void main() {
   test('toggleOnlineStatus calls repository and updates state true/false',
       () async {
     // Arrange Initial state
-    when(() => mockRepo.fetchDriverProfile(any())).thenAnswer((_) async => {
+    when(() => mockRepo.fetchDriverProfile()).thenAnswer((_) async => {
           'id': 'entregador123',
           'status_online': false,
           'raio_atuacao_km': 10,
@@ -110,13 +110,13 @@ void main() {
           'usuarios': {'nome_completo_fantasia': 'João Entregador'},
           'avaliacoes': [],
         });
-    when(() => mockRepo.fetchEarnings(any())).thenAnswer((_) async => {
+    when(() => mockRepo.fetchEarnings()).thenAnswer((_) async => {
           'pedidosHoje': [],
           'pedidosSemana': [],
         });
-    when(() => mockRepo.updateOnlineStatus(any(), any()))
+    when(() => mockRepo.updateOnlineStatus(any()))
         .thenAnswer((_) async {});
-    when(() => mockRepo.updateLocation(any(), any())).thenAnswer((_) async {});
+    when(() => mockRepo.updateLocation(any())).thenAnswer((_) async {});
 
     controller = DashboardController(mockRepo, mockSupabase);
     await Future.delayed(const Duration(milliseconds: 100));
@@ -127,7 +127,7 @@ void main() {
 
     // Assert
     expect(controller.state.isOnline, true);
-    verify(() => mockRepo.updateOnlineStatus('user123', true)).called(1);
-    verify(() => mockRepo.updateLocation('user123', 'entregador123')).called(1);
+    verify(() => mockRepo.updateOnlineStatus(true)).called(1);
+    verify(() => mockRepo.updateLocation('entregador123')).called(1);
   });
 }

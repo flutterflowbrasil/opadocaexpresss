@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/shared/widgets/responsive_layout.dart';
+import 'package:flutter/foundation.dart';
 
 class PreCadastroScreen extends StatelessWidget {
   const PreCadastroScreen({super.key});
@@ -53,205 +54,215 @@ class PreCadastroScreen extends StatelessWidget {
     required bool isDark,
     required Color cardColor,
   }) {
+    final bool isWebDesktop = kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.linux);
+
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Header Section
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                children: [
-                  // Logo
-                  Container(
-                    width: isDesktop ? 120 : 96,
-                    height: isDesktop ? 120 : 96,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark ? cardColor : Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark
-                            ? const Color(0xFF44403C)
-                            : const Color(0xFFFFF7ED),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Title
-                  Text(
-                    'Como você deseja usar o Padoca Express?',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: isDesktop ? 32 : 24,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Subtitle
-                  Text(
-                    'Escolha a opção que melhor se adequa ao seu perfil',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: isDesktop ? 18 : 14,
-                      fontWeight: FontWeight.w500,
-                      color: isDark
-                          ? const Color(0xFFA8A29E)
-                          : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: isDesktop ? 48 : 32),
-
-            // Options Container
-            if (isDesktop)
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                alignment: WrapAlignment.center,
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: _buildOptionCard(
-                      context: context,
-                      title: 'Cliente',
-                      description: 'Quero pedir rapidinho!',
-                      icon: Icons.person_outline,
-                      buttonText: 'Cadastrar como Cliente',
-                      onTap: () {
-                        context.push('/cadastro_cliente');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
-                    ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: _buildOptionCard(
-                      context: context,
-                      title: 'Estabelecimento',
-                      description: 'Sou parceiro, quero me cadastrar.',
-                      icon: Icons.storefront_outlined,
-                      buttonText: 'Cadastrar Estabelecimento',
-                      onTap: () {
-                        context.push('/cadastro-estabelecimento/step1');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
-                    ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: _buildOptionCard(
-                      context: context,
-                      title: 'Entregador',
-                      description: 'Quero fazer entregas!',
-                      icon: Icons.two_wheeler_outlined,
-                      buttonText: 'Cadastrar como Entregador',
-                      onTap: () {
-                        context.push('/cadastro_entregador');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
-                    ),
-                  ),
-                ],
-              )
-            else
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Header Section
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
+                constraints: const BoxConstraints(maxWidth: 800),
                 child: Column(
                   children: [
-                    _buildOptionCard(
-                      context: context,
-                      title: 'Cliente',
-                      description: 'Quero pedir rapidinho!',
-                      icon: Icons.person_outline,
-                      buttonText: 'Cadastrar como Cliente',
-                      onTap: () {
-                        context.push('/cadastro_cliente');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
+                    // Logo
+                    Container(
+                      width: isDesktop ? 120 : 96,
+                      height: isDesktop ? 120 : 96,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isDark ? cardColor : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF44403C)
+                              : const Color(0xFFFFF7ED),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildOptionCard(
-                      context: context,
-                      title: 'Estabelecimento',
-                      description: 'Sou parceiro, quero me cadastrar.',
-                      icon: Icons.storefront_outlined,
-                      buttonText: 'Cadastrar Estabelecimento',
-                      onTap: () {
-                        context.push('/cadastro-estabelecimento/step1');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
+                    const SizedBox(height: 24),
+
+                    // Title
+                    Text(
+                      'Como você deseja usar o Padoca Express?',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: isDesktop ? 32 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                        height: 1.2,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildOptionCard(
-                      context: context,
-                      title: 'Entregador',
-                      description: 'Quero fazer entregas!',
-                      icon: Icons.two_wheeler_outlined,
-                      buttonText: 'Cadastrar como Entregador',
-                      onTap: () {
-                        context.push('/cadastro_entregador');
-                      },
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      primaryColor: primaryColor,
+                    const SizedBox(height: 8),
+
+                    // Subtitle
+                    Text(
+                      'Escolha a opção que melhor se adequa ao seu perfil',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: isDesktop ? 18 : 14,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            isDark ? const Color(0xFFA8A29E) : Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
               ),
 
-            // Back Button
-            SizedBox(height: isDesktop ? 48 : 32),
-            TextButton(
-              onPressed: () => context.pop(),
-              child: Text(
-                'Voltar para Login',
-                style: GoogleFonts.outfit(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              SizedBox(height: isDesktop ? 48 : 32),
+
+              // Options Container
+              if (isDesktop)
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 24,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: _buildOptionCard(
+                        context: context,
+                        title: 'Cliente',
+                        description: 'Quero pedir rapidinho!',
+                        icon: Icons.person_outline,
+                        buttonText: 'Cadastrar como Cliente',
+                        onTap: () {
+                          context.push('/cadastro_cliente');
+                        },
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        primaryColor: primaryColor,
+                      ),
+                    ),
+                    if (isWebDesktop)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 320),
+                        child: _buildOptionCard(
+                          context: context,
+                          title: 'Estabelecimento',
+                          description: 'Sou parceiro, quero me cadastrar.',
+                          icon: Icons.storefront_outlined,
+                          buttonText: 'Cadastrar Estabelecimento',
+                          onTap: () {
+                            context.push('/cadastro-estabelecimento/step1');
+                          },
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          primaryColor: primaryColor,
+                        ),
+                      ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: _buildOptionCard(
+                        context: context,
+                        title: 'Entregador',
+                        description: 'Quero fazer entregas!',
+                        icon: Icons.two_wheeler_outlined,
+                        buttonText: 'Cadastrar como Entregador',
+                        onTap: () {
+                          context.push('/cadastro_entregador');
+                        },
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        primaryColor: primaryColor,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    children: [
+                      _buildOptionCard(
+                        context: context,
+                        title: 'Cliente',
+                        description: 'Quero pedir rapidinho!',
+                        icon: Icons.person_outline,
+                        buttonText: 'Cadastrar como Cliente',
+                        onTap: () {
+                          context.push('/cadastro_cliente');
+                        },
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        primaryColor: primaryColor,
+                      ),
+                      if (isWebDesktop) ...[
+                        const SizedBox(height: 16),
+                        _buildOptionCard(
+                          context: context,
+                          title: 'Estabelecimento',
+                          description: 'Sou parceiro, quero me cadastrar.',
+                          icon: Icons.storefront_outlined,
+                          buttonText: 'Cadastrar Estabelecimento',
+                          onTap: () {
+                            context.push('/cadastro-estabelecimento/step1');
+                          },
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          primaryColor: primaryColor,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      _buildOptionCard(
+                        context: context,
+                        title: 'Entregador',
+                        description: 'Quero fazer entregas!',
+                        icon: Icons.two_wheeler_outlined,
+                        buttonText: 'Cadastrar como Entregador',
+                        onTap: () {
+                          context.push('/cadastro_entregador');
+                        },
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        primaryColor: primaryColor,
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Back Button
+              SizedBox(height: isDesktop ? 48 : 32),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: Text(
+                  'Voltar para Login',
+                  style: GoogleFonts.outfit(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

@@ -78,6 +78,7 @@ const _sections = [
         id: 'reviews',
         label: 'Avaliações',
         icon: Icons.star_rounded,
+        route: '/dashboard_estabelecimento/avaliacoes',
       ),
     ],
   ),

@@ -17,6 +17,7 @@ class CarrinhoState {
   final CupomModel? cupomAplicado;
   final bool isValidandoCupom;
   final String? cupomErro;
+  final String? observacaoGeral;
 
   const CarrinhoState({
     this.itens = const [],
@@ -24,6 +25,7 @@ class CarrinhoState {
     this.cupomAplicado,
     this.isValidandoCupom = false,
     this.cupomErro,
+    this.observacaoGeral,
   });
 
   CarrinhoState copyWith({
@@ -34,6 +36,8 @@ class CarrinhoState {
     bool? isValidandoCupom,
     String? cupomErro,
     bool clearCupomErro = false,
+    String? observacaoGeral,
+    bool clearObservacaoGeral = false,
   }) {
     return CarrinhoState(
       itens: itens ?? this.itens,
@@ -41,6 +45,7 @@ class CarrinhoState {
       cupomAplicado: clearCupom ? null : (cupomAplicado ?? this.cupomAplicado),
       isValidandoCupom: isValidandoCupom ?? this.isValidandoCupom,
       cupomErro: clearCupomErro ? null : (cupomErro ?? this.cupomErro),
+      observacaoGeral: clearObservacaoGeral ? null : (observacaoGeral ?? this.observacaoGeral),
     );
   }
 
@@ -53,6 +58,7 @@ class CarrinhoState {
           ? EstabelecimentoModel.fromJson(
               json['estabelecimento'] as Map<String, dynamic>)
           : null,
+      observacaoGeral: json['observacao_geral'] as String?,
       // Cupom NÃO é persistido localmente por segurança — re-validado sempre
     );
   }
@@ -61,6 +67,8 @@ class CarrinhoState {
     return {
       'itens': itens.map((i) => i.toJson()).toList(),
       'estabelecimento': estabelecimento?.toJson(),
+      if (observacaoGeral != null && observacaoGeral!.isNotEmpty)
+        'observacao_geral': observacaoGeral,
     };
   }
 
@@ -185,6 +193,38 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
       novaLista[index] = item.copyWith(quantidade: novaQuantidade);
       _updateState(state.copyWith(itens: novaLista));
     }
+  }
+
+  void atualizarObservacao(ProdutoModel produto, String? observacaoAntiga, String novaObservacao) {
+    final index = state.itens.indexWhere((item) =>
+        item.produto.id == produto.id && item.observacao == observacaoAntiga);
+
+    if (index >= 0) {
+      final item = state.itens[index];
+      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
+      
+      // Verifica se já existe outro item igual com a nova observação para mesclar as quantidades
+      final existingIndex = state.itens.indexWhere((i) =>
+        i.produto.id == produto.id && i.observacao == novaObservacao && i != item);
+        
+      if (existingIndex >= 0) {
+        // Se existe, soma as quantidades e remove o antigo
+        final existingItem = novaLista[existingIndex];
+        novaLista[existingIndex] = existingItem.copyWith(quantidade: existingItem.quantidade + item.quantidade);
+        novaLista.removeAt(index);
+      } else {
+        novaLista[index] = item.copyWith(observacao: novaObservacao);
+      }
+      
+      _updateState(state.copyWith(itens: novaLista));
+    }
+  }
+
+  void atualizarObservacaoGeral(String obs) {
+    _updateState(state.copyWith(
+      observacaoGeral: obs.trim().isEmpty ? null : obs.trim(),
+      clearObservacaoGeral: obs.trim().isEmpty,
+    ));
   }
 
   Future<void> limparCarrinho() async {

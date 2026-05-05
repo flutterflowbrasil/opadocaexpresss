@@ -67,6 +67,24 @@ class MockAuthRepository implements AuthRepository {
       required dynamic storageService}) async {}
 
   @override
+  Future<Map<String, dynamic>?> getMeuCadastroEntregador(String userId) async => null;
+
+  @override
+  Future<void> reenviarDocumentoEntregador(String userId, String url) async {}
+
+  @override
+  Future<void> signUpEntregador({
+    required String email,
+    required String password,
+    required Map<String, dynamic> dadosCadastro,
+    required String selfiePath,
+    required String selfieNome,
+    required String documentoPath,
+    required String documentoNome,
+    required dynamic storageService,
+  }) async {}
+
+  @override
   Future<String?> getEstabelecimentoId(String userId) async => null;
 
   @override

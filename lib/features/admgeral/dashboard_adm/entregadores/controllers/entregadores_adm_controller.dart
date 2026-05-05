@@ -11,12 +11,10 @@ final entregadoresAdmControllerProvider = StateNotifierProvider.autoDispose<
         ..fetch(),
 );
 
-class EntregadoresAdmController
-    extends StateNotifier<EntregadoresAdmState> {
+class EntregadoresAdmController extends StateNotifier<EntregadoresAdmState> {
   final EntregadoresAdmRepository _repo;
 
-  EntregadoresAdmController(this._repo)
-      : super(const EntregadoresAdmState());
+  EntregadoresAdmController(this._repo) : super(const EntregadoresAdmState());
 
   Future<void> fetch() async {
     state = state.copyWith(isLoading: true, clearError: true);
@@ -73,9 +71,17 @@ class EntregadoresAdmController
       debugPrint('[EntregadoresAdm] executarAcao error: $e');
       state = state.copyWith(
         isSubmitting: false,
-        errorMessage: 'Erro ao executar ação. Tente novamente.',
+        errorMessage: _friendlyError(e),
       );
     }
+  }
+
+  String _friendlyError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    if (message.isEmpty) {
+      return 'Erro ao executar acao. Tente novamente.';
+    }
+    return message;
   }
 
   Future<void> revisarSelfie(
@@ -89,13 +95,31 @@ class EntregadoresAdmController
       // Atualização otimista do KYC local
       final updated = state.entregadores.map((e) {
         if (e.id != entregadorId) return e;
-        final novoKyc = (e.selfieRevisao ?? const EntregadorKycInfo(status: 'pendente'))
-            .copyWith(
+        final novoKyc =
+            (e.selfieRevisao ?? const EntregadorKycInfo(status: 'pendente'))
+                .copyWith(
           status: status,
           observacaoAdmin: observacao,
           revisadoEm: DateTime.now(),
         );
-        return e.copyWith(selfieRevisao: novoKyc);
+        final docs = Map<String, String?>.from(e.docs);
+        docs['selfie'] = status == 'aprovado' ? 'aprovado' : 'reprovado';
+        final documentos =
+            Map<String, EntregadorDocumentoInfo>.from(e.documentos);
+        final selfieDoc = documentos['selfie'];
+        if (selfieDoc != null) {
+          documentos['selfie'] = selfieDoc.copyWith(
+            status: docs['selfie'],
+            motivoRejeicao: observacao,
+            revisadoEm: DateTime.now(),
+            clearMotivo: status == 'aprovado',
+          );
+        }
+        return e.copyWith(
+          docs: docs,
+          documentos: documentos,
+          selfieRevisao: novoKyc,
+        );
       }).toList();
       state = state.copyWith(isSubmitting: false, entregadores: updated);
     } catch (e) {
@@ -105,6 +129,69 @@ class EntregadoresAdmController
         errorMessage: 'Erro ao revisar selfie. Verifique se a função '
             'revisar_selfie_entregador existe no banco.',
       );
+    }
+  }
+
+  Future<void> revisarDocumento(
+    String entregadorId,
+    String tipo,
+    String status, {
+    String? motivo,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      await _repo.revisarDocumento(
+        entregadorId,
+        tipo,
+        status,
+        motivo: motivo,
+      );
+      final updated = state.entregadores.map((e) {
+        if (e.id != entregadorId) return e;
+        final docs = Map<String, String?>.from(e.docs);
+        docs[tipo] = status;
+        final documentos =
+            Map<String, EntregadorDocumentoInfo>.from(e.documentos);
+        final atual = documentos[tipo];
+        if (atual != null) {
+          documentos[tipo] = atual.copyWith(
+            status: status,
+            motivoRejeicao: motivo,
+            revisadoEm: DateTime.now(),
+            clearMotivo: status == 'aprovado',
+          );
+        }
+        return e.copyWith(docs: docs, documentos: documentos);
+      }).toList();
+      state = state.copyWith(isSubmitting: false, entregadores: updated);
+    } catch (e) {
+      debugPrint('[EntregadoresAdm] revisarDocumento error: $e');
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _friendlyError(e),
+      );
+    }
+  }
+
+  Future<void> salvarEndereco(
+    String entregadorId,
+    EntregadorEnderecoInfo endereco,
+  ) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      final salvo = await _repo.salvarEndereco(entregadorId, endereco);
+      final updated = state.entregadores.map((e) {
+        if (e.id != entregadorId) return e;
+        return e.copyWith(endereco: salvo);
+      }).toList();
+      state = state.copyWith(isSubmitting: false, entregadores: updated);
+    } catch (e) {
+      debugPrint('[EntregadoresAdm] salvarEndereco error: $e');
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _friendlyError(e),
+      );
+      rethrow;
     }
   }
 }

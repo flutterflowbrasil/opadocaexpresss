@@ -7,6 +7,8 @@ import 'package:padoca_express/features/auth/presentation/politica_privacidade.d
 import 'package:padoca_express/features/auth/presentation/pre_cadastro_screen.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_cliente/cadastro_cliente_screen.dart';
 import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_entregador_screen.dart';
+import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_pendente_screen.dart';
+import 'package:padoca_express/features/auth/presentation/baixar_app_entregador_screen.dart';
 import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_screen.dart';
 import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_screen.dart';
 import 'package:padoca_express/features/cliente/home/home_screen.dart';
@@ -30,6 +32,8 @@ import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/pedido
 import 'package:padoca_express/features/estabelecimento/dashboard/configuracoes/configuracoes.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/produtos/produtos_screen.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/cupons/cupons_screen.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/relatorios/relatorios_screen.dart';
+import 'package:padoca_express/features/estabelecimento/dashboard/avaliacoes_screen.dart';
 import 'package:padoca_express/features/estabelecimento/financeiro/financeiro_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedidos_screen.dart';
 import 'package:padoca_express/features/cliente/pedidos/presentation/pedido_acompanhar_screen.dart';
@@ -57,6 +61,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/pre_cadastro',
         '/cadastro_cliente',
         '/cadastro_entregador',
+        '/baixar_app_entregador',
         '/cadastro-estabelecimento',
       ];
 
@@ -75,6 +80,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/pre_cadastro',
         '/cadastro_cliente',
         '/cadastro_entregador',
+        '/baixar_app_entregador',
         '/cadastro-estabelecimento',
       ];
       if (authRepository.currentUser != null &&
@@ -159,6 +165,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/dashboard_estabelecimento/relatorios',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: RelatoriosScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/dashboard_estabelecimento/avaliacoes',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: AvaliacoesEstabelecimentoScreen(),
+        ),
+      ),
+      GoRoute(
         path: '/privacy',
         builder: (context, state) => const PoliticaPrivacidadeScreen(),
       ),
@@ -173,6 +191,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/cadastro_entregador',
         builder: (context, state) => const CadastroEntregadorScreen(),
+      ),
+      GoRoute(
+        path: '/baixar_app_entregador',
+        builder: (context, state) => const BaixarAppEntregadorScreen(),
+      ),
+      GoRoute(
+        path: '/entregador/cadastro-pendente',
+        builder: (context, state) => const CadastroPendenteScreen(),
       ),
       GoRoute(
         path: '/cadastro-estabelecimento/step1',

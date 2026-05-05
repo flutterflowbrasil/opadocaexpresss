@@ -426,7 +426,7 @@ class SaldoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'SALDO DISPONÍVEL',
+                  'PREVISTO NO ASAAS',
                   style: GoogleFonts.dmSans(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,

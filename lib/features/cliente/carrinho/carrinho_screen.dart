@@ -6,6 +6,7 @@ import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/item_carrinho_card.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/cupom_section.dart';
+import 'package:padoca_express/features/cliente/carrinho/componentes/observacao_geral_section.dart';
 
 class CarrinhoScreen extends ConsumerWidget {
   const CarrinhoScreen({super.key});
@@ -174,8 +175,12 @@ class CarrinhoScreen extends ConsumerWidget {
                   const Divider(),
                   const SizedBox(height: 12),
 
+                  // ── Observação geral do pedido ────────────────────
+                  ObservacaoGeralSection(isDark: isDark),
+
                   // ── Cupom de desconto ────────────────────────────
                   CupomSection(isDark: isDark),
+
 
                   const SizedBox(height: 4),
                   _buildResumoRow('Subtotal', subtotal, isDark: isDark),

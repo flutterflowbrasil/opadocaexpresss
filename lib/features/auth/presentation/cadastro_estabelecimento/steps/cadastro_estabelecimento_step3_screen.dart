@@ -82,7 +82,8 @@ class _CadastroEstabelecimentoStep3ScreenState
             const SnackBar(content: Text('Cadastro realizado com sucesso!')),
           );
           // Redirecionar para dashboard ou aguardar aprovação
-          context.go('/home'); // Ajustar rota de destino
+          final rota = await authRepo.validateSessionAndRoute();
+          context.go(rota); 
         }
       } catch (e) {
         if (mounted) {

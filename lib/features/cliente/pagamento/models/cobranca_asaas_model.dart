@@ -1,17 +1,19 @@
 import 'package:flutter/foundation.dart';
 
-/// Resposta da Edge Function `criar-cobranca-asaas`.
+/// Resposta da Edge Function `asaas-criar-pagamento-pedido`.
 class CobrancaAsaasModel {
   final String paymentId;
   final String? pixQrCode;     // base64 da imagem do QR Code
   final String? pixCopiaECola; // texto para copia-e-cola PIX
-  final String? invoiceUrl;    // link de fatura para cartão
+  final String? invoiceUrl;    // link de fatura
+  final String? bankSlipUrl;   // link do boleto, quando houver
 
   const CobrancaAsaasModel({
     required this.paymentId,
     this.pixQrCode,
     this.pixCopiaECola,
     this.invoiceUrl,
+    this.bankSlipUrl,
   });
 
   factory CobrancaAsaasModel.fromJson(Map<String, dynamic> json) {
@@ -30,7 +32,8 @@ class CobrancaAsaasModel {
         paymentId: extractedId.toString(),
         pixQrCode: json['pixQrCode'] as String?,
         pixCopiaECola: json['pixCopiaECola'] as String?,
-        invoiceUrl: json['invoiceUrl'] ?? json['invoiceUrl'] as String?,
+        invoiceUrl: json['invoiceUrl'] as String?,
+        bankSlipUrl: json['bankSlipUrl'] as String?,
       );
     } catch (e, st) {
       debugPrint('[CobrancaAsaasModel.fromJson] ERRO: $e\nJSON: $json\n$st');

@@ -288,106 +288,115 @@ class _ChamadoCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border(
-            top: BorderSide(color: const Color(0xFFEAE8E4)),
-            right: BorderSide(color: const Color(0xFFEAE8E4)),
-            bottom: BorderSide(color: const Color(0xFFEAE8E4)),
-            left: BorderSide(color: borderColor, width: 3),
-          ),
+          border: Border.all(color: const Color(0xFFEAE8E4)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
           children: [
-            // Avatar tipo
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: tipoCfg.bg,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(tipoCfg.icon, size: 18, color: tipoCfg.c),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3,
+              child: ColoredBox(color: borderColor),
             ),
-            const SizedBox(width: 10),
-
-            // Conteúdo
-            Expanded(
-              child: Column(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        chamado.solicitanteNome ?? 'Usuário',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1A0910),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      _Badge(
-                          label: tipoCfg.l,
-                          color: tipoCfg.c,
-                          bg: tipoCfg.bg),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_rounded,
-                              size: 11,
-                              color: const Color(0xFF9CA3AF)),
-                          const SizedBox(width: 3),
-                          Text(
-                            _elapsed(chamado.createdAt),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              color: const Color(0xFF9CA3AF),
+                  // Avatar tipo
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: tipoCfg.bg,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(tipoCfg.icon, size: 18, color: tipoCfg.c),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Conteúdo
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              chamado.solicitanteNome ?? 'Usuário',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF1A0910),
+                              ),
                             ),
+                            const SizedBox(width: 6),
+                            _Badge(
+                                label: tipoCfg.l,
+                                color: tipoCfg.c,
+                                bg: tipoCfg.bg),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                Icon(Icons.access_time_rounded,
+                                    size: 11,
+                                    color: const Color(0xFF9CA3AF)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _elapsed(chamado.createdAt),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 10,
+                                    color: const Color(0xFF9CA3AF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          chamado.solicitanteEmail ?? '',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10.5,
+                            color: const Color(0xFF9CA3AF),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    chamado.solicitanteEmail ?? '',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10.5,
-                      color: const Color(0xFF9CA3AF),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          chamado.descricao,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: const Color(0xFF374151),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _Badge(
+                                label: stCfg.l,
+                                color: stCfg.c,
+                                bg: stCfg.bg),
+                            const SizedBox(width: 5),
+                            _Badge(
+                                label: prCfg.l,
+                                color: prCfg.c,
+                                bg: prCfg.bg),
+                            const Spacer(),
+                            Icon(Icons.chevron_right_rounded,
+                                size: 16,
+                                color: const Color(0xFF9CA3AF)),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    chamado.descricao,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: const Color(0xFF374151),
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _Badge(
-                          label: stCfg.l,
-                          color: stCfg.c,
-                          bg: stCfg.bg),
-                      const SizedBox(width: 5),
-                      _Badge(
-                          label: prCfg.l,
-                          color: prCfg.c,
-                          bg: prCfg.bg),
-                      const Spacer(),
-                      Icon(Icons.chevron_right_rounded,
-                          size: 16,
-                          color: const Color(0xFF9CA3AF)),
-                    ],
                   ),
                 ],
               ),

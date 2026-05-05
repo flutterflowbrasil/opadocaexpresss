@@ -30,7 +30,7 @@ class KanbanFooter extends StatelessWidget {
               _buildStatusDot(DashboardColors.primary),
               const SizedBox(width: 4),
               Text(
-                'Entregadores: 4 ativos',
+                'Pedidos: sincronizados',
                 style: GoogleFonts.publicSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,

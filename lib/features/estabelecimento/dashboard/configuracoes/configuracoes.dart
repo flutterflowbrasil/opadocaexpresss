@@ -9,8 +9,6 @@ import 'controllers/configuracoes_state.dart';
 import 'componentes_config/visual_tab.dart';
 import 'componentes_config/info_tab.dart';
 import 'componentes_config/endereco_tab.dart';
-import 'componentes_config/entrega_tab.dart';
-import 'componentes_config/bancarios_tab.dart';
 import 'componentes_config/horarios_tab.dart';
 import 'componentes_config/avancado_tab.dart';
 import 'componentes_config/responsavel_tab.dart';
@@ -31,7 +29,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
   }
 
   @override
@@ -65,10 +63,8 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
                         InfoTab(isDark: isDark),
                         EnderecoTab(isDark: isDark),
                         HorariosTab(isDark: isDark),
-                        EntregaTab(isDark: isDark),
                         AvancadoTab(isDark: isDark),
                         ResponsavelTab(isDark: isDark),
-                        BancariosTab(isDark: isDark),
                         NotificacoesTab(isDark: isDark),
                       ],
                     ),
@@ -184,11 +180,13 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
                   ? () async {
                       final success = await notifier.salvarAlteracoes();
                       if (!mounted) return;
+                      final currentError =
+                          ref.read(configuracoesControllerProvider).error;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(success
                               ? 'Configurações salvas com sucesso!'
-                              : 'Erro ao salvar: ${state.error ?? "Tente novamente"}'),
+                              : 'Erro ao salvar: ${currentError ?? "Tente novamente"}'),
                           backgroundColor: success ? Colors.green : Colors.red,
                         ),
                       );
@@ -242,10 +240,8 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
           Tab(text: 'Informações'),
           Tab(text: 'Endereço'),
           Tab(text: 'Horários'),
-          Tab(text: 'Entrega'),
           Tab(text: 'Avançado'),
           Tab(text: 'Responsável'),
-          Tab(text: 'Bancário'),
           Tab(text: 'Notificações'),
         ],
       ),

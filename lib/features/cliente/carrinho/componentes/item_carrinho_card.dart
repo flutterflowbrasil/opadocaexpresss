@@ -42,20 +42,39 @@ class ItemCarrinhoCard extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Image
-          if (produto.imagemUrl != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                produto.imagemUrl!,
-                width: 70,
-                height: 70,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildPlaceholder(),
-              ),
-            )
-          else
-            _buildPlaceholder(),
+          // Image e Botão Editar
+          Column(
+            children: [
+              if (produto.imagemUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    produto.imagemUrl!,
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                  ),
+                )
+              else
+                _buildPlaceholder(),
+              if (produto.opcoes.isNotEmpty && produto.aceitaObservacaoCategoria)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: InkWell(
+                    onTap: () => _mostrarDialogoObservacao(context, ref, item),
+                    child: Text(
+                      'Editar',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFFF7034),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
 
           const SizedBox(width: 12),
 
@@ -95,16 +114,47 @@ class ItemCarrinhoCard extends ConsumerWidget {
                 ),
                 if (item.observacao != null && item.observacao!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Obs: ${item.observacao}',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: mutedTextColor,
-                        fontStyle: FontStyle.italic,
+                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                    child: InkWell(
+                      onTap: produto.aceitaObservacaoCategoria
+                          ? () => _mostrarDialogoObservacao(context, ref, item)
+                          : null,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Obs: ${item.observacao}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: mutedTextColor,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (produto.aceitaObservacaoCategoria)
+                            Icon(Icons.edit, size: 14, color: mutedTextColor),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                else if (produto.aceitaObservacaoCategoria)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                    child: InkWell(
+                      onTap: () => _mostrarDialogoObservacao(context, ref, item),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Text(
+                        '+ Adicionar observação',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: const Color(0xFFFF7034),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 8),
@@ -200,4 +250,117 @@ class ItemCarrinhoCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+void _mostrarDialogoObservacao(BuildContext context, WidgetRef ref, ItemCarrinhoModel item) {
+  final TextEditingController obsController = TextEditingController(text: item.observacao ?? '');
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final primaryColor = const Color(0xFFFF7034);
+  final surfaceColor = isDark ? const Color(0xFF2d2d2d) : Colors.white;
+  final textColor = isDark ? Colors.white : const Color(0xFF4a4a4a);
+  final int maxObsLength = 140;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1f1f1f) : const Color(0xFFFFFBF2),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Observação',
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: Colors.grey[500]),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: obsController,
+                builder: (context, value, child) {
+                  return Text(
+                    '${value.text.length} / $maxObsLength caracteres',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.right,
+                  );
+                },
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: obsController,
+                maxLength: maxObsLength,
+                maxLines: 4,
+                style: GoogleFonts.outfit(color: textColor, fontSize: 14),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'Ex: bem passadinho, sem muita manteiga, etc.',
+                  hintStyle: GoogleFonts.outfit(color: Colors.grey[400], fontSize: 14),
+                  filled: true,
+                  fillColor: surfaceColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: primaryColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(carrinhoControllerProvider.notifier).atualizarObservacao(
+                        item.produto,
+                        item.observacao,
+                        obsController.text.trim(),
+                      );
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Salvar Observação',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

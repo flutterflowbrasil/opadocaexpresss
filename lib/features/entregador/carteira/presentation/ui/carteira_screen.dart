@@ -1,13 +1,15 @@
+// ignore_for_file: unused_element, unused_field
+
 // ============================================================
 // carteira_screen.dart — Carteira do Entregador
 // Ôpadoca Express · App do Entregador
 // Rota: /dashboard_entregador/financeiro
-// Tabelas: entregador_saldos, entregador_saques,
-//          splits_pagamento, entregador_bonificacoes
-// Edge Function: solicitar-saque
+// Tabelas: entregador_saldos, splits_pagamento, entregador_bonificacoes
+// Saques e movimentacao real acontecem diretamente no Asaas.
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -60,7 +62,15 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
   String? _pixChave;
   String _pixTipo = 'cpf';
 
+  double _saqueMinimo = 10.0;
+  double _saqueTarifa = 0.0;
+  int _saqueLimiteDiario = 3;
+
   List<_Movimentacao> _movimentacoes = [];
+
+  // Status da conta Asaas -- sincronizado em background ao abrir a tela
+  String _asaasStatus = 'pending';
+  String _asaasMensagem = 'Verificando sua conta Asaas...';
 
   RealtimeChannel? _saldoChannel;
   late TabController _tabCtrl;
@@ -68,7 +78,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 1, vsync: this);
     _carregar();
   }
 
@@ -106,6 +116,20 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
         _totalSacado = (saldo?['total_sacado'] as num?)?.toDouble() ?? 0;
       });
 
+      final conf = await Supabase.instance.client
+          .from('plataforma_configuracoes')
+          .select('chave, valor')
+          .inFilter('chave', ['saque_valor_minimo', 'saque_tarifa_fixa', 'saque_limite_diario']);
+
+      if (mounted && conf.isNotEmpty) {
+        final configMap = {for (var item in conf) item['chave']: item['valor']};
+        setState(() {
+          _saqueMinimo = double.tryParse(configMap['saque_valor_minimo']?.toString() ?? '10.0') ?? 10.0;
+          _saqueTarifa = double.tryParse(configMap['saque_tarifa_fixa']?.toString() ?? '0.0') ?? 0.0;
+          _saqueLimiteDiario = int.tryParse(configMap['saque_limite_diario']?.toString() ?? '3') ?? 3;
+        });
+      }
+
       await _carregarMovimentacoes();
       _iniciarRealtime();
     } catch (e) {
@@ -125,13 +149,6 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
         )
         .eq('entregador_id', _entregadorId!)
         .order('created_at', ascending: false)
-        .limit(20);
-
-    final saques = await Supabase.instance.client
-        .from('entregador_saques')
-        .select()
-        .eq('entregador_id', _entregadorId!)
-        .order('solicitado_em', ascending: false)
         .limit(20);
 
     final bonifs = await Supabase.instance.client
@@ -155,16 +172,6 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
         descricao: 'Entrega #${num_ ?? '?'}',
         data: _fmtData(s['created_at']),
         status: 'concluido',
-      ));
-    }
-
-    for (final s in saques) {
-      lista.add(_Movimentacao(
-        tipo: 'saque',
-        valor: (s['valor'] as num).toDouble(),
-        descricao: 'Saque PIX',
-        data: _fmtData(s['solicitado_em']),
-        status: s['status'] ?? 'pendente',
       ));
     }
 
@@ -216,32 +223,36 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
   }
 
   void _abrirSaque() {
-    if (_saldoDisponivel < 10) {
-      _mostrarErro('Saldo mínimo para saque é R\$ 10,00');
-      return;
-    }
-    if (_pixChave == null || _pixChave!.isEmpty) {
-      _mostrarErro('Cadastre sua chave PIX no perfil antes de sacar.');
-      return;
-    }
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: _card,
+      backgroundColor: _bg2,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _SaqueSheet(
-        saldoDisponivel: _saldoDisponivel,
-        pixChave: _pixChave!,
-        pixTipo: _pixTipo,
-        entregadorId: _entregadorId!,
-        onSucesso: () {
-          _carregar();
-          _mostrarSucesso('Saque solicitado! Será processado em instantes.');
-        },
-      ),
+      builder: (_) => const _AsaasAcessoSheet(),
     );
+  }
+
+  /// Chama a Edge Function para sincronizar o status da subconta Asaas.
+  /// Executado em background — não bloqueia a UI.
+  Future<void> _sincronizarStatusAsaas() async {
+    if (_entregadorId == null) return;
+    try {
+      final resp = await Supabase.instance.client.functions.invoke(
+        'asaas-sincronizar-subconta',
+        body: {'entidade_tipo': 'entregador', 'entidade_id': _entregadorId},
+      );
+      if (!mounted) return;
+      if (resp.status < 400 && resp.data is Map) {
+        final data = (resp.data as Map).cast<String, dynamic>();
+        setState(() {
+          _asaasStatus = (data['status'] as String?) ?? 'pending';
+          _asaasMensagem = (data['mensagem'] as String?) ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('[Carteira] sincronizar Asaas: $e');
+    }
   }
 
   void _mostrarErro(String msg) => ScaffoldMessenger.of(context).showSnackBar(
@@ -358,7 +369,10 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
                         child: _SaldoCard(
                           saldoDisponivel: _saldoDisponivel,
                           saldoBloqueado: _saldoBloqueado,
+                          saqueMinimo: _saqueMinimo,
                           onSacar: _abrirSaque,
+                          asaasStatus: _asaasStatus,
+                          asaasMensagem: _asaasMensagem,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -378,8 +392,8 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
                             const SizedBox(width: 10),
                             Expanded(
                               child: _TotalCard(
-                                label: 'Total Sacado',
-                                valor: _totalSacado,
+                                label: 'Recebido Asaas',
+                                valor: _totalGanho,
                                 cor: _orange,
                                 icon: '⬆️',
                               ),
@@ -415,7 +429,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
                             ),
                             labelColor: Colors.white,
                             unselectedLabelColor: _text3,
-                            tabs: const [Tab(text: 'Movimentações'), Tab(text: 'Saques')],
+                            tabs: const [Tab(text: 'Movimentacoes')],
                           ),
                         ),
                       ),
@@ -427,10 +441,6 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
                           children: [
                             _ListaMovimentacoes(
                               itens: _movimentacoes,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                            ),
-                            _ListaSaques(
-                              entregadorId: _entregadorId ?? '',
                               padding: const EdgeInsets.symmetric(horizontal: 20),
                             ),
                           ],
@@ -451,13 +461,18 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
 // SALDO CARD
 // ═══════════════════════════════════════════════════════════════════════════
 class _SaldoCard extends StatelessWidget {
-  final double saldoDisponivel, saldoBloqueado;
+  final double saldoDisponivel, saldoBloqueado, saqueMinimo;
   final VoidCallback onSacar;
+  final String asaasStatus;
+  final String asaasMensagem;
 
   const _SaldoCard({
     required this.saldoDisponivel,
     required this.saldoBloqueado,
+    required this.saqueMinimo,
     required this.onSacar,
+    this.asaasStatus = 'pending',
+    this.asaasMensagem = '',
   });
 
   @override
@@ -477,8 +492,11 @@ class _SaldoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Badge de status Asaas
+          _AsaasStatusBadge(status: asaasStatus, mensagem: asaasMensagem),
+          const SizedBox(height: 12),
           Text(
-            'SALDO DISPONÍVEL',
+            'PREVISTO NO ASAAS',
             style: GoogleFonts.dmSans(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -537,7 +555,7 @@ class _SaldoCard extends StatelessWidget {
                           const Text('⚡', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 8),
                           Text(
-                            'Sacar via PIX',
+                            'Acessar Asaas',
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
@@ -555,7 +573,7 @@ class _SaldoCard extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Mínimo R\$ 10,00 · Instantâneo',
+              'Saques e movimentacao sao feitos diretamente no Asaas',
               style: GoogleFonts.dmSans(fontSize: 10, color: _text3),
             ),
           ),
@@ -563,6 +581,116 @@ class _SaldoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+
+
+// ─── Asaas Status Badge ─────────────────────────────────────────────────────────────
+
+class _AsaasStatusBadge extends StatelessWidget {
+
+  final String status;
+
+  final String mensagem;
+
+  const _AsaasStatusBadge({required this.status, required this.mensagem});
+
+
+
+  @override
+
+  Widget build(BuildContext context) {
+
+    final (icon, color, label) = switch (status) {
+
+      'active' => ('✅', _green, 'Conta ativa'),
+
+      'blocked' => ('🚫', _red, 'Conta bloqueada'),
+
+      'rejected' => ('❌', _red, 'Conta reprovada'),
+
+      _ => ('⏳', _yellow, 'Em analise'),
+
+    };
+
+    return Row(
+
+      children: [
+
+        Container(
+
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+
+          decoration: BoxDecoration(
+
+            color: color.withValues(alpha: .12),
+
+            border: Border.all(color: color.withValues(alpha: .3)),
+
+            borderRadius: BorderRadius.circular(8),
+
+          ),
+
+          child: Row(
+
+            mainAxisSize: MainAxisSize.min,
+
+            children: [
+
+              Text(icon, style: const TextStyle(fontSize: 11)),
+
+              const SizedBox(width: 5),
+
+              Text(
+
+                label,
+
+                style: GoogleFonts.dmSans(
+
+                  fontSize: 10,
+
+                  fontWeight: FontWeight.w800,
+
+                  color: color,
+
+                ),
+
+              ),
+
+            ],
+
+          ),
+
+        ),
+
+        if (mensagem.isNotEmpty) ...[
+
+          const SizedBox(width: 8),
+
+          Expanded(
+
+            child: Text(
+
+              mensagem,
+
+              style: GoogleFonts.dmSans(fontSize: 9, color: _text3),
+
+              maxLines: 1,
+
+              overflow: TextOverflow.ellipsis,
+
+            ),
+
+          ),
+
+        ],
+
+      ],
+
+    );
+
+  }
+
 }
 
 // ─── Total Card ─────────────────────────────────────────────────────────────
@@ -868,200 +996,242 @@ class _ListaSaquesState extends State<_ListaSaques> {
 // ═══════════════════════════════════════════════════════════════════════════
 // SAQUE SHEET
 // ═══════════════════════════════════════════════════════════════════════════
-class _SaqueSheet extends StatefulWidget {
-  final double saldoDisponivel;
-  final String pixChave, pixTipo, entregadorId;
-  final VoidCallback onSucesso;
 
-  const _SaqueSheet({
-    required this.saldoDisponivel,
-    required this.pixChave,
-    required this.pixTipo,
-    required this.entregadorId,
-    required this.onSucesso,
-  });
+// ═══════════════════════════════════════════════════════════════════════════
+// ASAAS ACESSO SHEET — Instrucoes para primeiro acesso no Asaas
+// ═══════════════════════════════════════════════════════════════════════════
+class _AsaasAcessoSheet extends StatelessWidget {
+  const _AsaasAcessoSheet();
 
-  @override
-  State<_SaqueSheet> createState() => _SaqueSheetState();
-}
+  static const _urlSandbox = 'https://sandbox.asaas.com';
+  static const _urlProd = 'https://app.asaas.com';
 
-class _SaqueSheetState extends State<_SaqueSheet> {
-  final _ctrl = TextEditingController();
-  bool _enviando = false;
-  String? _erro;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.text = widget.saldoDisponivel.toStringAsFixed(2);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sacar() async {
-    final v = double.tryParse(_ctrl.text.replaceAll(',', '.'));
-    if (v == null || v < 10) {
-      setState(() => _erro = 'Valor mínimo: R\$ 10,00');
-      return;
-    }
-    if (v > widget.saldoDisponivel) {
-      setState(() => _erro = 'Saldo insuficiente');
-      return;
-    }
-
-    setState(() {
-      _enviando = true;
-      _erro = null;
-    });
-
-    try {
-      final resp = await Supabase.instance.client.functions.invoke(
-        'solicitar-saque',
-        body: {
-          'entregador_id': widget.entregadorId,
-          'valor': v,
-          'pix_chave': widget.pixChave,
-          'pix_tipo': widget.pixTipo,
-        },
-      );
-
-      if (resp.status != 200) throw Exception(resp.data?['error'] ?? 'Erro ao sacar');
-
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onSucesso();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _enviando = false;
-          _erro = e.toString().replaceAll('Exception: ', '');
-        });
-      }
+  Future<void> _abrirLink(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
+      padding: EdgeInsets.fromLTRB(
+        24,
+        20,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
               height: 4,
-              decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Sacar via PIX',
-              style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: _text1),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Disponível: R\$ ${widget.saldoDisponivel.toStringAsFixed(2)}',
-              style: GoogleFonts.dmSans(fontSize: 13, color: _text3),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _bg3,
-                border: Border.all(color: _border),
-                borderRadius: BorderRadius.circular(12),
+                color: _border,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _orange.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text('🏦', style: TextStyle(fontSize: 20)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Acessar sua conta Asaas',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: _text1,
+                    ),
+                  ),
+                  Text(
+                    'Saques e movimentacoes sao feitos diretamente no Asaas',
+                    style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Passos
+          _PassoItem(
+            numero: '1',
+            titulo: 'Acesse o site do Asaas',
+            descricao: 'Clique no botao abaixo para abrir o Asaas',
+          ),
+          _PassoItem(
+            numero: '2',
+            titulo: 'Primeiro acesso? Clique em "Esqueci minha senha"',
+            descricao: 'Use o EMAIL que voce cadastrou no Padoca Express',
+          ),
+          _PassoItem(
+            numero: '3',
+            titulo: 'Crie sua senha e entre',
+            descricao: 'Voce recebera um email do Asaas com o link de criacao de senha',
+            isLast: true,
+          ),
+          const SizedBox(height: 24),
+          // Botao de acesso
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => _abrirLink(_urlProd),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _orange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('⚡', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Chave PIX (${widget.pixTipo})',
-                          style: GoogleFonts.dmSans(fontSize: 10, color: _text3),
-                        ),
-                        Text(
-                          widget.pixChave,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            color: _text1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                  const Text('⚡', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Abrir Asaas (Producao)',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _ctrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: _orange,
+          ),
+          const SizedBox(height: 10),
+          // Botao sandbox (menor, secundario)
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton(
+              onPressed: () => _abrirLink(_urlSandbox),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: _orange.withValues(alpha: .4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                prefixText: 'R\$ ',
-                prefixStyle: GoogleFonts.outfit(
-                  fontSize: 20,
+              child: Text(
+                'Abrir Asaas Sandbox (Testes)',
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: _text3,
+                  color: _orange,
                 ),
-                filled: true,
-                fillColor: _bg3,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: _orange.withValues(alpha: .3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: _orange, width: 2),
-                ),
-                errorText: _erro,
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                onPressed: _enviando ? null : _sacar,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _orange,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              'Nao sabe a senha? Clique em "Esqueci minha senha" no Asaas',
+              style: GoogleFonts.dmSans(fontSize: 10, color: _text3),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Passo de instrucao ─────────────────────────────────────────────────────
+class _PassoItem extends StatelessWidget {
+  final String numero, titulo, descricao;
+  final bool isLast;
+
+  const _PassoItem({
+    required this.numero,
+    required this.titulo,
+    required this.descricao,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _orange.withValues(alpha: .15),
+                  border: Border.all(color: _orange.withValues(alpha: .4)),
+                  shape: BoxShape.circle,
                 ),
-                child: _enviando
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                      )
-                    : Text(
-                        'Confirmar Saque',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
+                child: Center(
+                  child: Text(
+                    numero,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: _orange,
+                    ),
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: _border,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    titulo,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _text1,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    descricao,
+                    style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

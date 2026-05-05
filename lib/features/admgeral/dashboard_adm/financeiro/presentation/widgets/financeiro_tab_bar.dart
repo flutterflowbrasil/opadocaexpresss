@@ -5,7 +5,6 @@ const kFinanceiroAbas = [
   ('visao_geral', 'Visão Geral'),
   ('pedidos', 'Pedidos & Pagamentos'),
   ('splits', 'Splits'),
-  ('saques', 'Saques PIX'),
   ('subcontas', 'Subcontas Asaas'),
 ];
 

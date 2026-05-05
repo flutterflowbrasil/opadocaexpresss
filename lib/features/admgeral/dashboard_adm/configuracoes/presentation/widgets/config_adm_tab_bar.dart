@@ -12,7 +12,6 @@ const List<({String id, String label, IconData icon, bool sensivel})>
   (id: 'notificacoes', label: 'Notificações', icon: Icons.notifications_none, sensivel: false),
   (id: 'cupons', label: 'Cupons', icon: Icons.card_giftcard, sensivel: false),
   (id: 'cancelamento', label: 'Cancelamento', icon: Icons.cancel_outlined, sensivel: true),
-  (id: 'saques', label: 'Saques PIX', icon: Icons.bolt, sensivel: false),
   (id: 'sistema', label: 'Sistema', icon: Icons.settings, sensivel: true),
 ];
 

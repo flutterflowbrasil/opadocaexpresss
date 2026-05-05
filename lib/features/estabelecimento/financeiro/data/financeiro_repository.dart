@@ -40,7 +40,7 @@ class FinanceiroRepository {
       final response = await _supabase
           .from('pedidos')
           .select(
-              'id, numero_pedido, status, total, subtotal_produtos, taxa_entrega, taxa_servico_app, desconto_cupom, pagamento_metodo, pagamento_status, created_at')
+              'id, numero_pedido, status, total, subtotal_produtos, taxa_entrega, desconto_cupom, pagamento_metodo, pagamento_status, created_at')
           .eq('estabelecimento_id', estabelecimentoId)
           .gte('created_at', inicio.toIso8601String())
           .lte('created_at', fim.toIso8601String())
@@ -63,7 +63,7 @@ class FinanceiroRepository {
       final response = await _supabase
           .from('splits_pagamento')
           .select(
-              'id, status, estabelecimento_valor, entregador_valor_total, plataforma_valor, valor_total, pedidos!inner(numero_pedido, created_at, estabelecimento_id)')
+              'id, status, estabelecimento_valor, pedidos!inner(numero_pedido, created_at, estabelecimento_id)')
           .eq('pedidos.estabelecimento_id', estabelecimentoId)
           .gte('pedidos.created_at', inicio.toIso8601String())
           .lte('pedidos.created_at', fim.toIso8601String())

@@ -30,8 +30,8 @@ class FinanceiroSubcontasTab extends ConsumerWidget {
         children: [
           const FinanceiroEdgeFunctionBanner(
             mensagem:
-                'Subcontas são criadas via Edge Function criar-wallet-asaas quando o admin aprova '
-                'o cadastro de um estabelecimento ou entregador. INSERT/UPDATE bloqueados para o client.',
+                'Subcontas sao criadas via Edge Function asaas-criar-subconta no cadastro '
+                'ou na aprovacao administrativa. A apiKey da subconta nunca e exposta ao app.',
           ),
           if (isLoading)
             const _SubcontasShimmer()

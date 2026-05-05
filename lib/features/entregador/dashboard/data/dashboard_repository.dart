@@ -25,7 +25,7 @@ class DashboardRepository {
       foto_perfil_url,
       status_despacho,
       pedido_atual_id,
-      usuarios!inner(nome_completo_fantasia),
+      usuarios!entregadores_usuario_id_fkey(nome_completo_fantasia),
       entregador_saldos(saldo_disponivel, saldo_bloqueado, total_ganho)
     ''').single();
 

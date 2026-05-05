@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:padoca_express/features/cliente/pagamento/controllers/pagamento_controller.dart';
+import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/features/cliente/pagamento/models/dados_cartao_model.dart';
 import 'package:padoca_express/features/cliente/pagamento/presentation/cartao_pagamento_widgets.dart';
 
@@ -99,12 +99,14 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
 
   String? _validarCpfCnpj(String? value) {
     if (value == null || value.isEmpty) return 'Informe o CPF/CNPJ';
-    final digits = value.replaceAll(RegExp(r'\D'), '');
+    final digits = BrazilianDocumentValidator.onlyDigits(value);
     if (digits.length != 11 && digits.length != 14) {
       return 'CPF (11 dígitos) ou CNPJ (14 dígitos)';
     }
-    if (!PagamentoController.validarCpfOuCnpj(value)) {
-      return digits.length == 11 ? 'CPF inválido' : 'CNPJ inválido';
+    if (!BrazilianDocumentValidator.isValidCpfOrCnpj(value)) {
+      return digits.length == 11
+          ? BrazilianDocumentValidator.invalidCpfMessage
+          : BrazilianDocumentValidator.invalidCnpjMessage;
     }
     return null;
   }

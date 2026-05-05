@@ -7,7 +7,6 @@ import 'widgets/financeiro_tab_bar.dart';
 import 'widgets/financeiro_visao_geral.dart';
 import 'widgets/financeiro_pedidos_tab.dart';
 import 'widgets/financeiro_splits_tab.dart';
-import 'widgets/financeiro_saques_tab.dart';
 import 'widgets/financeiro_subcontas_tab.dart';
 
 class FinanceiroAdmScreen extends ConsumerWidget {
@@ -96,7 +95,7 @@ class _FinanceiroHeader extends ConsumerWidget {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  'Receitas, splits e saques',
+                  'Receitas, splits e conciliacao Asaas',
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
@@ -186,7 +185,6 @@ class _FinanceiroTabContent extends ConsumerWidget {
     return switch (aba) {
       'pedidos'    => const FinanceiroPedidosTab(),
       'splits'     => const FinanceiroSplitsTab(),
-      'saques'     => const FinanceiroSaquesTab(),
       'subcontas'  => const FinanceiroSubcontasTab(),
       _            => const FinanceiroVisaoGeral(),
     };

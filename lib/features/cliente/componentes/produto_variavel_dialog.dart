@@ -368,63 +368,7 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                           );
                         }),
 
-                        // Observation
-                        if (widget.produto.permiteObservacoes) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Alguma observação?',
-                                  style: GoogleFonts.outfit(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? Colors.grey[300]
-                                          : Colors.grey[700])),
-                              ValueListenableBuilder<TextEditingValue>(
-                                valueListenable: _obsController,
-                                builder: (context, value, child) {
-                                  return Text(
-                                      '${value.text.length} / $maxObsLength',
-                                      style: GoogleFonts.outfit(
-                                          fontSize: 12,
-                                          color: Colors.grey[400]));
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _obsController,
-                            maxLength: maxObsLength,
-                            maxLines: 4,
-                            style: GoogleFonts.outfit(
-                                color: textColor, fontSize: 14),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText:
-                                  'Ex: bem passadinho, sem muita manteiga, etc.',
-                              hintStyle: GoogleFonts.outfit(
-                                  color: Colors.grey[400], fontSize: 14),
-                              filled: true,
-                              fillColor: surfaceColor,
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                      color: isDark
-                                          ? Colors.grey[700]!
-                                          : Colors.grey[300]!)),
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                      color: isDark
-                                          ? Colors.grey[700]!
-                                          : Colors.grey[300]!)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: primaryColor)),
-                            ),
-                          ),
-                        ]
+                        // Observation removida para ir para o carrinho
                       ],
                     ),
                   );

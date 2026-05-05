@@ -75,12 +75,12 @@ class _CupomSectionState extends ConsumerState<CupomSection>
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -96,12 +96,12 @@ class _CupomSectionState extends ConsumerState<CupomSection>
           Row(
             children: [
               const Icon(Icons.local_offer_outlined,
-                  size: 18, color: _kOrange),
+                  size: 16, color: _kOrange),
               const SizedBox(width: 8),
               Text(
                 'Cupom de desconto',
                 style: GoogleFonts.outfit(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : _kVinho,
                 ),
@@ -135,7 +135,7 @@ class _CupomSectionState extends ConsumerState<CupomSection>
               ],
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // ── Cupom Aplicado ─────────────────────────────────────────
           if (cupom != null)
@@ -178,16 +178,16 @@ class _CupomSectionState extends ConsumerState<CupomSection>
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        prefixIcon: Icon(Icons.confirmation_number_outlined,
-                            color: _kOrange, size: 18),
+                            horizontal: 12, vertical: 8),
+                        prefixIcon: const Icon(Icons.confirmation_number_outlined,
+                            color: _kOrange, size: 16),
                       ),
                       onSubmitted: (_) => _aplicar(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    height: 48,
+                    height: 40,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _aplicar,
                       style: ElevatedButton.styleFrom(
@@ -197,7 +197,7 @@ class _CupomSectionState extends ConsumerState<CupomSection>
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                         padding:
-                            const EdgeInsets.symmetric(horizontal: 18),
+                            const EdgeInsets.symmetric(horizontal: 14),
                       ),
                       child: isLoading
                           ? const SizedBox(

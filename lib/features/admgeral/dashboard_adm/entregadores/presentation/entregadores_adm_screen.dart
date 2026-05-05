@@ -20,8 +20,7 @@ class EntregadoresAdmScreen extends ConsumerStatefulWidget {
       _EntregadoresAdmScreenState();
 }
 
-class _EntregadoresAdmScreenState
-    extends ConsumerState<EntregadoresAdmScreen> {
+class _EntregadoresAdmScreenState extends ConsumerState<EntregadoresAdmScreen> {
   String? _selecionadoId;
   _AcaoPendente? _acaoPendente;
   String? _selfieEntregadorId;
@@ -61,8 +60,7 @@ class _EntregadoresAdmScreenState
                       const SizedBox(width: 10),
                       Text('·',
                           style: GoogleFonts.dmSans(
-                              fontSize: 14,
-                              color: const Color(0xFF9CA3AF))),
+                              fontSize: 14, color: const Color(0xFF9CA3AF))),
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text('Gestão de cadastros',
@@ -92,8 +90,8 @@ class _EntregadoresAdmScreenState
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(9),
@@ -101,16 +99,14 @@ class _EntregadoresAdmScreenState
                   ),
                   child: Text(state.errorMessage!,
                       style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: const Color(0xFFDC2626))),
+                          fontSize: 12, color: const Color(0xFFDC2626))),
                 ),
               ),
 
             // ── Lista ────────────────────────────────────────
             Expanded(
               child: Container(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 22),
+                margin: const EdgeInsets.symmetric(horizontal: 22),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -130,8 +126,8 @@ class _EntregadoresAdmScreenState
                                 final e = filtered[i];
                                 return EntregadorListItem(
                                   entregador: e,
-                                  onTap: () => setState(
-                                      () => _selecionadoId = e.id),
+                                  onTap: () =>
+                                      setState(() => _selecionadoId = e.id),
                                 );
                               },
                             ),
@@ -162,6 +158,12 @@ class _EntregadoresAdmScreenState
                   _selfieEntregadorId = e.id;
                 });
               },
+              onRevisarDocumento: (e, tipo, status, motivo) async {
+                await ctrl.revisarDocumento(e.id, tipo, status, motivo: motivo);
+              },
+              onSalvarEndereco: (e, endereco) async {
+                await ctrl.salvarEndereco(e.id, endereco);
+              },
             ),
           ),
 
@@ -177,9 +179,7 @@ class _EntregadoresAdmScreenState
               onConfirm: (acao, id, motivo) async {
                 await ctrl.executarAcao(acao, id, motivo: motivo);
                 if (!mounted) return;
-                if (ref
-                    .read(entregadoresAdmControllerProvider)
-                    .errorMessage ==
+                if (ref.read(entregadoresAdmControllerProvider).errorMessage ==
                     null) {
                   setState(() => _acaoPendente = null);
                 }
@@ -210,12 +210,17 @@ class _EntregadoresAdmScreenState
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   Widget _backdrop({required Widget child, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.48),
-        child: child,
-      ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Container(color: Colors.black.withValues(alpha: 0.48)),
+          ),
+        ),
+        child,
+      ],
     );
   }
 
