@@ -27,8 +27,7 @@ class FinanceiroRepository {
         return EstabelecimentoFinanceiro.fromJson(response);
       }
       return null;
-    } catch (e) {
-      print('Erro ao buscar estabelecimento financeiro: \$e');
+    } catch (_) {
       throw Exception('Falha ao buscar dados do estabelecimento.');
     }
   }
@@ -49,8 +48,7 @@ class FinanceiroRepository {
       return (response as List)
           .map((json) => PedidoFinanceiro.fromJson(json))
           .toList();
-    } catch (e) {
-      print('Erro ao buscar pedidos financeiros: \$e');
+    } catch (_) {
       throw Exception('Falha ao carregar transações.');
     }
   }
@@ -72,8 +70,7 @@ class FinanceiroRepository {
       return (response as List)
           .map((json) => SplitFinanceiro.fromJson(json))
           .toList();
-    } catch (e) {
-      print('Erro ao buscar splits: \$e');
+    } catch (_) {
       throw Exception('Falha ao carregar consolidação de divisão de valores.');
     }
   }

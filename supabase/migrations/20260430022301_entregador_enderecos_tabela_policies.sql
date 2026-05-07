@@ -15,7 +15,7 @@ create table if not exists public.entregador_enderecos (
   bairro text not null,
   cidade text not null,
   estado text not null,
-  latitude double precision,a
+  latitude double precision,
   longitude double precision,
   is_principal boolean not null default true,
   created_at timestamptz not null default now(),

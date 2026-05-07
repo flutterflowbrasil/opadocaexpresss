@@ -1,11 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:padoca_express/core/services/localizacao_service.dart';
+import 'package:padoca_express/features/cliente/localizacao/adicionar_endereco_formulario.dart';
+import 'package:padoca_express/features/cliente/localizacao/localizacao_repository.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CadastroEstabelecimentoStep2Screen extends ConsumerStatefulWidget {
   const CadastroEstabelecimentoStep2Screen({super.key});
@@ -24,6 +33,16 @@ class _CadastroEstabelecimentoStep2ScreenState
   final _bairroController = TextEditingController();
   final _cidadeController = TextEditingController();
   final _estadoController = TextEditingController();
+  final _mapController = MapController();
+  late final LocalizacaoRepository _localizacaoRepository;
+
+  bool _buscandoCep = false;
+  bool _localizando = false;
+  bool _mostrandoMapa = false;
+  bool _pontoSelecionadoManual = false;
+  String? _erroCep;
+  double? _latitude;
+  double? _longitude;
 
   final _cepFormatter = MaskTextInputFormatter(
     mask: '#####-###',
@@ -45,6 +64,7 @@ class _CadastroEstabelecimentoStep2ScreenState
   @override
   void initState() {
     super.initState();
+    _localizacaoRepository = LocalizacaoRepository(Supabase.instance.client);
     final state = ref.read(cadastroEstabelecimentoProvider);
     if (state.cep != null) _cepController.text = state.cep!;
     if (state.logradouro != null) {
@@ -54,12 +74,36 @@ class _CadastroEstabelecimentoStep2ScreenState
     if (state.bairro != null) _bairroController.text = state.bairro!;
     if (state.cidade != null) _cidadeController.text = state.cidade!;
     if (state.estado != null) _estadoController.text = state.estado!;
+    _latitude = state.latitude;
+    _longitude = state.longitude;
 
     // Se já tiver horários no estado, carregar aqui (omitido para simplificar, usando padrão)
   }
 
-  void _submit() {
+  @override
+  void dispose() {
+    _cepController.dispose();
+    _logradouroController.dispose();
+    _numeroController.dispose();
+    _bairroController.dispose();
+    _cidadeController.dispose();
+    _estadoController.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
+      if ((_latitude == null || _longitude == null) &&
+          _cepController.text.replaceAll(RegExp(r'\D'), '').length == 8) {
+        await _buscarCep();
+      }
+      if (!_pontoSelecionadoManual &&
+          _cepController.text.replaceAll(RegExp(r'\D'), '').length == 8 &&
+          _numeroController.text.trim().isNotEmpty) {
+        await _atualizarCoordenadasPorEndereco();
+      }
+
       // Atualizar o map completo de horários com base nos switches visuais
       // (Em um app real, cada dia teria seu controle individual se desejado)
       // Horários já estão atualizados no map _horarios diretamente pelos switches
@@ -71,6 +115,8 @@ class _CadastroEstabelecimentoStep2ScreenState
             bairro: _bairroController.text,
             cidade: _cidadeController.text,
             estado: _estadoController.text,
+            latitude: _latitude,
+            longitude: _longitude,
             horarioFuncionamento: _horarios,
           );
 
@@ -78,11 +124,316 @@ class _CadastroEstabelecimentoStep2ScreenState
     }
   }
 
+  Future<void> _buscarCep() async {
+    final cep = _cepController.text.replaceAll(RegExp(r'\D'), '');
+    if (cep.length != 8) {
+      setState(() => _erroCep = 'CEP deve ter 8 digitos');
+      return;
+    }
+
+    setState(() {
+      _buscandoCep = true;
+      _erroCep = null;
+    });
+
+    try {
+      final headers = {
+        'User-Agent': 'PadocaExpressApp/1.0',
+        'Accept': 'application/json',
+      };
+
+      Map<String, dynamic> data = {};
+      Map<String, double>? apiCoords;
+      var found = false;
+
+      try {
+        final response = await http
+            .get(
+              Uri.parse('https://brasilapi.com.br/api/cep/v2/$cep'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 6));
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          if (!body.containsKey('errors')) {
+            data = {
+              'logradouro': body['street'] ?? '',
+              'bairro': body['neighborhood'] ?? '',
+              'cidade': body['city'] ?? '',
+              'estado': body['state'] ?? '',
+            };
+            final coordinates =
+                (body['location'] as Map<String, dynamic>?)?['coordinates']
+                    as Map<String, dynamic>?;
+            final lat = double.tryParse('${coordinates?['latitude'] ?? ''}');
+            final lng = double.tryParse('${coordinates?['longitude'] ?? ''}');
+            if (lat != null && lng != null) {
+              apiCoords = {'lat': lat, 'lng': lng};
+            }
+            found = true;
+          }
+        }
+      } catch (_) {}
+
+      if (!found) {
+        try {
+          final response = await http
+              .get(
+                Uri.parse('https://brasilapi.com.br/api/cep/v1/$cep'),
+                headers: headers,
+              )
+              .timeout(const Duration(seconds: 6));
+
+          if (response.statusCode == 200) {
+            final body = jsonDecode(response.body) as Map<String, dynamic>;
+            if (!body.containsKey('errors')) {
+              data = {
+                'logradouro': body['street'] ?? '',
+                'bairro': body['neighborhood'] ?? '',
+                'cidade': body['city'] ?? '',
+                'estado': body['state'] ?? '',
+              };
+              found = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!found) {
+        final response = await http
+            .get(
+              Uri.parse('https://viacep.com.br/ws/$cep/json/'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 6));
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+        if (response.statusCode == 200 && body['erro'] != true) {
+          data = {
+            'logradouro': body['logradouro'] ?? '',
+            'bairro': body['bairro'] ?? '',
+            'cidade': body['localidade'] ?? '',
+            'estado': body['uf'] ?? '',
+          };
+          found = true;
+        }
+      }
+
+      if (!found) {
+        setState(() => _erroCep = 'CEP nao encontrado');
+        return;
+      }
+
+      _logradouroController.text = data['logradouro'] as String? ?? '';
+      _bairroController.text = data['bairro'] as String? ?? '';
+      _cidadeController.text = data['cidade'] as String? ?? '';
+      _estadoController.text = data['estado'] as String? ?? '';
+      _pontoSelecionadoManual = false;
+
+      final hasStreet = _logradouroController.text.trim().isNotEmpty;
+      Map<String, double>? coords;
+      if (hasStreet) {
+        coords = await _localizacaoRepository.geocodeEndereco(
+          cep: cep,
+          logradouro: _logradouroController.text,
+          bairro: _bairroController.text,
+          cidade: _cidadeController.text,
+          estado: _estadoController.text,
+          numero: _numeroController.text,
+        );
+      } else {
+        coords = apiCoords;
+        coords ??= await _localizacaoRepository.geocodeEndereco(
+          cep: cep,
+          logradouro: _logradouroController.text,
+          bairro: _bairroController.text,
+          cidade: _cidadeController.text,
+          estado: _estadoController.text,
+          numero: _numeroController.text,
+        );
+      }
+      if (coords != null && mounted) {
+        setState(() {
+          _latitude = coords!['lat'];
+          _longitude = coords!['lng'];
+        });
+      }
+    } catch (_) {
+      setState(() => _erroCep = 'Erro ao buscar CEP. Verifique sua conexao.');
+    } finally {
+      if (mounted) setState(() => _buscandoCep = false);
+    }
+  }
+
+  Future<void> _atualizarCoordenadasPorEndereco() async {
+    final coords = await _localizacaoRepository.geocodeEndereco(
+      cep: _cepController.text,
+      logradouro: _logradouroController.text,
+      bairro: _bairroController.text,
+      cidade: _cidadeController.text,
+      estado: _estadoController.text,
+      numero: _numeroController.text,
+    );
+    if (coords == null || !mounted) return;
+
+    setState(() {
+      _latitude = coords['lat'];
+      _longitude = coords['lng'];
+    });
+  }
+
+  Future<void> _usarLocalizacaoAtual() async {
+    setState(() => _localizando = true);
+
+    try {
+      final pos = await obterLocalizacao();
+      if (pos == null) {
+        _showMessage('Nao foi possivel obter sua localizacao.', isError: true);
+        return;
+      }
+
+      setState(() {
+        _latitude = pos.latitude;
+        _longitude = pos.longitude;
+        _pontoSelecionadoManual = true;
+      });
+
+      await _preencherEnderecoPorCoordenadas(pos.latitude, pos.longitude);
+    } finally {
+      if (mounted) setState(() => _localizando = false);
+    }
+  }
+
+  Future<void> _confirmarMapa() async {
+    final lat = _latitude ?? -5.0892;
+    final lng = _longitude ?? -42.8019;
+    await _preencherEnderecoPorCoordenadas(lat, lng);
+    if (mounted) {
+      setState(() {
+        _mostrandoMapa = false;
+        _pontoSelecionadoManual = true;
+      });
+    }
+  }
+
+  Future<void> _gpsNoMapa() async {
+    final pos = await obterLocalizacao();
+    if (pos == null) return;
+
+    setState(() {
+      _latitude = pos.latitude;
+      _longitude = pos.longitude;
+      _pontoSelecionadoManual = true;
+    });
+    _mapController.move(_mapPoint, 17);
+  }
+
+  Future<void> _preencherEnderecoPorCoordenadas(double lat, double lng) async {
+    final geo = await _localizacaoRepository.reverseGeocode(lat, lng);
+    if (geo == null || !mounted) return;
+
+    setState(() {
+      final cep = (geo['cep'] as String? ?? '').trim();
+      final logradouro = (geo['logradouro'] as String? ?? '').trim();
+      final bairro = (geo['bairro'] as String? ?? '').trim();
+      final cidade = (geo['cidade'] as String? ?? '').trim();
+      final estado = (geo['estado'] as String? ?? '').trim();
+
+      if (cep.isNotEmpty) _cepController.text = _formatCep(cep);
+      if (logradouro.isNotEmpty) _logradouroController.text = logradouro;
+      if (bairro.isNotEmpty) _bairroController.text = bairro;
+      if (cidade.isNotEmpty) _cidadeController.text = cidade;
+      if (estado.isNotEmpty) _estadoController.text = _normalizeEstado(estado);
+    });
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red[700] : Colors.green[700],
+      ),
+    );
+  }
+
+  String _formatCep(String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length != 8) return value;
+    return '${digits.substring(0, 5)}-${digits.substring(5)}';
+  }
+
+  String _normalizeEstado(String value) {
+    final text = value.trim();
+    if (text.length == 2) return text.toUpperCase();
+
+    const estados = {
+      'acre': 'AC',
+      'alagoas': 'AL',
+      'amapa': 'AP',
+      'amazonas': 'AM',
+      'bahia': 'BA',
+      'ceara': 'CE',
+      'distrito federal': 'DF',
+      'espirito santo': 'ES',
+      'goias': 'GO',
+      'maranhao': 'MA',
+      'mato grosso': 'MT',
+      'mato grosso do sul': 'MS',
+      'minas gerais': 'MG',
+      'para': 'PA',
+      'paraiba': 'PB',
+      'parana': 'PR',
+      'pernambuco': 'PE',
+      'piaui': 'PI',
+      'rio de janeiro': 'RJ',
+      'rio grande do norte': 'RN',
+      'rio grande do sul': 'RS',
+      'rondonia': 'RO',
+      'roraima': 'RR',
+      'santa catarina': 'SC',
+      'sao paulo': 'SP',
+      'sergipe': 'SE',
+      'tocantins': 'TO',
+    };
+
+    final normalized = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[áàãâä]'), 'a')
+        .replaceAll(RegExp(r'[éèêë]'), 'e')
+        .replaceAll(RegExp(r'[íìîï]'), 'i')
+        .replaceAll(RegExp(r'[óòõôö]'), 'o')
+        .replaceAll(RegExp(r'[úùûü]'), 'u')
+        .replaceAll('ç', 'c');
+    return estados[normalized] ?? text;
+  }
+
+  LatLng get _mapPoint => LatLng(_latitude ?? -5.0892, _longitude ?? -42.8019);
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFFff7033);
     final burgundyColor = const Color(0xFF7d2d35);
+
+    if (_mostrandoMapa) {
+      return AdicionarEnderecoMapa(
+        lat: _mapPoint.latitude,
+        lng: _mapPoint.longitude,
+        logradouro: _logradouroController.text,
+        bairro: _bairroController.text,
+        mapController: _mapController,
+        onPositionChanged: (lat, lng) => setState(() {
+          _latitude = lat;
+          _longitude = lng;
+          _pontoSelecionadoManual = true;
+        }),
+        onVoltar: () => setState(() => _mostrandoMapa = false),
+        onConfirmar: _confirmarMapa,
+        onGps: _gpsNoMapa,
+      );
+    }
 
     return Scaffold(
       backgroundColor:
@@ -169,9 +520,41 @@ class _CadastroEstabelecimentoStep2ScreenState
                     hintText: '00000-000',
                     keyboardType: TextInputType.number,
                     inputFormatters: [_cepFormatter],
+                    errorText: _erroCep,
+                    onFieldSubmitted: (_) => _buscarCep(),
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Campo obrigatório' : null,
                   ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _buscandoCep ? null : _buscarCep,
+                          icon: _buscandoCep
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.search),
+                          label: const Text('Buscar CEP'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryColor,
+                            side: BorderSide(color: primaryColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLocationActions(isDark, primaryColor, burgundyColor),
                   const SizedBox(height: 12),
                   _buildTextField(
                     controller: _logradouroController,
@@ -379,6 +762,89 @@ class _CadastroEstabelecimentoStep2ScreenState
     );
   }
 
+  Widget _buildLocationActions(
+    bool isDark,
+    Color primaryColor,
+    Color burgundyColor,
+  ) {
+    final hasPoint = _latitude != null && _longitude != null;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.map_outlined, color: primaryColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasPoint
+                      ? '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}'
+                      : 'Selecione o ponto exato da loja',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark ? Colors.white : burgundyColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _localizando ? null : _usarLocalizacaoAtual,
+                  icon: _localizando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location),
+                  label: const Text('Usar GPS'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => setState(() => _mostrandoMapa = true),
+                  icon: const Icon(Icons.edit_location_alt),
+                  label: const Text('Abrir mapa'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -389,6 +855,8 @@ class _CadastroEstabelecimentoStep2ScreenState
     String? hintText,
     String? Function(String?)? validator,
     int? maxLength,
+    String? errorText,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     final formatters = inputFormatters?.cast<TextInputFormatter>();
     final primaryColor = const Color(0xFFff7033);
@@ -425,12 +893,14 @@ class _CadastroEstabelecimentoStep2ScreenState
             keyboardType: keyboardType,
             inputFormatters: formatters,
             validator: validator,
+            onFieldSubmitted: onFieldSubmitted,
             maxLength: maxLength,
             style: GoogleFonts.plusJakartaSans(
               color: isDark ? Colors.white : burgundyColor,
             ),
             decoration: InputDecoration(
               hintText: hintText,
+              errorText: errorText,
               hintStyle: GoogleFonts.plusJakartaSans(
                 color: isDark ? Colors.grey[600] : Colors.grey[400],
                 fontSize: 14,

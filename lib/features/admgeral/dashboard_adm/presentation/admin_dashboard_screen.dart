@@ -17,6 +17,7 @@ import '../financeiro/presentation/financeiro_adm_screen.dart';
 import '../suporte/presentation/suporte_adm_screen.dart';
 import '../relatorios/presentation/relatorio_adm_screen.dart';
 import '../configuracoes/presentation/config_adm_screen.dart';
+import '../categorias/presentation/categorias_screen.dart';
 
 // ── Tela principal ────────────────────────────────────────────────────────────
 
@@ -111,6 +112,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget _buildContent() {
     if (_activeScreen == 'estabelecimentos') {
       return const EstabsAdmScreen();
+    }
+    if (_activeScreen == 'categorias') {
+      return const CategoriasScreen();
     }
     if (_activeScreen == 'entregadores') {
       return const EntregadoresAdmScreen();

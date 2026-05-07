@@ -38,6 +38,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
       'label': 'CADASTROS',
       'items': [
         {'id': 'estabelecimentos', 'label': 'Estabelecimentos', 'icon': Icons.storefront, 'badge': null},
+        {'id': 'categorias', 'label': 'Categorias', 'icon': Icons.category_outlined, 'badge': null},
         {'id': 'entregadores', 'label': 'Entregadores', 'icon': Icons.two_wheeler, 'badge': null},
         {'id': 'usuarios', 'label': 'Usuários', 'icon': Icons.people_outline, 'badge': null},
       ],

@@ -41,8 +41,7 @@ class DashboardRepository {
           .update(updateData)
           .eq('id', estabelecimentoId);
       return true;
-    } catch (e) {
-      print('Erro ao atualizar status da loja: $e');
+    } catch (_) {
       return false;
     }
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:padoca_express/core/supabase/supabase_config.dart';
+import 'package:padoca_express/core/utils/account_uniqueness_validator.dart';
 import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
@@ -31,7 +34,12 @@ class _CadastroEstabelecimentoStep1ScreenState
   final _senhaController = TextEditingController();
   final _confirmSenhaController = TextEditingController();
 
-  String? _imagePath;
+  String? _logoPath;
+  Uint8List? _logoBytes;
+  String? _logoFileName;
+  String? _capaPath;
+  Uint8List? _capaBytes;
+  String? _capaFileName;
   String _tipoPessoa = 'juridica'; // 'fisica' ou 'juridica'
 
   final _cpfFormatter = MaskTextInputFormatter(
@@ -49,6 +57,7 @@ class _CadastroEstabelecimentoStep1ScreenState
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isCheckingDocument = false;
 
   @override
   void initState() {
@@ -60,37 +69,80 @@ class _CadastroEstabelecimentoStep1ScreenState
     if (state.telefone != null) _telefoneController.text = state.telefone!;
     if (state.email != null) _emailController.text = state.email!;
 
-    _imagePath = state.imagemCapaPath;
+    _logoPath = state.imagemLogoPath;
+    _logoBytes = state.imagemLogoBytes;
+    _logoFileName = state.imagemLogoFileName;
+    _capaPath = state.imagemCapaPath;
+    _capaBytes = state.imagemCapaBytes;
+    _capaFileName = state.imagemCapaFileName;
     _tipoPessoa = state.tipoPessoa ?? 'juridica';
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickLogoImage() async {
+    await _pickImage(
+      isLogo: true,
+      title: 'Recortar Logo',
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+    );
+  }
+
+  Future<void> _pickCapaImage() async {
+    await _pickImage(
+      isLogo: false,
+      title: 'Recortar Capa',
+      aspectRatio: const CropAspectRatio(ratioX: 2, ratioY: 1),
+    );
+  }
+
+  Future<void> _pickImage({
+    required bool isLogo,
+    required String title,
+    required CropAspectRatio aspectRatio,
+  }) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      _cropImage(pickedFile.path);
+    if (pickedFile == null) return;
+    if (!_isSupportedImage(pickedFile)) {
+      _showImageError('Selecione um arquivo de imagem JPG, PNG ou WEBP.');
+      return;
     }
+
+    await _cropImage(
+      pickedFile.path,
+      isLogo: isLogo,
+      title: title,
+      aspectRatio: aspectRatio,
+    );
   }
 
-  Future<void> _cropImage(String sourcePath) async {
+  Future<void> _cropImage(
+    String sourcePath, {
+    required bool isLogo,
+    required String title,
+    required CropAspectRatio aspectRatio,
+  }) async {
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: sourcePath,
-      aspectRatio: const CropAspectRatio(ratioX: 2, ratioY: 1),
+      aspectRatio: aspectRatio,
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 92,
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle: 'Recortar Capa',
+          toolbarTitle: title,
           toolbarColor: const Color(0xFFff7033),
           toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.ratio16x9,
+          initAspectRatio: isLogo
+              ? CropAspectRatioPreset.square
+              : CropAspectRatioPreset.ratio16x9,
           lockAspectRatio: true,
         ),
-        IOSUiSettings(title: 'Recortar Capa'),
+        IOSUiSettings(title: title),
         WebUiSettings(
           context: context,
-          size: const CropperSize(width: 400, height: 400),
-          translations: const WebTranslations(
-            title: 'Recortar Capa',
+          size: CropperSize(width: 400, height: isLogo ? 400 : 200),
+          translations: WebTranslations(
+            title: title,
             rotateLeftTooltip: 'Girar para esquerda',
             rotateRightTooltip: 'Girar para direita',
             cancelButton: 'Cancelar',
@@ -101,14 +153,59 @@ class _CadastroEstabelecimentoStep1ScreenState
     );
 
     if (croppedFile != null) {
+      final bytes = await croppedFile.readAsBytes();
       setState(() {
-        _imagePath = croppedFile.path;
+        if (isLogo) {
+          _logoPath = croppedFile.path;
+          _logoBytes = bytes;
+          _logoFileName = 'logo.jpg';
+        } else {
+          _capaPath = croppedFile.path;
+          _capaBytes = bytes;
+          _capaFileName = 'capa.jpg';
+        }
       });
     }
   }
 
-  void _submit() {
+  bool _isSupportedImage(XFile file) {
+    final mimeType = file.mimeType?.toLowerCase();
+    if (mimeType != null) {
+      return const {'image/jpeg', 'image/png', 'image/webp'}.contains(mimeType);
+    }
+
+    final ext = file.path.split('.').last.toLowerCase();
+    return const {'jpg', 'jpeg', 'png', 'webp'}.contains(ext);
+  }
+
+  void _showImageError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
+    );
+  }
+
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
+      if (_logoBytes == null || _logoPath == null || _logoPath!.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Adicione a logo da padaria para continuar.'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+        return;
+      }
+
+      if (_capaBytes == null || _capaPath == null || _capaPath!.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Adicione a capa da padaria para continuar.'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+        return;
+      }
+
       if (_senhaController.text != _confirmSenhaController.text) {
         ScaffoldMessenger.of(
           context,
@@ -116,17 +213,51 @@ class _CadastroEstabelecimentoStep1ScreenState
         return;
       }
 
-      ref.read(cadastroEstabelecimentoProvider.notifier).updateStep1(
-            nomeFantasia: _nomeController.text,
-            cnpj: _cnpjController.text,
-            telefone: _telefoneController.text,
-            email: _emailController.text,
-            senha: _senhaController.text,
-            imagemCapaPath: _imagePath,
-            tipoPessoa: _tipoPessoa,
-          );
+      setState(() => _isCheckingDocument = true);
 
-      context.push('/cadastro-estabelecimento/step2');
+      try {
+        final uniquenessValidator = AccountUniquenessValidator(
+          ref.read(supabaseClientProvider),
+        );
+
+        if (_tipoPessoa == 'fisica') {
+          await uniquenessValidator.ensureCpfAvailable(_cnpjController.text);
+        } else {
+          await uniquenessValidator.ensureCnpjAvailable(_cnpjController.text);
+        }
+
+        if (!mounted) return;
+
+        ref.read(cadastroEstabelecimentoProvider.notifier).updateStep1(
+              nomeFantasia: _nomeController.text,
+              cnpj: _cnpjController.text,
+              telefone: _telefoneController.text,
+              email: _emailController.text,
+              senha: _senhaController.text,
+              imagemLogoPath: _logoPath,
+              imagemLogoBytes: _logoBytes,
+              imagemLogoFileName: _logoFileName,
+              imagemCapaPath: _capaPath,
+              imagemCapaBytes: _capaBytes,
+              imagemCapaFileName: _capaFileName,
+              tipoPessoa: _tipoPessoa,
+            );
+
+        context.push('/cadastro-estabelecimento/step2');
+      } catch (e) {
+        if (!mounted) return;
+        final message = e is DuplicateAccountException
+            ? e.message
+            : 'NÃ£o foi possÃ­vel validar o documento. Tente novamente.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _isCheckingDocument = false);
+      }
     }
   }
 
@@ -138,15 +269,8 @@ class _CadastroEstabelecimentoStep1ScreenState
     final primaryColor = const Color(0xFFff7033);
     final burgundyColor = const Color(0xFF7d2d35);
 
-    // Determine image provider based on platform
-    ImageProvider? imageProvider;
-    if (_imagePath != null) {
-      if (kIsWeb) {
-        imageProvider = NetworkImage(_imagePath!);
-      } else {
-        imageProvider = FileImage(File(_imagePath!));
-      }
-    }
+    final logoProvider = _imageProviderFor(_logoPath);
+    final capaProvider = _imageProviderFor(_capaPath);
 
     return Scaffold(
       backgroundColor:
@@ -184,73 +308,18 @@ class _CadastroEstabelecimentoStep1ScreenState
                   ),
                   const SizedBox(height: 32),
 
-                  // Image Picker
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.3),
-                          style: BorderStyle.solid,
-                          width: 2,
-                        ),
-                        image: imageProvider != null
-                            ? DecorationImage(
-                                image: imageProvider,
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: _imagePath == null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: primaryColor,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: primaryColor.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_a_photo,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Foto da Padaria',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color:
-                                        isDark ? Colors.white : burgundyColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'Banner ou logo da loja (800x400)',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: isDark
-                                        ? Colors.grey[400]
-                                        : burgundyColor.withValues(alpha: 0.6),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : null,
-                    ),
+                  _buildLogoPicker(
+                    imageProvider: logoProvider,
+                    primaryColor: primaryColor,
+                    burgundyColor: burgundyColor,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCapaPicker(
+                    imageProvider: capaProvider,
+                    primaryColor: primaryColor,
+                    burgundyColor: burgundyColor,
+                    isDark: isDark,
                   ),
 
                   const SizedBox(height: 32),
@@ -540,7 +609,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed: _isCheckingDocument ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         shape: RoundedRectangleBorder(
@@ -548,21 +617,33 @@ class _CadastroEstabelecimentoStep1ScreenState
                         ),
                         elevation: 4,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Continuar',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      child: _isCheckingDocument
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Continuar',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.arrow_forward,
+                                  color: Colors.white,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, color: Colors.white),
-                        ],
-                      ),
                     ),
                   ),
                 ],
@@ -594,6 +675,176 @@ class _CadastroEstabelecimentoStep1ScreenState
           ),
         ),
       ],
+    );
+  }
+
+  ImageProvider? _imageProviderFor(String? path) {
+    if (path == null || path.trim().isEmpty) return null;
+    if (kIsWeb) return NetworkImage(path);
+    return FileImage(File(path));
+  }
+
+  Widget _buildLogoPicker({
+    required ImageProvider? imageProvider,
+    required Color primaryColor,
+    required Color burgundyColor,
+    required bool isDark,
+  }) {
+    final hasImage = imageProvider != null;
+    return GestureDetector(
+      onTap: _pickLogoImage,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: primaryColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF27272A) : Colors.white,
+                shape: BoxShape.circle,
+                image: hasImage
+                    ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: hasImage
+                  ? null
+                  : Icon(Icons.storefront, color: primaryColor, size: 34),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Logo da Padaria',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.white : burgundyColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasImage
+                        ? 'Logo selecionada. Toque para trocar.'
+                        : 'Imagem quadrada 400x400.',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark
+                          ? Colors.grey[400]
+                          : burgundyColor.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.upload_file, color: primaryColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCapaPicker({
+    required ImageProvider? imageProvider,
+    required Color primaryColor,
+    required Color burgundyColor,
+    required bool isDark,
+  }) {
+    final hasImage = imageProvider != null;
+    return GestureDetector(
+      onTap: _pickCapaImage,
+      child: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: primaryColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.3),
+            width: 2,
+          ),
+          image: hasImage
+              ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+              : null,
+        ),
+        child: hasImage
+            ? Align(
+                alignment: Alignment.bottomRight,
+                child: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.58),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Trocar capa',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_a_photo,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Capa da Padaria',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.white : burgundyColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Banner da loja (800x400)',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark
+                          ? Colors.grey[400]
+                          : burgundyColor.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 

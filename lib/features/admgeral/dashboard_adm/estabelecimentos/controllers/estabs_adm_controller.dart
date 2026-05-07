@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/estabs_adm_repository.dart';
+import '../models/estab_adm_model.dart';
 import 'estabs_adm_state.dart';
 
 final estabsAdmControllerProvider =
@@ -17,8 +18,7 @@ class EstabsAdmController extends StateNotifier<EstabsAdmState> {
     try {
       final lista = await _repo.listarEstabelecimentos();
       state = state.copyWith(isLoading: false, estabelecimentos: lista);
-    } catch (e) {
-      debugPrint('[EstabsAdm] fetch error: $e');
+    } catch (_) {
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Erro ao carregar estabelecimentos. Tente novamente.',
@@ -44,31 +44,62 @@ class EstabsAdmController extends StateNotifier<EstabsAdmState> {
       'rejeitar' => 'rejeitado',
       'suspender' => 'suspenso',
       'reativar' => 'aprovado',
-      _ => throw ArgumentError('Ação inválida: $acao'),
+      _ => throw ArgumentError('Acao invalida: $acao'),
     };
 
     state = state.copyWith(isSubmitting: true, clearError: true);
     try {
       await _repo.atualizarStatus(estabId, novoStatus, motivo: motivo);
-      // Atualização otimista na lista local
-      final updated = state.estabelecimentos.map((e) {
-        if (e.id != estabId) return e;
-        return e.copyWith(
-          statusCadastro: novoStatus,
-          motivoSuspensao: motivo,
-          clearMotivo: novoStatus == 'aprovado',
-        );
-      }).toList();
-      state = state.copyWith(isSubmitting: false, estabelecimentos: updated);
+      final lista = await _repo.listarEstabelecimentos();
+      state = state.copyWith(isSubmitting: false, estabelecimentos: lista);
     } catch (e) {
-      debugPrint('[EstabsAdm] executarAcao error: $e');
       state = state.copyWith(
         isSubmitting: false,
-        errorMessage: 'Erro ao executar ação. Tente novamente.',
+        errorMessage: _friendlyError(e),
       );
     }
   }
-}
 
-// ignore: avoid_print
-void debugPrint(String msg) => print(msg);
+  Future<void> revisarDocumento(
+    String estabId,
+    String tipo,
+    String status, {
+    String? motivo,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      await _repo.revisarDocumento(estabId, tipo, status, motivo: motivo);
+      final updated = state.estabelecimentos.map((e) {
+        if (e.id != estabId) return e;
+        final docs = Map<String, String?>.from(e.docs);
+        docs[tipo] = status;
+        final documentos =
+            Map<String, EstabDocumentoInfo>.from(e.documentosRevisao);
+        final atual = documentos[tipo];
+        if (atual != null) {
+          documentos[tipo] = atual.copyWith(
+            status: status,
+            motivoRejeicao: motivo,
+            validadoEm: DateTime.now(),
+            clearMotivo: status == 'aprovado',
+          );
+        }
+        return e.copyWith(docs: docs, documentosRevisao: documentos);
+      }).toList();
+      state = state.copyWith(isSubmitting: false, estabelecimentos: updated);
+    } catch (e) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _friendlyError(e),
+      );
+    }
+  }
+
+  String _friendlyError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    if (message.isEmpty) {
+      return 'Erro ao executar acao. Tente novamente.';
+    }
+    return message;
+  }
+}

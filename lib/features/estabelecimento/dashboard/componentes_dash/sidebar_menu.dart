@@ -92,11 +92,6 @@ const _sections = [
         route: '/dashboard_estabelecimento/financeiro',
       ),
       _MenuItem(
-        id: 'team',
-        label: 'Equipe & Acessos',
-        icon: Icons.shield_rounded,
-      ),
-      _MenuItem(
         id: 'reports',
         label: 'Relatórios',
         icon: Icons.bar_chart_rounded,

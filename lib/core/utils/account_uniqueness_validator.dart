@@ -33,6 +33,15 @@ class AccountUniquenessValidator {
     final normalized = email.trim().toLowerCase();
     if (normalized.isEmpty) return;
 
+    final rpcResult = await _checkViaRpc(
+      email: normalized,
+      ignoreUserId: ignoreUserId,
+    );
+    if (rpcResult?['email'] == true) {
+      throw const DuplicateAccountException(DuplicateAccountField.email);
+    }
+    if (rpcResult != null) return;
+
     final exists = await _exists(
       table: 'usuarios',
       column: 'email',
@@ -50,6 +59,15 @@ class AccountUniquenessValidator {
   Future<void> ensureCpfAvailable(String cpf, {String? ignoreUserId}) async {
     final digits = BrazilianDocumentValidator.onlyDigits(cpf);
     if (digits.isEmpty) return;
+
+    final rpcResult = await _checkViaRpc(
+      cpf: digits,
+      ignoreUserId: ignoreUserId,
+    );
+    if (rpcResult?['cpf'] == true) {
+      throw const DuplicateAccountException(DuplicateAccountField.cpf);
+    }
+    if (rpcResult != null) return;
 
     final foundInClientes = await _exists(
       table: 'clientes',
@@ -100,6 +118,15 @@ class AccountUniquenessValidator {
     final digits = BrazilianDocumentValidator.onlyDigits(cnpj);
     if (digits.isEmpty) return;
 
+    final rpcResult = await _checkViaRpc(
+      cnpj: digits,
+      ignoreUserId: ignoreUserId,
+    );
+    if (rpcResult?['cnpj'] == true) {
+      throw const DuplicateAccountException(DuplicateAccountField.cnpj);
+    }
+    if (rpcResult != null) return;
+
     final exists = await _exists(
       table: 'estabelecimentos',
       column: 'cnpj',
@@ -139,4 +166,32 @@ class AccountUniquenessValidator {
     }
   }
 
+  Future<Map<String, dynamic>?> _checkViaRpc({
+    String? email,
+    String? cpf,
+    String? cnpj,
+    String? ignoreUserId,
+  }) async {
+    try {
+      final response = await _supabase.rpc(
+        'check_account_identifier_exists',
+        params: {
+          'p_email': email,
+          'p_cpf': cpf,
+          'p_cnpj': cnpj,
+          'p_ignore_user_id': ignoreUserId,
+        },
+      );
+
+      if (response is Map<String, dynamic>) return response;
+      if (response is Map) {
+        return response.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+      return null;
+    } on PostgrestException {
+      return null;
+    }
+  }
 }

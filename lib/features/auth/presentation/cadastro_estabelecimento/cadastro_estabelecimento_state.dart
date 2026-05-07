@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 class CadastroEstabelecimentoState {
   final String? nomeFantasia;
   final String? cnpj;
@@ -5,7 +7,12 @@ class CadastroEstabelecimentoState {
   final String? email;
   final String? senha;
 
+  final String? imagemLogoPath;
+  final Uint8List? imagemLogoBytes;
+  final String? imagemLogoFileName;
   final String? imagemCapaPath;
+  final Uint8List? imagemCapaBytes;
+  final String? imagemCapaFileName;
 
   final String? tipoPessoa; // 'fisica' ou 'juridica'
 
@@ -15,15 +22,21 @@ class CadastroEstabelecimentoState {
   final String? bairro;
   final String? cidade;
   final String? estado;
+  final double? latitude;
+  final double? longitude;
   final Map<String, dynamic>? horarioFuncionamento;
 
-  final String? banco;
-  final String? agencia;
-  final String? conta;
-  final String? contaDigito;
-  final String? tipoConta;
-  final String? titularNome;
-  final String? titularCpfCnpj;
+  final String? documentoResponsavelTipo;
+  final Uint8List? identidadeResponsavelFrenteBytes;
+  final String? identidadeResponsavelFrenteFileName;
+  final Uint8List? identidadeResponsavelVersoBytes;
+  final String? identidadeResponsavelVersoFileName;
+  final Uint8List? cnhResponsavelFrenteBytes;
+  final String? cnhResponsavelFrenteFileName;
+  final Uint8List? cnhResponsavelVersoBytes;
+  final String? cnhResponsavelVersoFileName;
+  final Uint8List? comprovanteEnderecoBytes;
+  final String? comprovanteEnderecoFileName;
 
   final bool isLoading;
   final String? error;
@@ -35,7 +48,12 @@ class CadastroEstabelecimentoState {
     this.email,
     this.senha,
 
+    this.imagemLogoPath,
+    this.imagemLogoBytes,
+    this.imagemLogoFileName,
     this.imagemCapaPath,
+    this.imagemCapaBytes,
+    this.imagemCapaFileName,
     this.tipoPessoa = 'juridica',
     this.cep,
     this.logradouro,
@@ -43,14 +61,20 @@ class CadastroEstabelecimentoState {
     this.bairro,
     this.cidade,
     this.estado,
+    this.latitude,
+    this.longitude,
     this.horarioFuncionamento,
-    this.banco,
-    this.agencia,
-    this.conta,
-    this.contaDigito,
-    this.tipoConta,
-    this.titularNome,
-    this.titularCpfCnpj,
+    this.documentoResponsavelTipo = 'identidade',
+    this.identidadeResponsavelFrenteBytes,
+    this.identidadeResponsavelFrenteFileName,
+    this.identidadeResponsavelVersoBytes,
+    this.identidadeResponsavelVersoFileName,
+    this.cnhResponsavelFrenteBytes,
+    this.cnhResponsavelFrenteFileName,
+    this.cnhResponsavelVersoBytes,
+    this.cnhResponsavelVersoFileName,
+    this.comprovanteEnderecoBytes,
+    this.comprovanteEnderecoFileName,
     this.isLoading = false,
     this.error,
   });
@@ -62,7 +86,12 @@ class CadastroEstabelecimentoState {
     String? email,
     String? senha,
 
+    String? imagemLogoPath,
+    Uint8List? imagemLogoBytes,
+    String? imagemLogoFileName,
     String? imagemCapaPath,
+    Uint8List? imagemCapaBytes,
+    String? imagemCapaFileName,
     String? tipoPessoa,
     String? cep,
     String? logradouro,
@@ -70,14 +99,20 @@ class CadastroEstabelecimentoState {
     String? bairro,
     String? cidade,
     String? estado,
+    double? latitude,
+    double? longitude,
     Map<String, dynamic>? horarioFuncionamento,
-    String? banco,
-    String? agencia,
-    String? conta,
-    String? contaDigito,
-    String? tipoConta,
-    String? titularNome,
-    String? titularCpfCnpj,
+    String? documentoResponsavelTipo,
+    Uint8List? identidadeResponsavelFrenteBytes,
+    String? identidadeResponsavelFrenteFileName,
+    Uint8List? identidadeResponsavelVersoBytes,
+    String? identidadeResponsavelVersoFileName,
+    Uint8List? cnhResponsavelFrenteBytes,
+    String? cnhResponsavelFrenteFileName,
+    Uint8List? cnhResponsavelVersoBytes,
+    String? cnhResponsavelVersoFileName,
+    Uint8List? comprovanteEnderecoBytes,
+    String? comprovanteEnderecoFileName,
     bool? isLoading,
     String? error,
   }) {
@@ -88,7 +123,12 @@ class CadastroEstabelecimentoState {
       email: email ?? this.email,
       senha: senha ?? this.senha,
 
+      imagemLogoPath: imagemLogoPath ?? this.imagemLogoPath,
+      imagemLogoBytes: imagemLogoBytes ?? this.imagemLogoBytes,
+      imagemLogoFileName: imagemLogoFileName ?? this.imagemLogoFileName,
       imagemCapaPath: imagemCapaPath ?? this.imagemCapaPath,
+      imagemCapaBytes: imagemCapaBytes ?? this.imagemCapaBytes,
+      imagemCapaFileName: imagemCapaFileName ?? this.imagemCapaFileName,
       tipoPessoa: tipoPessoa ?? this.tipoPessoa,
       cep: cep ?? this.cep,
       logradouro: logradouro ?? this.logradouro,
@@ -96,14 +136,33 @@ class CadastroEstabelecimentoState {
       bairro: bairro ?? this.bairro,
       cidade: cidade ?? this.cidade,
       estado: estado ?? this.estado,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       horarioFuncionamento: horarioFuncionamento ?? this.horarioFuncionamento,
-      banco: banco ?? this.banco,
-      agencia: agencia ?? this.agencia,
-      conta: conta ?? this.conta,
-      contaDigito: contaDigito ?? this.contaDigito,
-      tipoConta: tipoConta ?? this.tipoConta,
-      titularNome: titularNome ?? this.titularNome,
-      titularCpfCnpj: titularCpfCnpj ?? this.titularCpfCnpj,
+      documentoResponsavelTipo:
+          documentoResponsavelTipo ?? this.documentoResponsavelTipo,
+      identidadeResponsavelFrenteBytes: identidadeResponsavelFrenteBytes ??
+          this.identidadeResponsavelFrenteBytes,
+      identidadeResponsavelFrenteFileName:
+          identidadeResponsavelFrenteFileName ??
+              this.identidadeResponsavelFrenteFileName,
+      identidadeResponsavelVersoBytes:
+          identidadeResponsavelVersoBytes ?? this.identidadeResponsavelVersoBytes,
+      identidadeResponsavelVersoFileName:
+          identidadeResponsavelVersoFileName ??
+              this.identidadeResponsavelVersoFileName,
+      cnhResponsavelFrenteBytes:
+          cnhResponsavelFrenteBytes ?? this.cnhResponsavelFrenteBytes,
+      cnhResponsavelFrenteFileName:
+          cnhResponsavelFrenteFileName ?? this.cnhResponsavelFrenteFileName,
+      cnhResponsavelVersoBytes:
+          cnhResponsavelVersoBytes ?? this.cnhResponsavelVersoBytes,
+      cnhResponsavelVersoFileName:
+          cnhResponsavelVersoFileName ?? this.cnhResponsavelVersoFileName,
+      comprovanteEnderecoBytes:
+          comprovanteEnderecoBytes ?? this.comprovanteEnderecoBytes,
+      comprovanteEnderecoFileName:
+          comprovanteEnderecoFileName ?? this.comprovanteEnderecoFileName,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );

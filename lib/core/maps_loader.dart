@@ -5,14 +5,15 @@
 // Em Android/iOS/Desktop este loader não faz nada — a chave fica no
 // AndroidManifest.xml (Android) ou AppDelegate.swift (iOS).
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // conditional import: dart:html no Web, no-op em mobile/desktop
 import '_maps_loader_impl.dart';
 
-// ignore: avoid_print
-void _log(String msg) => print('[MapsLoader] $msg');
+void _log(String msg) {
+  if (kDebugMode) debugPrint('[MapsLoader] $msg');
+}
 
 class MapsLoader {
   MapsLoader._();

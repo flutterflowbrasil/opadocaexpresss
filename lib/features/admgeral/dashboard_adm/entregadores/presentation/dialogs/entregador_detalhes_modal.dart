@@ -56,7 +56,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
   static const _tabs = [
     ('dados', 'Dados Pessoais'),
     ('veiculo', 'Veículo'),
-    ('endereco', 'EndereÃ§o'),
+    ('endereco', 'Endereço'),
     ('docs', 'Documentos'),
     ('acoes', 'Ações'),
   ];
@@ -423,7 +423,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Text(
-            'EndereÃ§o usado na criaÃ§Ã£o da subconta Asaas do entregador.',
+            'Endereço usado na criação da subconta Asaas do entregador.',
             style: GoogleFonts.dmSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -557,7 +557,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
                   )
                 : const Icon(Icons.save_outlined, size: 16),
             label: Text(
-              _salvandoEndereco ? 'Salvando' : 'Salvar endereÃ§o',
+              _salvandoEndereco ? 'Salvando' : 'Salvar endereço',
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -1113,7 +1113,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
                               : const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(obrigatorio ? 'Obrigatorio' : 'Opcional',
+                        child: Text(obrigatorio ? 'Obrigatório' : 'Opcional',
                             style: GoogleFonts.dmSans(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
@@ -1157,7 +1157,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
                 border: const Color(0xFF3B82F6),
                 onTap: () => widget.onAbrirSelfie(e),
               )
-            else if (ok)
+            else if (ok && !aprovado)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1178,6 +1178,20 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
                     onTap: () => _pedirMotivoDocumento(tipo),
                   ),
                 ],
+              )
+            else if (ok && aprovado)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Text('✔ Aprovado',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF065F46))),
               ),
           ],
         ),

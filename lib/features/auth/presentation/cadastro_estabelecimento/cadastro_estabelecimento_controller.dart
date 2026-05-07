@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_state.dart';
@@ -13,7 +15,12 @@ class CadastroEstabelecimentoController
     required String telefone,
     required String email,
     required String senha,
+    String? imagemLogoPath,
+    Uint8List? imagemLogoBytes,
+    String? imagemLogoFileName,
     String? imagemCapaPath,
+    Uint8List? imagemCapaBytes,
+    String? imagemCapaFileName,
     String? tipoPessoa,
   }) {
     state = state.copyWith(
@@ -22,7 +29,12 @@ class CadastroEstabelecimentoController
       telefone: telefone,
       email: email,
       senha: senha,
+      imagemLogoPath: imagemLogoPath,
+      imagemLogoBytes: imagemLogoBytes,
+      imagemLogoFileName: imagemLogoFileName,
       imagemCapaPath: imagemCapaPath,
+      imagemCapaBytes: imagemCapaBytes,
+      imagemCapaFileName: imagemCapaFileName,
       tipoPessoa: tipoPessoa,
     );
   }
@@ -34,6 +46,8 @@ class CadastroEstabelecimentoController
     required String bairro,
     required String cidade,
     required String estado,
+    double? latitude,
+    double? longitude,
     required Map<String, dynamic> horarioFuncionamento,
   }) {
     state = state.copyWith(
@@ -43,27 +57,37 @@ class CadastroEstabelecimentoController
       bairro: bairro,
       cidade: cidade,
       estado: estado,
+      latitude: latitude,
+      longitude: longitude,
       horarioFuncionamento: horarioFuncionamento,
     );
   }
 
   void updateStep3({
-    required String banco,
-    required String agencia,
-    required String conta,
-    required String contaDigito,
-    required String tipoConta,
-    required String titularNome,
-    required String titularCpfCnpj,
+    required String documentoResponsavelTipo,
+    Uint8List? identidadeResponsavelFrenteBytes,
+    String? identidadeResponsavelFrenteFileName,
+    Uint8List? identidadeResponsavelVersoBytes,
+    String? identidadeResponsavelVersoFileName,
+    Uint8List? cnhResponsavelFrenteBytes,
+    String? cnhResponsavelFrenteFileName,
+    Uint8List? cnhResponsavelVersoBytes,
+    String? cnhResponsavelVersoFileName,
+    required Uint8List comprovanteEnderecoBytes,
+    required String comprovanteEnderecoFileName,
   }) {
     state = state.copyWith(
-      banco: banco,
-      agencia: agencia,
-      conta: conta,
-      contaDigito: contaDigito,
-      tipoConta: tipoConta,
-      titularNome: titularNome,
-      titularCpfCnpj: titularCpfCnpj,
+      documentoResponsavelTipo: documentoResponsavelTipo,
+      identidadeResponsavelFrenteBytes: identidadeResponsavelFrenteBytes,
+      identidadeResponsavelFrenteFileName: identidadeResponsavelFrenteFileName,
+      identidadeResponsavelVersoBytes: identidadeResponsavelVersoBytes,
+      identidadeResponsavelVersoFileName: identidadeResponsavelVersoFileName,
+      cnhResponsavelFrenteBytes: cnhResponsavelFrenteBytes,
+      cnhResponsavelFrenteFileName: cnhResponsavelFrenteFileName,
+      cnhResponsavelVersoBytes: cnhResponsavelVersoBytes,
+      cnhResponsavelVersoFileName: cnhResponsavelVersoFileName,
+      comprovanteEnderecoBytes: comprovanteEnderecoBytes,
+      comprovanteEnderecoFileName: comprovanteEnderecoFileName,
     );
   }
 

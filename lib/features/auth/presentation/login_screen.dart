@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/auth/presentation/login_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -35,6 +36,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     await ref.read(loginControllerProvider.notifier).login(email, senha);
+  }
+
+  Future<void> _goToPreCadastro() async {
+    FocusScope.of(context).unfocus();
+    final authRepository = ref.read(authRepositoryProvider);
+    if (authRepository.currentUser != null) {
+      await authRepository.signOut();
+    }
+    if (!mounted) return;
+    context.go('/pre_cadastro');
   }
 
   @override
@@ -291,12 +302,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 32),
 
                     Center(
-                      child: MouseRegion(
+                      child: TextButton(
+                        onPressed: _goToPreCadastro,
+                        style: TextButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
-                          onTap: () {
-                            context.push('/pre_cadastro');
-                          },
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _goToPreCadastro,
                           child: RichText(
                           text: TextSpan(
                             style: GoogleFonts.outfit(
@@ -316,6 +336,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
                           ),
                           ),
+                        ),
                         ),
                       ),
                     ),

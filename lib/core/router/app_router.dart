@@ -8,6 +8,7 @@ import 'package:padoca_express/features/auth/presentation/pre_cadastro_screen.da
 import 'package:padoca_express/features/auth/presentation/cadastro_cliente/cadastro_cliente_screen.dart';
 import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_entregador_screen.dart';
 import 'package:padoca_express/features/entregador/cadastro_entregador/cadastro_pendente_screen.dart';
+import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_pendente_screen.dart';
 import 'package:padoca_express/features/auth/presentation/baixar_app_entregador_screen.dart';
 import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_screen.dart';
 import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_screen.dart';
@@ -199,6 +200,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/entregador/cadastro-pendente',
         builder: (context, state) => const CadastroPendenteScreen(),
+      ),
+      GoRoute(
+        path: '/estabelecimento/cadastro-pendente',
+        builder: (context, state) => const CadastroEstabelecimentoPendenteScreen(),
       ),
       GoRoute(
         path: '/cadastro-estabelecimento/step1',

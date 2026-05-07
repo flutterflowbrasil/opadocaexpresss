@@ -266,4 +266,135 @@ class LocalizacaoRepository {
       return null;
     }
   }
+
+  Future<Map<String, double>?> geocodeEndereco({
+    required String cep,
+    required String logradouro,
+    required String bairro,
+    required String cidade,
+    required String estado,
+    String numero = '',
+  }) async {
+    final cepDigits = cep.replaceAll(RegExp(r'\D'), '');
+    final cidadeNorm = cidade.trim();
+    final estadoNorm = estado.trim().toUpperCase();
+    final queryParts = <String>[
+      if (logradouro.trim().isNotEmpty)
+        [
+          logradouro.trim(),
+          if (numero.trim().isNotEmpty) numero.trim(),
+          if (bairro.trim().isNotEmpty) bairro.trim(),
+          if (cidadeNorm.isNotEmpty) cidadeNorm,
+          if (estadoNorm.isNotEmpty) estadoNorm,
+          if (cepDigits.isNotEmpty) cepDigits,
+          'Brasil',
+        ].join(', '),
+      [
+        if (cepDigits.isNotEmpty) cepDigits,
+        if (cidadeNorm.isNotEmpty) cidadeNorm,
+        if (estadoNorm.isNotEmpty) estadoNorm,
+        'Brasil',
+      ].join(', '),
+      [
+        if (cidadeNorm.isNotEmpty) cidadeNorm,
+        if (estadoNorm.isNotEmpty) estadoNorm,
+        'Brasil',
+      ].join(', '),
+    ].where((query) => query.trim().replaceAll(',', '').isNotEmpty).toList();
+
+    for (final query in queryParts) {
+      final coords = await _searchAddress(
+        query: query,
+        cidade: cidadeNorm,
+        estado: estadoNorm,
+      );
+      if (coords != null) return coords;
+    }
+
+    return geocodeCep(cepDigits);
+  }
+
+  Future<Map<String, double>?> _searchAddress({
+    required String query,
+    required String cidade,
+    required String estado,
+  }) async {
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'countrycodes': 'br',
+        'format': 'json',
+        'addressdetails': '1',
+        'limit': '5',
+        'accept-language': 'pt-BR',
+      });
+
+      final res = await http
+          .get(uri, headers: _nominatimHeaders)
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return null;
+
+      final results = jsonDecode(res.body) as List?;
+      if (results == null || results.isEmpty) return null;
+
+      final selected = results.cast<Map<String, dynamic>>().firstWhere(
+            (item) => _matchesCidadeEstado(item, cidade, estado),
+            orElse: () => results.first as Map<String, dynamic>,
+          );
+
+      return {
+        'lat': double.parse(selected['lat'] as String),
+        'lng': double.parse(selected['lon'] as String),
+      };
+    } catch (e) {
+      debugPrint('[LocalizacaoRepository] geocodeEndereco erro: $e');
+      return null;
+    }
+  }
+
+  bool _matchesCidadeEstado(
+    Map<String, dynamic> item,
+    String cidade,
+    String estado,
+  ) {
+    final address = item['address'] as Map<String, dynamic>?;
+    if (address == null) return false;
+
+    final itemCidade = _normalizeText(
+      (address['city'] ??
+              address['town'] ??
+              address['village'] ??
+              address['municipality'] ??
+              '')
+          .toString(),
+    );
+    final expectedCidade = _normalizeText(cidade);
+
+    var itemEstado = '';
+    final isoCode = address['ISO3166-2-lvl4'] as String?;
+    if (isoCode != null && isoCode.startsWith('BR-')) {
+      itemEstado = isoCode.substring(3);
+    } else {
+      itemEstado = (address['state_code'] ?? address['state'] ?? '').toString();
+    }
+
+    final cityOk = expectedCidade.isEmpty || itemCidade == expectedCidade;
+    final stateOk = estado.isEmpty ||
+        itemEstado.toUpperCase() == estado.toUpperCase() ||
+        _normalizeText(itemEstado) == _normalizeText(estado);
+
+    return cityOk && stateOk;
+  }
+
+  String _normalizeText(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[áàãâä]'), 'a')
+        .replaceAll(RegExp(r'[éèêë]'), 'e')
+        .replaceAll(RegExp(r'[íìîï]'), 'i')
+        .replaceAll(RegExp(r'[óòõôö]'), 'o')
+        .replaceAll(RegExp(r'[úùûü]'), 'u')
+        .replaceAll('ç', 'c');
+  }
 }

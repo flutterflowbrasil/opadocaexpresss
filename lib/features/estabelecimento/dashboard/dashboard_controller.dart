@@ -239,10 +239,7 @@ class DashboardController extends StateNotifier<DashboardState> {
         deltaAvaliacao:
             0.0, // Avaliacao kept as mock for now, not currently captured historically.
       );
-    } catch (e, stacktrace) {
-      print('=== ERRO NO DASHBOARD ===');
-      print(e);
-      print(stacktrace);
+    } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }

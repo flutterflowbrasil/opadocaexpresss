@@ -53,15 +53,6 @@ Future<Position?> obterLocalizacao() async {
       if (kDebugMode) {
         debugPrint('[Localizacao] Erro em getWebSafePosition: $e');
       }
-      if (!kIsWeb) {
-        try {
-          position = await Geolocator.getLastKnownPosition();
-        } catch (e2) {
-          if (kDebugMode) {
-            debugPrint('[Localizacao] Erro em getLastKnownPosition: $e2');
-          }
-        }
-      }
     }
     return position;
   } catch (e, stack) {

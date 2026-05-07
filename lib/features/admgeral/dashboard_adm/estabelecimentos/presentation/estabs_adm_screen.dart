@@ -195,6 +195,14 @@ class _EstabsAdmScreenState extends ConsumerState<EstabsAdmScreen> {
                     setState(() => _estabSelecionadoId = null);
                   }
                 },
+                onRevisarDocumento: (estab, tipo, status, motivo) async {
+                  await controller.revisarDocumento(
+                    estab.id,
+                    tipo,
+                    status,
+                    motivo: motivo,
+                  );
+                },
               ),
             ),
           ),
