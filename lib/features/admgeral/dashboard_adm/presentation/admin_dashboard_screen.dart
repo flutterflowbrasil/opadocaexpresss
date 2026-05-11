@@ -18,6 +18,7 @@ import '../suporte/presentation/suporte_adm_screen.dart';
 import '../relatorios/presentation/relatorio_adm_screen.dart';
 import '../configuracoes/presentation/config_adm_screen.dart';
 import '../categorias/presentation/categorias_screen.dart';
+import '../notificacoes/presentation/admin_notificacoes_panel.dart';
 
 // ── Tela principal ────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _isSidebarCollapsed = false;
   String _activeScreen = 'dashboard';
+  bool _showNotificacoes = false;
 
   /// ID do item selecionado para abrir detalhe na tela de destino (nulo = lista geral).
   String? _selectedItemId;
@@ -39,11 +41,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     setState(() => _isSidebarCollapsed = !_isSidebarCollapsed);
   }
 
+  void _toggleNotificacoes() {
+    setState(() => _showNotificacoes = !_showNotificacoes);
+  }
+
   /// Navega para [screen] e opcionalmente destaca o item [itemId].
   void _navigate(String screen, {String? itemId}) {
     setState(() {
       _activeScreen = screen;
       _selectedItemId = itemId;
+      _showNotificacoes = false;
     });
   }
 
@@ -51,10 +58,28 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F2EF),
-      body: ResponsiveLayout(
-        mobile: (context) => _buildMobileLayout(context),
-        desktop: (context) => _buildDesktopLayout(),
-        tablet: (context) => _buildDesktopLayout(forceCollapse: true),
+      body: Stack(
+        children: [
+          ResponsiveLayout(
+            mobile: (context) => _buildMobileLayout(context),
+            desktop: (context) => _buildDesktopLayout(),
+            tablet: (context) => _buildDesktopLayout(forceCollapse: true),
+          ),
+          // Overlay do painel de notificações
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            child: _showNotificacoes
+                ? AdminNotificacoesPanel(
+                    key: const ValueKey('notif_panel'),
+                    onClose: _toggleNotificacoes,
+                    onNavigate: (rota) => _navigate(rota),
+                  )
+                : const SizedBox.shrink(key: ValueKey('notif_empty')),
+          ),
+        ],
       ),
     );
   }
@@ -73,7 +98,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           child: Column(
             children: [
               if (_activeScreen != 'relatorios' && _activeScreen != 'configuracoes')
-                DashboardTopbar(activeScreen: _activeScreen),
+                DashboardTopbar(
+                  activeScreen: _activeScreen,
+                  onNotificacoesTapped: _toggleNotificacoes,
+                ),
               Expanded(child: _buildContent()),
             ],
           ),
@@ -102,6 +130,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             isMobile: true,
             onMenuTapped: () => Scaffold.of(context).openDrawer(),
             activeScreen: _activeScreen,
+            onNotificacoesTapped: _toggleNotificacoes,
           ),
           Expanded(child: _buildContent()),
         ],

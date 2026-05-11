@@ -1,10 +1,12 @@
 import '../models/produto_model.dart';
+import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
 import '../../../models/categoria_cardapio_model.dart';
 
 class ProdutosState {
   final List<ProdutoModel> produtos;
   final List<ProdutoModel> produtosFiltrados;
   final List<CategoriaCardapioModel> categorias;
+  final List<CategoriaEstabelecimentoModel> categoriasPrincipais;
   final bool isLoading;
   final String? error;
 
@@ -18,6 +20,7 @@ class ProdutosState {
     this.produtos = const [],
     this.produtosFiltrados = const [],
     this.categorias = const [],
+    this.categoriasPrincipais = const [],
     this.isLoading = false,
     this.error,
     this.filterMode = 'grid',
@@ -30,6 +33,7 @@ class ProdutosState {
     List<ProdutoModel>? produtos,
     List<ProdutoModel>? produtosFiltrados,
     List<CategoriaCardapioModel>? categorias,
+    List<CategoriaEstabelecimentoModel>? categoriasPrincipais,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -42,6 +46,7 @@ class ProdutosState {
       produtos: produtos ?? this.produtos,
       produtosFiltrados: produtosFiltrados ?? this.produtosFiltrados,
       categorias: categorias ?? this.categorias,
+      categoriasPrincipais: categoriasPrincipais ?? this.categoriasPrincipais,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       filterMode: filterMode ?? this.filterMode,
@@ -73,6 +78,7 @@ class ProdutosState {
         other.produtos == produtos &&
         other.produtosFiltrados == produtosFiltrados &&
         other.categorias == categorias &&
+        other.categoriasPrincipais == categoriasPrincipais &&
         other.isLoading == isLoading &&
         other.error == error &&
         other.filterMode == filterMode &&
@@ -86,6 +92,7 @@ class ProdutosState {
     return produtos.hashCode ^
         produtosFiltrados.hashCode ^
         categorias.hashCode ^
+        categoriasPrincipais.hashCode ^
         isLoading.hashCode ^
         error.hashCode ^
         filterMode.hashCode ^

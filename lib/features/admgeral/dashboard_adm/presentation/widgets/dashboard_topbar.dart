@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/admin_dashboard_controller.dart';
+import '../../notificacoes/controllers/admin_notificacoes_controller.dart';
 
 // IDs de telas que exibem a barra de pesquisa no topbar
 const _screensWithSearch = {'relatorios'};
@@ -11,6 +12,7 @@ class DashboardTopbar extends ConsumerWidget {
   final VoidCallback? onMenuTapped;
   final String activeScreen;
   final VoidCallback? onRefresh;
+  final VoidCallback? onNotificacoesTapped;
 
   const DashboardTopbar({
     super.key,
@@ -18,12 +20,18 @@ class DashboardTopbar extends ConsumerWidget {
     this.onMenuTapped,
     this.activeScreen = 'dashboard',
     this.onRefresh,
+    this.onNotificacoesTapped,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lastSync = ref.watch(
       adminDashboardControllerProvider.select((s) => s.lastSync),
+    );
+
+    // Badge: total de alertas críticos (urgente + atenção)
+    final totalCriticos = ref.watch(
+      adminNotificacoesControllerProvider.select((s) => s.totalCriticos),
     );
 
     final showSearch = !isMobile && _screensWithSearch.contains(activeScreen);
@@ -66,7 +74,8 @@ class DashboardTopbar extends ConsumerWidget {
                   ),
                   Text(
                     syncLabel,
-                    style: GoogleFonts.publicSans(fontSize: 11, color: const Color(0xFF9CA3AF)),
+                    style: GoogleFonts.publicSans(
+                        fontSize: 11, color: const Color(0xFF9CA3AF)),
                   ),
                 ],
               ),
@@ -87,7 +96,8 @@ class DashboardTopbar extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.search, size: 16, color: Color(0xFF9CA3AF)),
+                      const Icon(Icons.search,
+                          size: 16, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
@@ -119,16 +129,20 @@ class DashboardTopbar extends ConsumerWidget {
                   activeScreen != 'relatorios')
                 GestureDetector(
                   onTap: onRefresh ??
-                      () => ref.read(adminDashboardControllerProvider.notifier).fetchData(),
+                      () => ref
+                          .read(adminDashboardControllerProvider.notifier)
+                          .fetchData(),
                   child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
+                      border:
+                          Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
                     ),
-                    child: const Icon(Icons.refresh, size: 18, color: Color(0xFF6B7280)),
+                    child: const Icon(Icons.refresh,
+                        size: 18, color: Color(0xFF6B7280)),
                   ),
                 ),
               if (activeScreen != 'estabelecimentos' &&
@@ -138,33 +152,55 @@ class DashboardTopbar extends ConsumerWidget {
                   activeScreen != 'relatorios')
                 const SizedBox(width: 10),
 
-              // Notificações
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.notifications_none, size: 18, color: Color(0xFF6B7280)),
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
+              // Notificações — botão clicável com badge dinâmico
+              GestureDetector(
+                onTap: onNotificacoesTapped,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(9),
+                    border:
+                        Border.all(color: const Color(0xFFEAE8E4), width: 1.5),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(Icons.notifications_none,
+                          size: 18, color: Color(0xFF6B7280)),
+                      if (totalCriticos > 0)
+                        Positioned(
+                          top: 5,
+                          right: 5,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                                minWidth: 14, minHeight: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              shape: totalCriticos < 10
+                                  ? BoxShape.circle
+                                  : BoxShape.rectangle,
+                              borderRadius: totalCriticos >= 10
+                                  ? BorderRadius.circular(7)
+                                  : null,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text(
+                                totalCriticos > 99 ? '99+' : '$totalCriticos',
+                                style: GoogleFonts.publicSans(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),

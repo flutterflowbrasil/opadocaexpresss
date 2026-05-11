@@ -47,7 +47,12 @@ class ProdutoModel {
       opcoes: (json['opcoes'] as List? ?? [])
           .map((opcao) =>
               ProdutoOpcaoModel.fromJson(opcao as Map<String, dynamic>))
-          .toList(),
+          .where((opcao) =>
+              opcao.ativo &&
+              opcao.nome.trim().isNotEmpty &&
+              opcao.itens.isNotEmpty)
+          .toList()
+        ..sort((a, b) => a.ordem.compareTo(b.ordem)),
     );
   }
 

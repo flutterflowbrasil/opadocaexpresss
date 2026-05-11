@@ -57,12 +57,30 @@ final estabelecimentosPorCategoriaProvider =
         .toSet()
         .toList();
 
+    final produtosCategoriaPrincipalRes = await supabase
+        .from('produto_categorias_estabelecimento')
+        .select('produtos!inner(estabelecimento_id, ativo, disponivel)')
+        .eq('categoria_id', params.id)
+        .eq('produtos.ativo', true)
+        .eq('produtos.disponivel', true);
+
+    final idsPorCategoriaPrincipal = (produtosCategoriaPrincipalRes as List)
+        .map((r) => r['produtos']?['estabelecimento_id'] as String?)
+        .whereType<String>()
+        .toSet()
+        .toList();
+
+    final idsRelacionados = {
+      ...idsPorProduto,
+      ...idsPorCategoriaPrincipal,
+    }.toList();
+
     List byProduto = [];
-    if (idsPorProduto.isNotEmpty) {
+    if (idsRelacionados.isNotEmpty) {
       byProduto = await supabase
           .from('estabelecimentos')
           .select(selectFields)
-          .inFilter('id', idsPorProduto)
+          .inFilter('id', idsRelacionados)
           .order('avaliacao_media', ascending: false);
     }
 

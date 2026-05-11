@@ -84,11 +84,35 @@ class ResumoPedidoCard extends StatelessWidget {
                                       : _secondaryColor.withValues(alpha: 0.5),
                                 ),
                               ),
+                            if (item.temOpcoesSelecionadas)
+                              ...item.opcoesSelecionadas.map((grupo) {
+                                final itens = (grupo['itens'] as List? ?? [])
+                                    .whereType<Map>()
+                                    .map((i) {
+                                      final nome = i['nome']?.toString() ?? '';
+                                      final preco =
+                                          (i['preco'] as num?)?.toDouble() ?? 0;
+                                      if (preco <= 0) return nome;
+                                      return '$nome +R\$ ${preco.toStringAsFixed(2).replaceAll('.', ',')}';
+                                    })
+                                    .where((texto) => texto.isNotEmpty)
+                                    .join(', ');
+                                return Text(
+                                  '${grupo['grupo_nome'] ?? 'Opcoes'}: $itens',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : _secondaryColor.withValues(
+                                            alpha: 0.55),
+                                  ),
+                                );
+                              }),
                           ],
                         ),
                       ),
                       Text(
-                        'R\$ ${(item.produto.preco * item.quantidade).toStringAsFixed(2).replaceAll('.', ',')}',
+                        'R\$ ${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')}',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,

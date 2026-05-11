@@ -1,16 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:padoca_express/features/cliente/carrinho/data/carrinho_repository.dart';
 import 'package:padoca_express/features/cliente/carrinho/data/cupom_repository.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/cupom_model.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
-import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
+import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Estado do Carrinho
-// ─────────────────────────────────────────────────────────────────────────────
 class CarrinhoState {
   final List<ItemCarrinhoModel> itens;
   final EstabelecimentoModel? estabelecimento;
@@ -45,7 +45,9 @@ class CarrinhoState {
       cupomAplicado: clearCupom ? null : (cupomAplicado ?? this.cupomAplicado),
       isValidandoCupom: isValidandoCupom ?? this.isValidandoCupom,
       cupomErro: clearCupomErro ? null : (cupomErro ?? this.cupomErro),
-      observacaoGeral: clearObservacaoGeral ? null : (observacaoGeral ?? this.observacaoGeral),
+      observacaoGeral: clearObservacaoGeral
+          ? null
+          : (observacaoGeral ?? this.observacaoGeral),
     );
   }
 
@@ -59,7 +61,6 @@ class CarrinhoState {
               json['estabelecimento'] as Map<String, dynamic>)
           : null,
       observacaoGeral: json['observacao_geral'] as String?,
-      // Cupom NÃO é persistido localmente por segurança — re-validado sempre
     );
   }
 
@@ -92,9 +93,6 @@ class CarrinhoState {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Controller
-// ─────────────────────────────────────────────────────────────────────────────
 class CarrinhoController extends StateNotifier<CarrinhoState> {
   static const _storageKey = 'padoca_carrinho_state';
   static const _storage = FlutterSecureStorage(
@@ -102,8 +100,10 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
   );
 
   final CupomRepository _cupomRepo;
+  final CarrinhoRepository? _carrinhoRepo;
 
-  CarrinhoController(this._cupomRepo) : super(const CarrinhoState()) {
+  CarrinhoController(this._cupomRepo, [this._carrinhoRepo])
+      : super(const CarrinhoState()) {
     _loadState();
   }
 
@@ -114,6 +114,18 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
         state = CarrinhoState.fromJson(jsonDecode(data));
       }
     } catch (_) {}
+
+    final repo = _carrinhoRepo;
+    if (repo == null) return;
+
+    await repo.trySync(() async {
+      final remoto = await repo.buscarCarrinhoAtual();
+      if (remoto == null) return;
+      await _updateState(state.copyWith(
+        itens: remoto.itens,
+        estabelecimento: remoto.estabelecimento,
+      ));
+    });
   }
 
   Future<void> _updateState(CarrinhoState newState) async {
@@ -126,117 +138,189 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     } catch (_) {}
   }
 
-  // ── Produtos ───────────────────────────────────────────────────────────────
-
-  void adicionarProduto(ProdutoModel produto, int quantidade,
-      {String? observacao, EstabelecimentoModel? estabelecimento}) {
+  void adicionarProduto(
+    ProdutoModel produto,
+    int quantidade, {
+    String? observacao,
+    EstabelecimentoModel? estabelecimento,
+    double? precoBaseProduto,
+    double? precoUnitario,
+    List<Map<String, dynamic>> opcoesSelecionadas = const [],
+  }) {
     if (state.estabelecimento != null &&
         estabelecimento != null &&
         state.estabelecimento!.id != estabelecimento.id) {
-      limparCarrinho();
+      unawaited(limparCarrinho());
     }
 
-    final index = state.itens.indexWhere((item) =>
-        item.produto.id == produto.id && item.observacao == observacao);
+    final index = state.itens.indexWhere((item) => _sameCartEntry(
+          item,
+          produto,
+          observacao,
+          opcoesSelecionadas,
+        ));
 
     if (index >= 0) {
       final item = state.itens[index];
-      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
-      novaLista[index] =
+      final atualizado =
           item.copyWith(quantidade: item.quantidade + quantidade);
-      _updateState(state.copyWith(
-          itens: novaLista,
-          estabelecimento: estabelecimento ?? state.estabelecimento));
-    } else {
       final novaLista = List<ItemCarrinhoModel>.from(state.itens)
-        ..add(ItemCarrinhoModel(
-            produto: produto, quantidade: quantidade, observacao: observacao));
-      _updateState(state.copyWith(
-          itens: novaLista,
-          estabelecimento: estabelecimento ?? state.estabelecimento));
-    }
-  }
-
-  void removerProduto(ProdutoModel produto, {String? observacao}) {
-    final index = state.itens.indexWhere((item) =>
-        item.produto.id == produto.id && item.observacao == observacao);
-
-    if (index >= 0) {
-      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
-      novaLista.removeAt(index);
-
-      if (novaLista.isEmpty) {
-        limparCarrinho();
-        return;
-      }
-
-      _updateState(state.copyWith(
+        ..[index] = atualizado;
+      unawaited(_updateState(state.copyWith(
         itens: novaLista,
-        estabelecimento: state.estabelecimento,
-      ));
-    }
-  }
-
-  void atualizarQuantidade(ProdutoModel produto, int novaQuantidade,
-      {String? observacao}) {
-    if (novaQuantidade <= 0) {
-      removerProduto(produto, observacao: observacao);
+        estabelecimento: estabelecimento ?? state.estabelecimento,
+      )));
+      _salvarItemRemoto(atualizado, estabelecimento ?? state.estabelecimento);
       return;
     }
 
-    final index = state.itens.indexWhere((item) =>
-        item.produto.id == produto.id && item.observacao == observacao);
-
-    if (index >= 0) {
-      final item = state.itens[index];
-      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
-      novaLista[index] = item.copyWith(quantidade: novaQuantidade);
-      _updateState(state.copyWith(itens: novaLista));
-    }
+    final novoItem = ItemCarrinhoModel(
+      produto: produto,
+      quantidade: quantidade,
+      precoBaseProduto: precoBaseProduto ?? produto.precoAtual,
+      precoUnitario: precoUnitario ?? produto.precoAtual,
+      opcoesSelecionadas: opcoesSelecionadas,
+      observacao: observacao?.trim().isEmpty == true ? null : observacao,
+    );
+    final novaLista = List<ItemCarrinhoModel>.from(state.itens)..add(novoItem);
+    unawaited(_updateState(state.copyWith(
+      itens: novaLista,
+      estabelecimento: estabelecimento ?? state.estabelecimento,
+    )));
+    _salvarItemRemoto(novoItem, estabelecimento ?? state.estabelecimento);
   }
 
-  void atualizarObservacao(ProdutoModel produto, String? observacaoAntiga, String novaObservacao) {
-    final index = state.itens.indexWhere((item) =>
-        item.produto.id == produto.id && item.observacao == observacaoAntiga);
+  void removerProduto(
+    ProdutoModel produto, {
+    String? observacao,
+    List<Map<String, dynamic>> opcoesSelecionadas = const [],
+  }) {
+    final index = state.itens.indexWhere((item) => _sameCartEntry(
+          item,
+          produto,
+          observacao,
+          opcoesSelecionadas,
+        ));
 
-    if (index >= 0) {
-      final item = state.itens[index];
-      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
-      
-      // Verifica se já existe outro item igual com a nova observação para mesclar as quantidades
-      final existingIndex = state.itens.indexWhere((i) =>
-        i.produto.id == produto.id && i.observacao == novaObservacao && i != item);
-        
-      if (existingIndex >= 0) {
-        // Se existe, soma as quantidades e remove o antigo
-        final existingItem = novaLista[existingIndex];
-        novaLista[existingIndex] = existingItem.copyWith(quantidade: existingItem.quantidade + item.quantidade);
-        novaLista.removeAt(index);
-      } else {
-        novaLista[index] = item.copyWith(observacao: novaObservacao);
-      }
-      
-      _updateState(state.copyWith(itens: novaLista));
+    if (index < 0) return;
+
+    final novaLista = List<ItemCarrinhoModel>.from(state.itens);
+    final removido = novaLista.removeAt(index);
+    final repo = _carrinhoRepo;
+    if (repo != null) {
+      unawaited(repo.trySync(() => repo.removerItem(removido.id)));
     }
+
+    if (novaLista.isEmpty) {
+      unawaited(limparCarrinho());
+      return;
+    }
+
+    unawaited(_updateState(state.copyWith(
+      itens: novaLista,
+      estabelecimento: state.estabelecimento,
+    )));
+  }
+
+  void atualizarQuantidade(
+    ProdutoModel produto,
+    int novaQuantidade, {
+    String? observacao,
+    List<Map<String, dynamic>> opcoesSelecionadas = const [],
+  }) {
+    if (novaQuantidade <= 0) {
+      removerProduto(
+        produto,
+        observacao: observacao,
+        opcoesSelecionadas: opcoesSelecionadas,
+      );
+      return;
+    }
+
+    final index = state.itens.indexWhere((item) => _sameCartEntry(
+          item,
+          produto,
+          observacao,
+          opcoesSelecionadas,
+        ));
+
+    if (index < 0) return;
+
+    final atualizado = state.itens[index].copyWith(quantidade: novaQuantidade);
+    final novaLista = List<ItemCarrinhoModel>.from(state.itens)
+      ..[index] = atualizado;
+    unawaited(_updateState(state.copyWith(itens: novaLista)));
+    _salvarItemRemoto(atualizado, state.estabelecimento);
+  }
+
+  void atualizarObservacao(
+    ProdutoModel produto,
+    String? observacaoAntiga,
+    String novaObservacao, {
+    List<Map<String, dynamic>> opcoesSelecionadas = const [],
+  }) {
+    final observacaoNormalizada =
+        novaObservacao.trim().isEmpty ? null : novaObservacao.trim();
+    final index = state.itens.indexWhere((item) => _sameCartEntry(
+          item,
+          produto,
+          observacaoAntiga,
+          opcoesSelecionadas,
+        ));
+
+    if (index < 0) return;
+
+    final item = state.itens[index];
+    final novaLista = List<ItemCarrinhoModel>.from(state.itens);
+    final existingIndex = state.itens.indexWhere((i) =>
+        i != item &&
+        _sameCartEntry(i, produto, observacaoNormalizada, opcoesSelecionadas));
+
+    if (existingIndex >= 0) {
+      final atualizado = novaLista[existingIndex].copyWith(
+        quantidade: novaLista[existingIndex].quantidade + item.quantidade,
+      );
+      novaLista[existingIndex] = atualizado;
+      novaLista.removeAt(index);
+      _salvarItemRemoto(atualizado, state.estabelecimento);
+      final repo = _carrinhoRepo;
+      if (repo != null) {
+        unawaited(repo.trySync(() => repo.removerItem(item.id)));
+      }
+    } else {
+      final atualizado = item.copyWith(
+        observacao: observacaoNormalizada,
+        clearObservacao: observacaoNormalizada == null,
+      );
+      novaLista[index] = atualizado;
+      _salvarItemRemoto(atualizado, state.estabelecimento);
+    }
+
+    unawaited(_updateState(state.copyWith(itens: novaLista)));
   }
 
   void atualizarObservacaoGeral(String obs) {
-    _updateState(state.copyWith(
+    unawaited(_updateState(state.copyWith(
       observacaoGeral: obs.trim().isEmpty ? null : obs.trim(),
       clearObservacaoGeral: obs.trim().isEmpty,
-    ));
+    )));
   }
 
   Future<void> limparCarrinho() async {
+    final estabelecimentoId = state.estabelecimento?.id;
     state = const CarrinhoState();
     try {
       await _storage.delete(key: _storageKey);
     } catch (_) {}
+    final repo = _carrinhoRepo;
+    if (repo == null) return;
+    await repo.trySync(
+      () => repo.limparCarrinhoRemoto(
+        estabelecimentoId: estabelecimentoId,
+      ),
+    );
   }
 
-  // ── Cupom ──────────────────────────────────────────────────────────────────
-
-  /// Tenta aplicar um cupom pelo código digitado.
   Future<void> aplicarCupom(String codigo) async {
     if (codigo.trim().isEmpty) return;
 
@@ -270,13 +354,39 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     state = state.copyWith(clearCupom: true, clearCupomErro: true);
     debugPrint('[Carrinho] Cupom removido');
   }
+
+  bool _sameCartEntry(
+    ItemCarrinhoModel item,
+    ProdutoModel produto,
+    String? observacao,
+    List<Map<String, dynamic>> opcoesSelecionadas,
+  ) {
+    return item.produto.id == produto.id &&
+        (item.observacao ?? '') == (observacao ?? '') &&
+        _optionsKey(item.opcoesSelecionadas) == _optionsKey(opcoesSelecionadas);
+  }
+
+  String _optionsKey(List<Map<String, dynamic>> opcoes) => jsonEncode(opcoes);
+
+  void _salvarItemRemoto(
+    ItemCarrinhoModel item,
+    EstabelecimentoModel? estabelecimento,
+  ) {
+    if (estabelecimento == null) return;
+    final repo = _carrinhoRepo;
+    if (repo == null) return;
+    unawaited(repo.trySync(
+      () => repo.salvarItem(
+        estabelecimentoId: estabelecimento.id,
+        item: item,
+      ),
+    ));
+  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Provider
-// ─────────────────────────────────────────────────────────────────────────────
 final carrinhoControllerProvider =
     StateNotifierProvider<CarrinhoController, CarrinhoState>((ref) {
   final cupomRepo = ref.watch(cupomRepositoryProvider);
-  return CarrinhoController(cupomRepo);
+  final carrinhoRepo = ref.watch(carrinhoRepositoryProvider);
+  return CarrinhoController(cupomRepo, carrinhoRepo);
 });

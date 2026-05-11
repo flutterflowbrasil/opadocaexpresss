@@ -15,6 +15,7 @@ import '../models/produto_model.dart';
 void showProdutoFormModal(
   BuildContext context, {
   ProdutoModel? produto,
+  String? estabelecimentoId,
 }) {
   showGeneralDialog(
     context: context,
@@ -22,7 +23,10 @@ void showProdutoFormModal(
     barrierDismissible: true,
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 300),
-    pageBuilder: (context, anim1, anim2) => _ProdutoFormModal(produto: produto),
+    pageBuilder: (context, anim1, anim2) => _ProdutoFormModal(
+      produto: produto,
+      estabelecimentoId: estabelecimentoId,
+    ),
     transitionBuilder: (context, anim1, anim2, child) {
       final offset = Tween<Offset>(
         begin: const Offset(1.0, 0.0),
@@ -35,8 +39,9 @@ void showProdutoFormModal(
 
 class _ProdutoFormModal extends ConsumerStatefulWidget {
   final ProdutoModel? produto;
+  final String? estabelecimentoId;
 
-  const _ProdutoFormModal({this.produto});
+  const _ProdutoFormModal({this.produto, this.estabelecimentoId});
 
   @override
   ConsumerState<_ProdutoFormModal> createState() => _ProdutoFormModalState();
@@ -54,6 +59,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   final _descCtrl = TextEditingController();
   final _ordemCtrl = TextEditingController(text: '0');
   String _tipoProduto = 'simples';
+  List<String> _categoriaPrincipalIds = [];
   String? _categoriaId;
   bool _ativo = true;
   bool _disponivel = true;
@@ -70,6 +76,9 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   // Tab Estoque
   bool _controleEstoque = false;
   final _estoqueCtrl = TextEditingController();
+
+  // Tab Opções
+  List<Map<String, dynamic>> _opcoes = [];
 
   // Foto
   Uint8List? _fotoBytes;
@@ -89,6 +98,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       _descCtrl.text = p.descricao ?? '';
       _ordemCtrl.text = p.ordemExibicao.toString();
       _tipoProduto = p.tipoProduto;
+      _categoriaPrincipalIds = p.categoriaPrincipalIds;
       _categoriaId = p.categoriaCardapioId;
       _ativo = p.ativo;
       _disponivel = p.disponivel;
@@ -102,6 +112,10 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       _controleEstoque = p.controleEstoque;
       _estoqueCtrl.text = p.quantidadeEstoque?.toString() ?? '';
       _fotoUrl = p.fotoPrincipalUrl;
+      _opcoes = p.opcoes
+          .whereType<Map>()
+          .map((opcao) => Map<String, dynamic>.from(opcao))
+          .toList();
     }
   }
 
@@ -135,6 +149,116 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
     return Supabase.instance.client.storage.from('imagens').getPublicUrl(path);
   }
 
+  List<Map<String, dynamic>>? _normalizarOpcoes({bool mostrarErro = true}) {
+    final normalizadas = <Map<String, dynamic>>[];
+    final gruposOrdenados = [..._opcoes]
+      ..sort((a, b) => _asInt(a['ordem'], 0).compareTo(_asInt(b['ordem'], 0)));
+
+    for (var i = 0; i < gruposOrdenados.length; i++) {
+      final grupo = gruposOrdenados[i];
+      final nome = (grupo['nome'] ?? '').toString().trim();
+      final tipo = grupo['tipo'] == 'unica' ? 'unica' : 'multipla';
+      final obrigatorio = grupo['obrigatorio'] == true;
+      final ativo = grupo['ativo'] != false;
+      final minSelecoes = _asInt(grupo['min_selecoes'], 0);
+      final maxSelecoes = tipo == 'unica' ? 1 : _asInt(grupo['max_selecoes'], 1);
+      final itensRaw = (grupo['itens'] as List? ?? [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList()
+        ..sort((a, b) =>
+            _asInt(a['ordem'], 0).compareTo(_asInt(b['ordem'], 0)));
+
+      if (nome.isEmpty) {
+        return _opcoesInvalidas('Informe o nome de todos os grupos.',
+            mostrarErro: mostrarErro);
+      }
+      if (obrigatorio && minSelecoes < 1) {
+        return _opcoesInvalidas(
+          'Grupo obrigatório precisa ter mínimo de seleções maior ou igual a 1.',
+          mostrarErro: mostrarErro,
+        );
+      }
+      if (minSelecoes > maxSelecoes) {
+        return _opcoesInvalidas(
+          'O mínimo de seleções não pode ser maior que o máximo.',
+          mostrarErro: mostrarErro,
+        );
+      }
+
+      final itens = <Map<String, dynamic>>[];
+      for (var j = 0; j < itensRaw.length; j++) {
+        final item = itensRaw[j];
+        final itemNome = (item['nome'] ?? '').toString().trim();
+        final descricao = (item['descricao'] ?? '').toString().trim();
+        final preco = _asDouble(item['preco'], 0);
+        final itemAtivo = item['ativo'] != false;
+
+        if (itemNome.isEmpty) {
+          return _opcoesInvalidas('Informe o nome de todos os adicionais.',
+              mostrarErro: mostrarErro);
+        }
+        if (preco < 0) {
+          return _opcoesInvalidas('O preço do adicional não pode ser negativo.',
+              mostrarErro: mostrarErro);
+        }
+
+        itens.add({
+          'id': (item['id'] ?? const Uuid().v4()).toString(),
+          'nome': itemNome,
+          'descricao': descricao.isEmpty ? null : descricao,
+          'preco': preco,
+          'ativo': itemAtivo,
+          'ordem': j + 1,
+        });
+      }
+
+      if (ativo && !itens.any((item) => item['ativo'] == true)) {
+        return _opcoesInvalidas(
+          'Grupo ativo precisa ter ao menos um item ativo.',
+          mostrarErro: mostrarErro,
+        );
+      }
+
+      normalizadas.add({
+        'id': (grupo['id'] ?? const Uuid().v4()).toString(),
+        'nome': nome,
+        'tipo': tipo,
+        'obrigatorio': obrigatorio,
+        'min_selecoes': minSelecoes,
+        'max_selecoes': maxSelecoes,
+        'ordem': i + 1,
+        'ativo': ativo,
+        'itens': itens,
+      });
+    }
+
+    return normalizadas;
+  }
+
+  List<Map<String, dynamic>>? _opcoesInvalidas(
+    String mensagem, {
+    required bool mostrarErro,
+  }) {
+    if (mostrarErro && mounted) {
+      _tabController.animateTo(3);
+      _mostrarToast(mensagem, isError: true);
+    }
+    return null;
+  }
+
+  int _asInt(dynamic value, int fallback) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  double _asDouble(dynamic value, double fallback) {
+    if (value is num) return value.toDouble();
+    return double.tryParse((value?.toString() ?? '').replaceAll(',', '.')) ??
+        fallback;
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -156,9 +280,21 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       return;
     }
 
+    final opcoesNormalizadas = _normalizarOpcoes();
+    if (opcoesNormalizadas == null) return;
+
+    final temOpcoesAtivas = opcoesNormalizadas.any((grupo) {
+      if (grupo['ativo'] != true) return false;
+      final itens = grupo['itens'] as List? ?? [];
+      return itens.any((item) => item is Map && item['ativo'] == true);
+    });
+    final tipoProdutoFinal = temOpcoesAtivas ? 'variavel' : _tipoProduto;
+
     setState(() => _isSaving = true);
 
-    final estabId = ref
+    final estabId = widget.estabelecimentoId ??
+        widget.produto?.estabelecimentoId ??
+        ref
             .read(produtosControllerProvider)
             .produtos
             .firstOrNull
@@ -189,8 +325,9 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       preco: preco,
       precoPromocional: precoPromo,
       custoEstimado: custo,
+      categoriaPrincipalIds: _categoriaPrincipalIds,
       categoriaCardapioId: _categoriaId,
-      tipoProduto: _tipoProduto,
+      tipoProduto: tipoProdutoFinal,
       ativo: _ativo,
       disponivel: _disponivel,
       destaque: _destaque,
@@ -201,7 +338,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       ordemExibicao: int.tryParse(_ordemCtrl.text) ?? 0,
       fotoPrincipalUrl: fotoUrl,
       totalVendidos: widget.produto?.totalVendidos ?? 0,
-      opcoes: widget.produto?.opcoes ?? [],
+      opcoes: opcoesNormalizadas,
     );
 
     await ref
@@ -237,6 +374,8 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   Widget build(BuildContext context) {
     final categorias =
         ref.watch(produtosControllerProvider.select((s) => s.categorias));
+    final categoriasPrincipais = ref.watch(
+        produtosControllerProvider.select((s) => s.categoriasPrincipais));
     final screenW = MediaQuery.of(context).size.width;
     final modalWidth = screenW < 700 ? screenW : 640.0;
 
@@ -301,6 +440,8 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                         descCtrl: _descCtrl,
                         ordemCtrl: _ordemCtrl,
                         tipoProduto: _tipoProduto,
+                        categoriasPrincipais: categoriasPrincipais,
+                        categoriaPrincipalIds: _categoriaPrincipalIds,
                         categorias: categorias,
                         categoriaId: _categoriaId,
                         ativo: _ativo,
@@ -312,6 +453,14 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                         onPickFoto: _pickImagem,
                         onTipoChanged: (v) =>
                             setState(() => _tipoProduto = v ?? 'simples'),
+                        onCategoriaPrincipalToggled: (id) => setState(() {
+                          _categoriaPrincipalIds =
+                              _categoriaPrincipalIds.contains(id)
+                                  ? _categoriaPrincipalIds
+                                      .where((item) => item != id)
+                                      .toList()
+                                  : [..._categoriaPrincipalIds, id];
+                        }),
                         onCategoriaChanged: (v) =>
                             setState(() => _categoriaId = v),
                         onAtivoChanged: (v) => setState(() => _ativo = v),
@@ -337,8 +486,11 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                         onControleChanged: (v) =>
                             setState(() => _controleEstoque = v),
                       ),
-                      // 4. Opções (informativo por enquanto)
-                      const _TabOpcoes(),
+                      // 4. Opções
+                      _TabOpcoes(
+                        opcoes: _opcoes,
+                        onChanged: (opcoes) => setState(() => _opcoes = opcoes),
+                      ),
                       // 5. Última Mordida
                       _TabUltimaMordida(produto: widget.produto),
                     ],
@@ -516,6 +668,8 @@ class _TabBasico extends StatelessWidget {
   final TextEditingController descCtrl;
   final TextEditingController ordemCtrl;
   final String tipoProduto;
+  final List categoriasPrincipais;
+  final List<String> categoriaPrincipalIds;
   final List categorias;
   final String? categoriaId;
   final bool ativo;
@@ -527,6 +681,7 @@ class _TabBasico extends StatelessWidget {
   final String? fotoUrl;
   final VoidCallback onPickFoto;
   final ValueChanged<String?> onTipoChanged;
+  final ValueChanged<String> onCategoriaPrincipalToggled;
   final ValueChanged<String?> onCategoriaChanged;
   final ValueChanged<bool> onAtivoChanged;
   final ValueChanged<bool> onDisponivelChanged;
@@ -538,6 +693,8 @@ class _TabBasico extends StatelessWidget {
     required this.descCtrl,
     required this.ordemCtrl,
     required this.tipoProduto,
+    required this.categoriasPrincipais,
+    required this.categoriaPrincipalIds,
     required this.categorias,
     required this.categoriaId,
     required this.ativo,
@@ -548,6 +705,7 @@ class _TabBasico extends StatelessWidget {
     required this.fotoUrl,
     required this.onPickFoto,
     required this.onTipoChanged,
+    required this.onCategoriaPrincipalToggled,
     required this.onCategoriaChanged,
     required this.onAtivoChanged,
     required this.onDisponivelChanged,
@@ -668,7 +826,16 @@ class _TabBasico extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Categoria + Tipo Produto
+          _SectionLabel('Categoria Principal'),
+          const SizedBox(height: 8),
+          _CategoriaPrincipalDropdown(
+            categorias: categoriasPrincipais,
+            selectedIds: categoriaPrincipalIds,
+            onToggle: onCategoriaPrincipalToggled,
+          ),
+          const SizedBox(height: 16),
+
+          // Categoria secundária + Tipo Produto
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -676,7 +843,7 @@ class _TabBasico extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionLabel('Categoria'),
+                    _SectionLabel('Categoria Secundária'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       // ignore: deprecated_member_use
@@ -781,6 +948,87 @@ class _TabBasico extends StatelessWidget {
 // ═══════════════════════════════════════════
 // TAB 2 — PREÇO
 // ═══════════════════════════════════════════
+class _CategoriaPrincipalDropdown extends StatelessWidget {
+  final List categorias;
+  final List<String> selectedIds;
+  final ValueChanged<String> onToggle;
+
+  const _CategoriaPrincipalDropdown({
+    required this.categorias,
+    required this.selectedIds,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedNames = categorias
+        .where((c) => selectedIds.contains(c.id as String))
+        .map((c) => c.nome as String)
+        .toList();
+
+    final label = selectedNames.isEmpty
+        ? 'Selecione uma ou mais categorias'
+        : selectedNames.join(', ');
+
+    return PopupMenuButton<String>(
+      tooltip: 'Selecionar categorias principais',
+      onSelected: onToggle,
+      constraints: const BoxConstraints(minWidth: 320, maxWidth: 420),
+      itemBuilder: (context) {
+        if (categorias.isEmpty) {
+          return [
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Text(
+                'Nenhuma categoria principal ativa',
+                style: GoogleFonts.publicSans(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ),
+          ];
+        }
+
+        return categorias
+            .map(
+              (c) => CheckedPopupMenuItem<String>(
+                value: c.id as String,
+                checked: selectedIds.contains(c.id as String),
+                child: Text(
+                  c.nome as String,
+                  style: GoogleFonts.publicSans(fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList();
+      },
+      child: InputDecorator(
+        decoration: _inputDecoration('Selecione'),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.publicSans(
+                  fontSize: 14,
+                  color: selectedNames.isEmpty
+                      ? Colors.grey.shade500
+                      : Colors.black87,
+                ),
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TabPreco extends StatelessWidget {
   final TextEditingController precoCtrl;
   final TextEditingController precoPromoCtrl;
@@ -1009,7 +1257,210 @@ class _TabEstoque extends StatelessWidget {
 // TAB 4 — OPÇÕES (informativo)
 // ═══════════════════════════════════════════
 class _TabOpcoes extends StatelessWidget {
-  const _TabOpcoes();
+  final List<Map<String, dynamic>> opcoes;
+  final ValueChanged<List<Map<String, dynamic>>> onChanged;
+
+  const _TabOpcoes({
+    required this.opcoes,
+    required this.onChanged,
+  });
+
+  void _emit(List<Map<String, dynamic>> next) {
+    onChanged(_reordenarGrupos(next));
+  }
+
+  void _adicionarGrupo() {
+    _emit([
+      ...opcoes,
+      {
+        'id': const Uuid().v4(),
+        'nome': '',
+        'tipo': 'multipla',
+        'obrigatorio': false,
+        'min_selecoes': 0,
+        'max_selecoes': 5,
+        'ordem': opcoes.length + 1,
+        'ativo': true,
+        'itens': <Map<String, dynamic>>[],
+      }
+    ]);
+  }
+
+  void _atualizarGrupo(int index, String key, dynamic value) {
+    final next = _copyOpcoes();
+    next[index][key] = value;
+    if (key == 'tipo' && value == 'unica') {
+      next[index]['max_selecoes'] = 1;
+      if (_asIntStatic(next[index]['min_selecoes'], 0) > 1) {
+        next[index]['min_selecoes'] = 1;
+      }
+    }
+    _emit(next);
+  }
+
+  void _removerGrupo(int index) {
+    final next = _copyOpcoes()..removeAt(index);
+    _emit(next);
+  }
+
+  void _moverGrupo(int index, int delta) {
+    final target = index + delta;
+    if (target < 0 || target >= opcoes.length) return;
+    final next = _copyOpcoes();
+    final item = next.removeAt(index);
+    next.insert(target, item);
+    _emit(next);
+  }
+
+  void _adicionarItem(int grupoIndex) {
+    final next = _copyOpcoes();
+    final itens = _itens(next[grupoIndex]);
+    itens.add({
+      'id': const Uuid().v4(),
+      'nome': '',
+      'descricao': null,
+      'preco': 0.0,
+      'ativo': true,
+      'ordem': itens.length + 1,
+    });
+    next[grupoIndex]['itens'] = itens;
+    _emit(next);
+  }
+
+  void _atualizarItem(
+    int grupoIndex,
+    int itemIndex,
+    String key,
+    dynamic value,
+  ) {
+    final next = _copyOpcoes();
+    final itens = _itens(next[grupoIndex]);
+    itens[itemIndex][key] = value;
+    next[grupoIndex]['itens'] = itens;
+    _emit(next);
+  }
+
+  void _removerItem(int grupoIndex, int itemIndex) {
+    final next = _copyOpcoes();
+    final itens = _itens(next[grupoIndex])..removeAt(itemIndex);
+    next[grupoIndex]['itens'] = _reordenarItens(itens);
+    _emit(next);
+  }
+
+  void _moverItem(int grupoIndex, int itemIndex, int delta) {
+    final next = _copyOpcoes();
+    final itens = _itens(next[grupoIndex]);
+    final target = itemIndex + delta;
+    if (target < 0 || target >= itens.length) return;
+    final item = itens.removeAt(itemIndex);
+    itens.insert(target, item);
+    next[grupoIndex]['itens'] = _reordenarItens(itens);
+    _emit(next);
+  }
+
+  List<Map<String, dynamic>> _copyOpcoes() {
+    return opcoes.map((grupo) {
+      final copy = Map<String, dynamic>.from(grupo);
+      copy['itens'] = _itens(grupo);
+      return copy;
+    }).toList();
+  }
+
+  static List<Map<String, dynamic>> _itens(Map<String, dynamic> grupo) {
+    return (grupo['itens'] as List? ?? [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> _reordenarGrupos(
+    List<Map<String, dynamic>> grupos,
+  ) {
+    return grupos.asMap().entries.map((entry) {
+      final grupo = Map<String, dynamic>.from(entry.value);
+      grupo['ordem'] = entry.key + 1;
+      grupo['itens'] = _reordenarItens(_itens(grupo));
+      return grupo;
+    }).toList();
+  }
+
+  static List<Map<String, dynamic>> _reordenarItens(
+    List<Map<String, dynamic>> itens,
+  ) {
+    return itens.asMap().entries.map((entry) {
+      final item = Map<String, dynamic>.from(entry.value);
+      item['ordem'] = entry.key + 1;
+      return item;
+    }).toList();
+  }
+
+  static int _asIntStatic(dynamic value, int fallback) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _SectionLabel(
+                  'Adicionais e Opções',
+                  subtitle: 'Configure grupos de escolha e adicionais pagos.',
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _adicionarGrupo,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Adicionar grupo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFec5b13),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (opcoes.isEmpty)
+            _EmptyOpcoesState(onAdd: _adicionarGrupo)
+          else
+            ...opcoes.asMap().entries.map((entry) {
+              return _GrupoOpcoesCard(
+                key: ValueKey(entry.value['id']),
+                index: entry.key,
+                total: opcoes.length,
+                grupo: entry.value,
+                onMoveUp: () => _moverGrupo(entry.key, -1),
+                onMoveDown: () => _moverGrupo(entry.key, 1),
+                onRemove: () => _removerGrupo(entry.key),
+                onGrupoChanged: (key, value) =>
+                    _atualizarGrupo(entry.key, key, value),
+                onAddItem: () => _adicionarItem(entry.key),
+                onItemChanged: (itemIndex, key, value) =>
+                    _atualizarItem(entry.key, itemIndex, key, value),
+                onItemRemove: (itemIndex) => _removerItem(entry.key, itemIndex),
+                onItemMove: (itemIndex, delta) =>
+                    _moverItem(entry.key, itemIndex, delta),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _TabOpcoesOld extends StatelessWidget {
+  const _TabOpcoesOld();
 
   @override
   Widget build(BuildContext context) {
@@ -1073,6 +1524,506 @@ class _TabOpcoes extends StatelessWidget {
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
+class _EmptyOpcoesState extends StatelessWidget {
+  final VoidCallback onAdd;
+
+  const _EmptyOpcoesState({required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.tune, size: 44, color: Colors.grey.shade300),
+          const SizedBox(height: 10),
+          Text(
+            'Nenhum grupo cadastrado',
+            style: GoogleFonts.publicSans(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Produtos sem adicionais serão salvos com opcoes vazio.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.publicSans(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Adicionar grupo'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFec5b13),
+              side: const BorderSide(color: Color(0xFFec5b13)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GrupoOpcoesCard extends StatelessWidget {
+  final int index;
+  final int total;
+  final Map<String, dynamic> grupo;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
+  final VoidCallback onRemove;
+  final void Function(String key, dynamic value) onGrupoChanged;
+  final VoidCallback onAddItem;
+  final void Function(int itemIndex, String key, dynamic value) onItemChanged;
+  final ValueChanged<int> onItemRemove;
+  final void Function(int itemIndex, int delta) onItemMove;
+
+  const _GrupoOpcoesCard({
+    super.key,
+    required this.index,
+    required this.total,
+    required this.grupo,
+    required this.onMoveUp,
+    required this.onMoveDown,
+    required this.onRemove,
+    required this.onGrupoChanged,
+    required this.onAddItem,
+    required this.onItemChanged,
+    required this.onItemRemove,
+    required this.onItemMove,
+  });
+
+  List<Map<String, dynamic>> get _itens {
+    return (grupo['itens'] as List? ?? [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  int _asInt(dynamic value, int fallback) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = grupo['tipo'] == 'unica' ? 'unica' : 'multipla';
+    final maxSelecoes = tipo == 'unica' ? 1 : _asInt(grupo['max_selecoes'], 1);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Grupo ${index + 1}',
+                  style: GoogleFonts.publicSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _IconAction(
+                icon: Icons.keyboard_arrow_up,
+                tooltip: 'Subir grupo',
+                onTap: index == 0 ? null : onMoveUp,
+              ),
+              _IconAction(
+                icon: Icons.keyboard_arrow_down,
+                tooltip: 'Descer grupo',
+                onTap: index == total - 1 ? null : onMoveDown,
+              ),
+              _IconAction(
+                icon: Icons.delete_outline,
+                tooltip: 'Remover grupo',
+                onTap: onRemove,
+                color: Colors.red.shade600,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _SectionLabel('Nome do grupo *'),
+          const SizedBox(height: 8),
+          TextFormField(
+            key: ValueKey('${grupo['id']}-nome'),
+            initialValue: (grupo['nome'] ?? '').toString(),
+            decoration: _inputDecoration('Ex: Adicionais'),
+            onChanged: (value) => onGrupoChanged('nome', value),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('Tipo de escolha'),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: tipo,
+                      decoration: _inputDecoration(null),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'unica', child: Text('Escolha única')),
+                        DropdownMenuItem(
+                            value: 'multipla', child: Text('Múltipla escolha')),
+                      ],
+                      onChanged: (value) =>
+                          onGrupoChanged('tipo', value ?? 'multipla'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineSwitchField(
+                  title: 'Obrigatório',
+                  value: grupo['obrigatorio'] == true,
+                  onChanged: (value) => onGrupoChanged('obrigatorio', value),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineSwitchField(
+                  title: 'Ativo',
+                  value: grupo['ativo'] != false,
+                  onChanged: (value) => onGrupoChanged('ativo', value),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _NumberField(
+                  label: 'Mínimo',
+                  value: _asInt(grupo['min_selecoes'], 0),
+                  onChanged: (value) => onGrupoChanged('min_selecoes', value),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _NumberField(
+                  label: 'Máximo',
+                  value: maxSelecoes,
+                  enabled: tipo != 'unica',
+                  onChanged: (value) => onGrupoChanged('max_selecoes', value),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _NumberField(
+                  label: 'Ordem',
+                  value: index + 1,
+                  enabled: false,
+                  onChanged: (_) {},
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _SectionLabel(
+                  'Itens do grupo',
+                  subtitle: '${_itens.length} item(ns) cadastrado(s)',
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onAddItem,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Adicionar item'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFec5b13),
+                  side: const BorderSide(color: Color(0xFFec5b13)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_itens.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Nenhum item cadastrado neste grupo.',
+                style: GoogleFonts.publicSans(
+                    fontSize: 12, color: Colors.grey.shade500),
+              ),
+            )
+          else
+            ..._itens.asMap().entries.map((entry) => _OpcaoItemCard(
+                  key: ValueKey(entry.value['id']),
+                  index: entry.key,
+                  total: _itens.length,
+                  item: entry.value,
+                  onChanged: (key, value) =>
+                      onItemChanged(entry.key, key, value),
+                  onRemove: () => onItemRemove(entry.key),
+                  onMoveUp: () => onItemMove(entry.key, -1),
+                  onMoveDown: () => onItemMove(entry.key, 1),
+                )),
+        ],
+      ),
+    );
+  }
+}
+
+class _OpcaoItemCard extends StatelessWidget {
+  final int index;
+  final int total;
+  final Map<String, dynamic> item;
+  final void Function(String key, dynamic value) onChanged;
+  final VoidCallback onRemove;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
+
+  const _OpcaoItemCard({
+    super.key,
+    required this.index,
+    required this.total,
+    required this.item,
+    required this.onChanged,
+    required this.onRemove,
+    required this.onMoveUp,
+    required this.onMoveDown,
+  });
+
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse((value?.toString() ?? '').replaceAll(',', '.')) ??
+        0.0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Item ${index + 1}',
+                  style: GoogleFonts.publicSans(
+                      fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ),
+              _IconAction(
+                icon: Icons.keyboard_arrow_up,
+                tooltip: 'Subir item',
+                onTap: index == 0 ? null : onMoveUp,
+              ),
+              _IconAction(
+                icon: Icons.keyboard_arrow_down,
+                tooltip: 'Descer item',
+                onTap: index == total - 1 ? null : onMoveDown,
+              ),
+              _IconAction(
+                icon: Icons.delete_outline,
+                tooltip: 'Remover item',
+                onTap: onRemove,
+                color: Colors.red.shade600,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            key: ValueKey('${item['id']}-nome'),
+            initialValue: (item['nome'] ?? '').toString(),
+            decoration: _inputDecoration('Nome do adicional *'),
+            onChanged: (value) => onChanged('nome', value),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            key: ValueKey('${item['id']}-descricao'),
+            initialValue: (item['descricao'] ?? '').toString(),
+            decoration: _inputDecoration('Descrição opcional'),
+            onChanged: (value) => onChanged('descricao', value),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: ValueKey('${item['id']}-preco'),
+                  initialValue: _asDouble(item['preco'])
+                      .toStringAsFixed(2)
+                      .replaceAll('.', ','),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: _inputDecoration('0,00').copyWith(
+                    prefixText: 'R\$ ',
+                  ),
+                  onChanged: (value) => onChanged('preco', value),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InlineSwitchField(
+                  title: 'Ativo',
+                  value: item['ativo'] != false,
+                  onChanged: (value) => onChanged('ativo', value),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _NumberField(
+                  label: 'Ordem',
+                  value: index + 1,
+                  enabled: false,
+                  onChanged: (_) {},
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NumberField extends StatelessWidget {
+  final String label;
+  final int value;
+  final bool enabled;
+  final ValueChanged<int> onChanged;
+
+  const _NumberField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel(label),
+        const SizedBox(height: 8),
+        TextFormField(
+          key: ValueKey('$label-$value-$enabled'),
+          initialValue: value.toString(),
+          enabled: enabled,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: _inputDecoration('0'),
+          onChanged: (value) => onChanged(int.tryParse(value) ?? 0),
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineSwitchField extends StatelessWidget {
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _InlineSwitchField({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.publicSans(
+                  fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeTrackColor: const Color(0xFFec5b13),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  const _IconAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(icon, size: 18),
+        color: color ?? Colors.grey.shade700,
+        disabledColor: Colors.grey.shade300,
+        onPressed: onTap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
 class _SectionLabel extends StatelessWidget {
   final String text;
   final String? subtitle;

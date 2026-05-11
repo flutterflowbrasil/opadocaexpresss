@@ -28,10 +28,12 @@ class ProdutosController extends StateNotifier<ProdutosState> {
       final results = await Future.wait([
         _repository.fetchProdutos(estabelecimentoId),
         _repository.fetchCategorias(estabelecimentoId),
+        _repository.fetchCategoriasPrincipais(),
       ]);
 
       final produtos = results[0] as List<dynamic>;
       final categorias = results[1] as List<dynamic>;
+      final categoriasPrincipais = results[2] as List<dynamic>;
 
       state = state.copyWith(
         isLoading: false,
@@ -39,6 +41,7 @@ class ProdutosController extends StateNotifier<ProdutosState> {
         produtosFiltrados:
             produtos.cast(), // Inicialmente, os filtrados são todos os produtos
         categorias: categorias.cast(),
+        categoriasPrincipais: categoriasPrincipais.cast(),
       );
     } catch (e) {
       state = state.copyWith(

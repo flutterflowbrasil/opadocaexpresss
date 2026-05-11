@@ -19,6 +19,8 @@ class ProdutoModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? categoriaId;
+  final List<String> categoriaPrincipalIds;
+  final List<String> categoriaPrincipalNomes;
   final String? categoriaCardapioId;
   final String tipoProduto;
   final bool ativo;
@@ -59,6 +61,8 @@ class ProdutoModel {
     this.createdAt,
     this.updatedAt,
     this.categoriaId,
+    this.categoriaPrincipalIds = const [],
+    this.categoriaPrincipalNomes = const [],
     this.categoriaCardapioId,
     this.tipoProduto = 'simples',
     this.ativo = true,
@@ -96,6 +100,8 @@ class ProdutoModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? categoriaId,
+    List<String>? categoriaPrincipalIds,
+    List<String>? categoriaPrincipalNomes,
     String? categoriaCardapioId,
     String? tipoProduto,
     bool? ativo,
@@ -133,6 +139,10 @@ class ProdutoModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       categoriaId: categoriaId ?? this.categoriaId,
+      categoriaPrincipalIds:
+          categoriaPrincipalIds ?? this.categoriaPrincipalIds,
+      categoriaPrincipalNomes:
+          categoriaPrincipalNomes ?? this.categoriaPrincipalNomes,
       categoriaCardapioId: categoriaCardapioId ?? this.categoriaCardapioId,
       tipoProduto: tipoProduto ?? this.tipoProduto,
       ativo: ativo ?? this.ativo,
@@ -180,6 +190,9 @@ class ProdutoModel {
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       categoriaId: json['categoria_id'] as String?,
+      categoriaPrincipalIds:
+          _parseCategoriasPrincipais(json, field: 'categoria_id'),
+      categoriaPrincipalNomes: _parseCategoriasPrincipais(json, field: 'nome'),
       categoriaCardapioId: json['categoria_cardapio_id'] as String?,
       tipoProduto: json['tipo_produto'] as String? ?? 'simples',
       ativo: json['ativo'] as bool? ?? true,
@@ -233,6 +246,28 @@ class ProdutoModel {
       'peso_gramas': pesoGramas,
       'permite_observacao': permiteObservacao,
     };
+  }
+
+  static List<String> _parseCategoriasPrincipais(
+    Map<String, dynamic> json, {
+    required String field,
+  }) {
+    final raw = json['produto_categorias_estabelecimento'];
+    if (raw is! List) return const [];
+
+    return raw
+        .map((item) {
+          if (item is! Map<String, dynamic>) return null;
+          if (field == 'categoria_id') return item['categoria_id'] as String?;
+
+          final categoria = item['categorias_estabelecimento'];
+          if (categoria is Map<String, dynamic>) {
+            return categoria['nome'] as String?;
+          }
+          return null;
+        })
+        .whereType<String>()
+        .toList();
   }
 
   @override

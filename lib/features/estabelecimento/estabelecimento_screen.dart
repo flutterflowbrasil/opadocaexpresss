@@ -160,52 +160,37 @@ class EstabelecimentoScreen extends ConsumerWidget {
           child: Consumer(
             builder: (context, ref, child) {
               void processAddLogic() {
-                if (produto.tipoProduto == 'variavel') {
+                if (produto.tipoProduto == 'variavel' ||
+                    produto.opcoes.isNotEmpty) {
                   showDialog(
                     context: context,
                     builder: (context) => ProdutoVariavelDialog(
                       produto: produto,
                       estabelecimento: modelAtualizado,
                       onAddTap: (qtd, obs, selecoes) {
-                        String formatObs = obs;
-                        double adicionais = 0;
-                        if (selecoes.isNotEmpty) {
-                          final opts = selecoes
-                              .map((s) => '${s['grupo']}: ${s['nome']}')
-                              .join(', ');
-                          formatObs = formatObs.isEmpty
-                              ? opts
-                              : '$opts\nObs: $formatObs';
-                          for (var s in selecoes) {
-                            adicionais +=
-                                (s['preco_adicional'] as double? ?? 0);
-                          }
-                        }
-
-                        final modProd = ProdutoModel(
-                          id: produto.id,
-                          estabelecimentoId: produto.estabelecimentoId,
-                          nome: produto.nome,
-                          descricao: produto.descricao,
-                          preco: produto.preco + adicionais,
-                          precoPromocional: produto.precoPromocional != null
-                              ? produto.precoPromocional! + adicionais
-                              : null,
-                          imagemUrl: produto.imagemUrl,
-                          isAtivo: produto.isAtivo,
-                          permiteObservacoes: produto.permiteObservacoes,
-                          categoriaCardapioId: produto.categoriaCardapioId,
-                          tipoProduto: produto.tipoProduto,
-                          opcoes: produto.opcoes,
-                        );
+                        final adicionais =
+                            selecoes.fold<double>(0, (total, grupo) {
+                          final itens = grupo['itens'] as List? ?? [];
+                          return total +
+                              itens.fold<double>(
+                                0,
+                                (subtotal, item) =>
+                                    subtotal +
+                                    ((item as Map)['preco'] as num? ?? 0)
+                                        .toDouble(),
+                              );
+                        });
 
                         ref
                             .read(carrinhoControllerProvider.notifier)
                             .adicionarProduto(
-                              modProd,
+                              produto,
                               qtd,
-                              observacao: formatObs,
+                              observacao: obs,
                               estabelecimento: modelAtualizado,
+                              precoBaseProduto: produto.precoAtual,
+                              precoUnitario: produto.precoAtual + adicionais,
+                              opcoesSelecionadas: selecoes,
                             );
                       },
                     ),

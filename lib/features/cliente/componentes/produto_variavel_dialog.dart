@@ -32,8 +32,8 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
   @override
   void initState() {
     super.initState();
-    for (var opcao in widget.produto.opcoes) {
-      _selecoes[opcao.nome] = [];
+    for (final opcao in widget.produto.opcoes) {
+      _selecoes[_grupoKey(opcao)] = [];
     }
   }
 
@@ -44,12 +44,11 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
   }
 
   bool _isSelectionValid() {
-    for (var opcao in widget.produto.opcoes) {
-      if (opcao.obrigatorio) {
-        final totalSelecionado = _selecoes[opcao.nome]?.length ?? 0;
-        if (totalSelecionado < opcao.minimo) return false;
-        if (totalSelecionado > opcao.maximo) return false;
-      }
+    for (final opcao in widget.produto.opcoes) {
+      final totalSelecionado = _selecoes[_grupoKey(opcao)]?.length ?? 0;
+      if (totalSelecionado < opcao.minimo) return false;
+      if (opcao.obrigatorio && totalSelecionado < 1) return false;
+      if (totalSelecionado > opcao.maximo) return false;
     }
     return true;
   }
@@ -66,21 +65,59 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
 
   void _atualizarRadio(ProdutoOpcaoModel opcao, ProdutoOpcaoItemModel item) {
     setState(() {
-      _selecoes[opcao.nome] = [item];
+      _selecoes[_grupoKey(opcao)] = [item];
     });
   }
 
   void _toggleCheckbox(
       ProdutoOpcaoModel opcao, ProdutoOpcaoItemModel item, bool checked) {
     setState(() {
-      final list = _selecoes[opcao.nome] ?? [];
+      final key = _grupoKey(opcao);
+      final list = List<ProdutoOpcaoItemModel>.from(_selecoes[key] ?? []);
       if (checked) {
-        if (list.length < opcao.maximo) list.add(item);
+        if (list.length < opcao.maximo &&
+            !list.any((i) => _itemKey(i) == _itemKey(item))) {
+          list.add(item);
+        }
       } else {
-        list.removeWhere((i) => i.nome == item.nome);
+        list.removeWhere((i) => _itemKey(i) == _itemKey(item));
       }
-      _selecoes[opcao.nome] = list;
+      _selecoes[key] = list;
     });
+  }
+
+  String _grupoKey(ProdutoOpcaoModel opcao) => opcao.id ?? opcao.nome;
+
+  String _itemKey(ProdutoOpcaoItemModel item) => item.id ?? item.nome;
+
+  String _formatMoney(double value) {
+    return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
+
+  String _precoLabel(double preco) {
+    if (preco <= 0) return 'Gratis';
+    return '+ ${_formatMoney(preco)}';
+  }
+
+  List<Map<String, dynamic>> _buildOpcoesSelecionadas() {
+    final result = <Map<String, dynamic>>[];
+    for (final grupo in widget.produto.opcoes) {
+      final itensSelecionados = _selecoes[_grupoKey(grupo)] ?? [];
+      if (itensSelecionados.isEmpty) continue;
+      result.add({
+        'grupo_id': grupo.id ?? grupo.nome,
+        'grupo_nome': grupo.nome,
+        'tipo': grupo.tipo,
+        'itens': itensSelecionados
+            .map((item) => {
+                  'item_id': item.id ?? item.nome,
+                  'nome': item.nome,
+                  'preco': item.precoAdicional ?? 0,
+                })
+            .toList(),
+      });
+    }
+    return result;
   }
 
   @override
@@ -238,7 +275,9 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
 
                         // Variações do Produto
                         ...widget.produto.opcoes.map((opcao) {
-                          bool isRadio = opcao.maximo == 1;
+                          final isRadio = opcao.isEscolhaUnica;
+                          final selecionados =
+                              _selecoes[_grupoKey(opcao)]?.length ?? 0;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 24),
@@ -284,21 +323,49 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                                     ],
                                   ),
                                 ),
+                                if (opcao.maximo > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      isRadio
+                                          ? 'Escolha 1 opcao'
+                                          : 'Escolha de ${opcao.minimo} ate ${opcao.maximo}',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
                                 const SizedBox(height: 12),
                                 Column(
                                   children: opcao.itens.map((item) {
                                     final listSelecionada =
-                                        _selecoes[opcao.nome] ?? [];
-                                    final isSelected = listSelecionada
-                                        .any((i) => i.nome == item.nome);
+                                        _selecoes[_grupoKey(opcao)] ?? [];
+                                    final isSelected = listSelecionada.any(
+                                        (i) => _itemKey(i) == _itemKey(item));
+                                    final maxAtingido = !isRadio &&
+                                        !isSelected &&
+                                        selecionados >= opcao.maximo;
+                                    final itemPreco = item.precoAdicional ?? 0;
 
                                     return GestureDetector(
                                       onTap: () {
                                         if (isRadio) {
                                           _atualizarRadio(opcao, item);
-                                        } else {
+                                        } else if (!maxAtingido) {
                                           _toggleCheckbox(
                                               opcao, item, !isSelected);
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Limite de ${opcao.maximo} selecoes atingido.',
+                                              ),
+                                            ),
+                                          );
                                         }
                                       },
                                       child: Container(
@@ -331,32 +398,56 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                                                   )
                                                 : Checkbox(
                                                     value: isSelected,
-                                                    onChanged: (val) =>
-                                                        _toggleCheckbox(opcao,
-                                                            item, val ?? false),
+                                                    onChanged: maxAtingido
+                                                        ? null
+                                                        : (val) =>
+                                                            _toggleCheckbox(
+                                                              opcao,
+                                                              item,
+                                                              val ?? false,
+                                                            ),
                                                     activeColor: primaryColor,
                                                     visualDensity:
                                                         VisualDensity.compact,
                                                   ),
-                                            Text(item.nome,
-                                                style: GoogleFonts.outfit(
-                                                    fontWeight: FontWeight.w500,
-                                                    color: textColor,
-                                                    fontSize: 14)),
-                                            const Spacer(),
-                                            if (item.precoAdicional != null &&
-                                                item.precoAdicional! > 0)
-                                              Text(
-                                                '+ R\$ ${item.precoAdicional!.toStringAsFixed(2).replaceAll('.', ',')}',
-                                                style: GoogleFonts.outfit(
-                                                    color: isSelected
-                                                        ? primaryColor
-                                                        : Colors.grey[500],
-                                                    fontSize: 14,
-                                                    fontWeight: isSelected
-                                                        ? FontWeight.bold
-                                                        : FontWeight.w500),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(item.nome,
+                                                      style: GoogleFonts.outfit(
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: textColor,
+                                                          fontSize: 14)),
+                                                  if (item.descricao != null &&
+                                                      item.descricao!
+                                                          .trim()
+                                                          .isNotEmpty)
+                                                    Text(
+                                                      item.descricao!,
+                                                      style: GoogleFonts.outfit(
+                                                        color: isDark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[500],
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
+                                            ),
+                                            Text(
+                                              _precoLabel(itemPreco),
+                                              style: GoogleFonts.outfit(
+                                                  color: isSelected
+                                                      ? primaryColor
+                                                      : Colors.grey[500],
+                                                  fontSize: 14,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500),
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -445,19 +536,11 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                       child: ElevatedButton(
                         onPressed: canSubmit
                             ? () {
-                                // Mapear formato da API final de options -> JSON
-                                List<Map<String, dynamic>> result = [];
-                                _selecoes.forEach((grupo, itensSelecionados) {
-                                  for (var item in itensSelecionados) {
-                                    result.add({
-                                      'grupo': grupo,
-                                      'nome': item.nome,
-                                      'preco_adicional': item.precoAdicional,
-                                    });
-                                  }
-                                });
                                 widget.onAddTap(
-                                    _quantidade, _obsController.text, result);
+                                  _quantidade,
+                                  _obsController.text,
+                                  _buildOpcoesSelecionadas(),
+                                );
                                 Navigator.of(context).pop();
                               }
                             : null,

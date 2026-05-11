@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
 import '../models/produto_model.dart';
-import '../../../models/categoria_cardapio_model.dart'; // Modelo reutilizado da feature maior!
+import '../../../models/categoria_cardapio_model.dart';
 
 final produtosRepositoryProvider = Provider<ProdutosRepository>((ref) {
   return ProdutosRepository(Supabase.instance.client);
@@ -12,19 +13,21 @@ class ProdutosRepository {
 
   ProdutosRepository(this._supabase);
 
-  // Busca todos os produtos do estabelecimento com um INNER JOIN em categorias_cardapio.
-  // Evita o problema de query N+1 na UI para descobrir o 'nome' de cada categoria!
+  static const _produtoSelect =
+      '*, categorias_cardapio:categoria_cardapio_id(nome), '
+      'produto_categorias_estabelecimento(categoria_id, '
+      'categorias_estabelecimento:categoria_id(id, nome))';
+
   Future<List<ProdutoModel>> fetchProdutos(String estabelecimentoId) async {
     final response = await _supabase
         .from('produtos')
-        .select('*, categorias_cardapio:categoria_cardapio_id(nome)')
+        .select(_produtoSelect)
         .eq('estabelecimento_id', estabelecimentoId)
         .order('ordem_exibicao');
 
     return response.map((json) => ProdutoModel.fromJson(json)).toList();
   }
 
-  // Busca as categorias do cardápio separadamente para popular o controle de "Tabs" e Comboboxes
   Future<List<CategoriaCardapioModel>> fetchCategorias(
       String estabelecimentoId) async {
     final response = await _supabase
@@ -38,35 +41,49 @@ class ProdutosRepository {
         .toList();
   }
 
-  // Realiza um Merge Insere/Atualiza (Upsert)
+  Future<List<CategoriaEstabelecimentoModel>> fetchCategoriasPrincipais() async {
+    final response = await _supabase
+        .from('categorias_estabelecimento')
+        .select('id, nome, icone, ativa, imagem_url, slug, ordem_exibicao')
+        .eq('ativa', true)
+        .order('ordem_exibicao', ascending: true);
+
+    return response
+        .map((json) => CategoriaEstabelecimentoModel.fromJson(json))
+        .toList();
+  }
+
   Future<ProdutoModel> saveProduto(ProdutoModel produto) async {
     final data = produto.toJson();
-    // Remover campos gerados apenas pelo BD para não conflitar no upsert
     data.remove('created_at');
     data.remove('updated_at');
+    if ((data['id'] as String?)?.isEmpty ?? false) data.remove('id');
 
     final response = await _supabase
         .from('produtos')
         .upsert(data)
-        .select('*, categorias_cardapio:categoria_cardapio_id(nome)')
+        .select('id')
         .single();
 
-    return ProdutoModel.fromJson(response);
+    final produtoId = response['id'] as String;
+    await _saveCategoriasPrincipais(
+      produtoId,
+      produto.categoriaPrincipalIds,
+    );
+
+    return _fetchProdutoById(produtoId);
   }
 
-  /// Deleta fisicamente o produto do banco de dados
   Future<void> deleteProduto(String produtoId) async {
     await _supabase.from('produtos').delete().eq('id', produtoId);
   }
 
-  /// Toggle rápido para disponibilidade do produto direto na Home Grid
   Future<void> updateDisponibilidade(String produtoId, bool disponivel) async {
     await _supabase
         .from('produtos')
         .update({'disponivel': disponivel}).eq('id', produtoId);
   }
 
-  /// Ativa o modo Última Mordida via RPC
   Future<Map<String, dynamic>> ativarUltimaMordida(
     String produtoId, {
     int? descontoPct,
@@ -83,16 +100,12 @@ class ProdutosRepository {
     return result as Map<String, dynamic>;
   }
 
-  /// Desativa o modo Última Mordida via RPC
   Future<void> desativarUltimaMordida(String produtoId) async {
     await _supabase.rpc('fn_desativar_ultima_mordida', params: {
       'p_produto_id': produtoId,
     });
   }
 
-  // ── Categorias ─────────────────────────────────────────────────────────────
-
-  /// Cria ou atualiza uma categoria do cardápio
   Future<CategoriaCardapioModel> saveCategoria(
       CategoriaCardapioModel categoria) async {
     final data = categoria.toJson();
@@ -107,11 +120,42 @@ class ProdutosRepository {
     return CategoriaCardapioModel.fromJson(response);
   }
 
-  /// Remove uma categoria do cardápio
   Future<void> deleteCategoria(String categoriaId) async {
     await _supabase
         .from('categorias_cardapio')
         .delete()
         .eq('id', categoriaId);
+  }
+
+  Future<void> _saveCategoriasPrincipais(
+    String produtoId,
+    List<String> categoriaIds,
+  ) async {
+    await _supabase
+        .from('produto_categorias_estabelecimento')
+        .delete()
+        .eq('produto_id', produtoId);
+
+    if (categoriaIds.isEmpty) return;
+
+    final rows = categoriaIds
+        .toSet()
+        .map((categoriaId) => {
+              'produto_id': produtoId,
+              'categoria_id': categoriaId,
+            })
+        .toList();
+
+    await _supabase.from('produto_categorias_estabelecimento').insert(rows);
+  }
+
+  Future<ProdutoModel> _fetchProdutoById(String produtoId) async {
+    final response = await _supabase
+        .from('produtos')
+        .select(_produtoSelect)
+        .eq('id', produtoId)
+        .single();
+
+    return ProdutoModel.fromJson(response);
   }
 }

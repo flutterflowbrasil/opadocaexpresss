@@ -92,7 +92,12 @@ class ProdutosHeader extends ConsumerWidget {
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                onPressed: () => showProdutoFormModal(context),
+                onPressed: estabId == null
+                    ? null
+                    : () => showProdutoFormModal(
+                          context,
+                          estabelecimentoId: estabId,
+                        ),
                 icon: const Icon(Icons.add, size: 18),
                 label: isNarrow
                     ? const SizedBox.shrink()

@@ -44,37 +44,31 @@ class PagamentoRepository {
     String? observacaoGeral,
   }) async {
     try {
-      final itensJson = itens
-          .map((item) => {
-                'produto_id': item.produto.id,
-                'produto_nome': item.produto.nome,
-                'quantidade': item.quantidade,
-                'preco_unitario': item.produto.precoAtual,
-                'subtotal': item.subtotal,
-                if (item.observacao != null && item.observacao!.isNotEmpty)
-                  'observacao': item.observacao,
-              })
-          .toList();
+      final itensJson = itens.map((item) => item.toPedidoSnapshot()).toList();
 
-      final result = await _supabase.from('pedidos').insert({
-        'estabelecimento_id': estabelecimentoId,
-        'cliente_id': clienteId,
-        'itens': itensJson,
-        'subtotal_produtos': subtotalProdutos,
-        'taxa_entrega': taxaEntrega,
-        'taxa_servico_app': taxaServicoApp,
-        'total': total,
-        'pagamento_metodo': pagamentoMetodo,
-        'pagamento_status': 'pendente',
-        'status': 'pendente',
-        'endereco_entrega_id': enderecoEntregaId,
-        'endereco_entrega_snapshot': enderecoSnapshot,
-        if (cupomId != null) 'cupom_id': cupomId,
-        if (descontoCupom != null && descontoCupom > 0)
-          'desconto_cupom': descontoCupom,
-        if (observacaoGeral != null && observacaoGeral.isNotEmpty)
-          'observacao_geral': observacaoGeral,
-      }).select('id').single();
+      final result = await _supabase
+          .from('pedidos')
+          .insert({
+            'estabelecimento_id': estabelecimentoId,
+            'cliente_id': clienteId,
+            'itens': itensJson,
+            'subtotal_produtos': subtotalProdutos,
+            'taxa_entrega': taxaEntrega,
+            'taxa_servico_app': taxaServicoApp,
+            'total': total,
+            'pagamento_metodo': pagamentoMetodo,
+            'pagamento_status': 'pendente',
+            'status': 'pendente',
+            'endereco_entrega_id': enderecoEntregaId,
+            'endereco_entrega_snapshot': enderecoSnapshot,
+            if (cupomId != null) 'cupom_id': cupomId,
+            if (descontoCupom != null && descontoCupom > 0)
+              'desconto_cupom': descontoCupom,
+            if (observacaoGeral != null && observacaoGeral.isNotEmpty)
+              'observacao_geral': observacaoGeral,
+          })
+          .select('id')
+          .single();
 
       return result['id'] as String;
     } catch (e) {

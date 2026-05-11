@@ -58,7 +58,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
                 )
               else
                 _buildPlaceholder(),
-              if (produto.opcoes.isNotEmpty && produto.aceitaObservacaoCategoria)
+              if (produto.opcoes.isNotEmpty &&
+                  produto.aceitaObservacaoCategoria)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: InkWell(
@@ -107,11 +108,19 @@ class ItemCarrinhoCard extends ConsumerWidget {
                         ref
                             .read(carrinhoControllerProvider.notifier)
                             .removerProduto(produto,
-                                observacao: item.observacao);
+                                observacao: item.observacao,
+                                opcoesSelecionadas: item.opcoesSelecionadas);
                       },
                     ),
                   ],
                 ),
+                if (item.temOpcoesSelecionadas) ...[
+                  const SizedBox(height: 4),
+                  _OpcoesSelecionadasResumo(
+                    opcoes: item.opcoesSelecionadas,
+                    mutedTextColor: mutedTextColor,
+                  ),
+                ],
                 if (item.observacao != null && item.observacao!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 4),
@@ -145,7 +154,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 4),
                     child: InkWell(
-                      onTap: () => _mostrarDialogoObservacao(context, ref, item),
+                      onTap: () =>
+                          _mostrarDialogoObservacao(context, ref, item),
                       borderRadius: BorderRadius.circular(4),
                       child: Text(
                         '+ Adicionar observação',
@@ -161,13 +171,26 @@ class ItemCarrinhoCard extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'R\$ ${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFFF7034),
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'R\$ ${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFFF7034),
+                          ),
+                        ),
+                        if (item.quantidade > 1)
+                          Text(
+                            'Unit. R\$ ${item.precoUnitario.toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: mutedTextColor,
+                            ),
+                          ),
+                      ],
                     ),
                     _buildQuantityControls(ref, produto),
                   ],
@@ -195,7 +218,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
             onTap: () {
               ref.read(carrinhoControllerProvider.notifier).atualizarQuantidade(
                   produto, item.quantidade - 1,
-                  observacao: item.observacao);
+                  observacao: item.observacao,
+                  opcoesSelecionadas: item.opcoesSelecionadas);
             },
             borderRadius:
                 const BorderRadius.horizontal(left: Radius.circular(20)),
@@ -221,7 +245,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
             onTap: () {
               ref.read(carrinhoControllerProvider.notifier).atualizarQuantidade(
                   produto, item.quantidade + 1,
-                  observacao: item.observacao);
+                  observacao: item.observacao,
+                  opcoesSelecionadas: item.opcoesSelecionadas);
             },
             borderRadius:
                 const BorderRadius.horizontal(right: Radius.circular(20)),
@@ -252,8 +277,62 @@ class ItemCarrinhoCard extends ConsumerWidget {
   }
 }
 
-void _mostrarDialogoObservacao(BuildContext context, WidgetRef ref, ItemCarrinhoModel item) {
-  final TextEditingController obsController = TextEditingController(text: item.observacao ?? '');
+class _OpcoesSelecionadasResumo extends StatelessWidget {
+  final List<Map<String, dynamic>> opcoes;
+  final Color? mutedTextColor;
+
+  const _OpcoesSelecionadasResumo({
+    required this.opcoes,
+    required this.mutedTextColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final grupos = opcoes.where((grupo) {
+      final itens = grupo['itens'];
+      return itens is List && itens.isNotEmpty;
+    }).toList();
+
+    if (grupos.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: grupos.map((grupo) {
+        final itens = (grupo['itens'] as List)
+            .whereType<Map>()
+            .map((item) {
+              final nome = item['nome']?.toString() ?? '';
+              final preco = (item['preco'] as num?)?.toDouble() ?? 0;
+              if (preco <= 0) return nome;
+              final precoFmt =
+                  '+R\$ ${preco.toStringAsFixed(2).replaceAll('.', ',')}';
+              return '$nome $precoFmt';
+            })
+            .where((texto) => texto.isNotEmpty)
+            .join(', ');
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            '${grupo['grupo_nome'] ?? 'Opcoes'}: $itens',
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              color: mutedTextColor,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+void _mostrarDialogoObservacao(
+    BuildContext context, WidgetRef ref, ItemCarrinhoModel item) {
+  final TextEditingController obsController =
+      TextEditingController(text: item.observacao ?? '');
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final primaryColor = const Color(0xFFFF7034);
   final surfaceColor = isDark ? const Color(0xFF2d2d2d) : Colors.white;
@@ -317,16 +396,19 @@ void _mostrarDialogoObservacao(BuildContext context, WidgetRef ref, ItemCarrinho
                 decoration: InputDecoration(
                   counterText: '',
                   hintText: 'Ex: bem passadinho, sem muita manteiga, etc.',
-                  hintStyle: GoogleFonts.outfit(color: Colors.grey[400], fontSize: 14),
+                  hintStyle:
+                      GoogleFonts.outfit(color: Colors.grey[400], fontSize: 14),
                   filled: true,
                   fillColor: surfaceColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                    borderSide: BorderSide(
+                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                    borderSide: BorderSide(
+                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -337,10 +419,13 @@ void _mostrarDialogoObservacao(BuildContext context, WidgetRef ref, ItemCarrinho
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  ref.read(carrinhoControllerProvider.notifier).atualizarObservacao(
+                  ref
+                      .read(carrinhoControllerProvider.notifier)
+                      .atualizarObservacao(
                         item.produto,
                         item.observacao,
                         obsController.text.trim(),
+                        opcoesSelecionadas: item.opcoesSelecionadas,
                       );
                   Navigator.of(context).pop();
                 },
@@ -354,7 +439,8 @@ void _mostrarDialogoObservacao(BuildContext context, WidgetRef ref, ItemCarrinho
                 ),
                 child: Text(
                   'Salvar Observação',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ],
