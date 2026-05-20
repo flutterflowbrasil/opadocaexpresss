@@ -211,7 +211,7 @@ class _SplashScreenState extends State<SplashScreen>
         const Padding(
           padding: EdgeInsets.only(bottom: 48),
           child: Text(
-            'ÔPADOCA EXPRESS',
+            'Ôpadoca Express',
             style: TextStyle(
               color: Color(0xCCFFFFFF),
               fontSize: 14,

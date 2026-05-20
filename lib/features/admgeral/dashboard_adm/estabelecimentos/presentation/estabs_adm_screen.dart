@@ -180,30 +180,40 @@ class _EstabsAdmScreenState extends ConsumerState<EstabsAdmScreen> {
 
         // ── Modal de detalhes ───────────────────────────────
         if (estabSelecionado != null)
-          GestureDetector(
-            onTap: () => setState(() => _estabSelecionadoId = null),
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.48),
-              child: EstabDetalhesModal(
-                estab: estabSelecionado,
-                isSubmitting: state.isSubmitting,
-                onClose: () => setState(() => _estabSelecionadoId = null),
-                onAcao: (acao, estabId, motivo) async {
-                  await controller.executarAcao(acao, estabId, motivo: motivo);
-                  // Fecha o modal só se não houve erro
-                  if (ref.read(estabsAdmControllerProvider).errorMessage == null) {
-                    setState(() => _estabSelecionadoId = null);
-                  }
-                },
-                onRevisarDocumento: (estab, tipo, status, motivo) async {
-                  await controller.revisarDocumento(
-                    estab.id,
-                    tipo,
-                    status,
-                    motivo: motivo,
-                  );
-                },
-              ),
+          Positioned.fill(
+            child: Stack(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _estabSelecionadoId = null),
+                  child: Container(color: Colors.black.withValues(alpha: 0.48)),
+                ),
+                EstabDetalhesModal(
+                  estab: estabSelecionado,
+                  isSubmitting: state.isSubmitting,
+                  onClose: () => setState(() => _estabSelecionadoId = null),
+                  onAcao: (acao, estabId, motivo) async {
+                    await controller.executarAcao(
+                      acao,
+                      estabId,
+                      motivo: motivo,
+                    );
+                    // Fecha o modal só se não houve erro
+                    if (ref.read(estabsAdmControllerProvider).errorMessage ==
+                        null) {
+                      setState(() => _estabSelecionadoId = null);
+                    }
+                  },
+                  onRevisarDocumento: (estab, tipo, status, motivo) async {
+                    await controller.revisarDocumento(
+                      estab.id,
+                      tipo,
+                      status,
+                      motivo: motivo,
+                    );
+                  },
+                ),
+              ],
             ),
           ),
       ],

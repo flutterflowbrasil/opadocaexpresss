@@ -1081,7 +1081,7 @@ class _AsaasAcessoSheet extends StatelessWidget {
           _PassoItem(
             numero: '2',
             titulo: 'Primeiro acesso? Clique em "Esqueci minha senha"',
-            descricao: 'Use o EMAIL que voce cadastrou no Padoca Express',
+            descricao: 'Use o EMAIL que voce cadastrou no Ôpadoca Express',
           ),
           _PassoItem(
             numero: '3',

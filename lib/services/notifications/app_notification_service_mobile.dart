@@ -8,8 +8,8 @@ class MobileNotificationService implements AppNotificationService {
   static const AndroidNotificationChannel _channel =
       AndroidNotificationChannel(
     'padoca_express_channel',
-    'Notificações Padoca Express',
-    description: 'Canal de notificações do Padoca Express',
+    'Notificações Ôpadoca Express',
+    description: 'Canal de notificações do Ôpadoca Express',
     importance: Importance.max,
   );
 
@@ -81,8 +81,8 @@ class MobileNotificationService implements AppNotificationService {
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'padoca_express_channel',
-      'Notificações Padoca Express',
-      channelDescription: 'Canal de notificações do Padoca Express',
+      'Notificações Ôpadoca Express',
+      channelDescription: 'Canal de notificações do Ôpadoca Express',
       importance: Importance.max,
       priority: Priority.high,
     );

@@ -315,7 +315,16 @@ class _UsuariosTabela extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(usuariosAdmControllerProvider);
 
-    return Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth =
+            constraints.maxWidth < 760 ? 760.0 : constraints.maxWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFEAE8E4)),
@@ -353,6 +362,10 @@ class _UsuariosTabela extends ConsumerWidget {
             ),
         ],
       ),
+            ),
+          ),
+        );
+      },
     );
   }
 

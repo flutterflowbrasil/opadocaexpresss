@@ -61,6 +61,9 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   // null = modo criação; não-null = modo edição
   CategoriaCardapioModel? _editando;
 
+  // Se não-null, o formulário criará uma SUBcategoria desta categoria pai
+  CategoriaCardapioModel? _criandoSubcategoriaDe;
+
   @override
   void dispose() {
     _nomeCtrl.dispose();
@@ -72,6 +75,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   void _iniciarEdicao(CategoriaCardapioModel cat) {
     setState(() {
       _editando = cat;
+      _criandoSubcategoriaDe = null;
       _nomeCtrl.text = cat.nome;
       _descCtrl.text = cat.descricao ?? '';
       _ordemCtrl.text = cat.ordemExibicao.toString();
@@ -79,9 +83,23 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
     });
   }
 
+  /// Prepara o formulário para criar uma subcategoria de [pai].
+  void _iniciarSubcategoria(CategoriaCardapioModel pai) {
+    setState(() {
+      _editando = null;
+      _criandoSubcategoriaDe = pai;
+      _nomeCtrl.clear();
+      _descCtrl.clear();
+      _ordemCtrl.text = '0';
+      _ativa = true;
+    });
+    _formKey.currentState?.reset();
+  }
+
   void _cancelarEdicao() {
     setState(() {
       _editando = null;
+      _criandoSubcategoriaDe = null;
       _nomeCtrl.clear();
       _descCtrl.clear();
       _ordemCtrl.text = '0';
@@ -102,6 +120,8 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
           _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       ordemExibicao: int.tryParse(_ordemCtrl.text) ?? 0,
       ativa: _ativa,
+      // Preserva categoria pai na edição, ou define ao criar subcategoria
+      categoriaPaiId: _editando?.categoriaPaiId ?? _criandoSubcategoriaDe?.id,
     );
 
     try {
@@ -111,7 +131,9 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
       if (mounted) {
         _cancelarEdicao();
         _mostrarSnack(_editando == null
-            ? 'Categoria criada! ✓'
+            ? (_criandoSubcategoriaDe != null
+                ? 'Subcategoria criada! ✓'
+                : 'Categoria criada! ✓')
             : 'Categoria atualizada! ✓');
       }
     } catch (_) {
@@ -179,6 +201,16 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   Widget build(BuildContext context) {
     final categorias =
         ref.watch(produtosControllerProvider.select((s) => s.categorias));
+
+    // Organiza: categorias raiz (sem pai) + lista plana de sub para lookup
+    final raizes = categorias.where((c) => c.categoriaPaiId == null).toList();
+    final subMap = <String, List<CategoriaCardapioModel>>{};
+    for (final cat in categorias) {
+      if (cat.categoriaPaiId != null) {
+        subMap.putIfAbsent(cat.categoriaPaiId!, () => []).add(cat);
+      }
+    }
+
     final screenW = MediaQuery.of(context).size.width;
     final modalW = screenW < 600 ? screenW * 0.95 : 520.0;
 
@@ -215,10 +247,10 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Lista
-                      if (categorias.isEmpty)
+                      if (raizes.isEmpty)
                         _buildEmptyState()
                       else
-                        _buildCategoriasList(categorias),
+                        _buildCategoriasList(raizes, subMap),
 
                       const SizedBox(height: 20),
                       const Divider(),
@@ -308,29 +340,78 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
     );
   }
 
-  Widget _buildCategoriasList(List<CategoriaCardapioModel> categorias) {
+  Widget _buildCategoriasList(
+    List<CategoriaCardapioModel> raizes,
+    Map<String, List<CategoriaCardapioModel>> subMap,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Categorias existentes (${categorias.length})',
+        Text('Categorias existentes (${raizes.length})',
             style: GoogleFonts.publicSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Colors.grey.shade500,
                 letterSpacing: .5)),
         const SizedBox(height: 10),
-        ...categorias.map((cat) => _CategoriaItem(
-              cat: cat,
-              editando: _editando?.id == cat.id,
-              onEditar: () => _iniciarEdicao(cat),
-              onDeletar: () => _deletar(cat),
-            )),
+        ...raizes.map((cat) {
+          final subs = subMap[cat.id] ?? [];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CategoriaItem(
+                cat: cat,
+                editando: _editando?.id == cat.id,
+                onEditar: () => _iniciarEdicao(cat),
+                onDeletar: () => _deletar(cat),
+                onAdicionarSubcategoria: () => _iniciarSubcategoria(cat),
+              ),
+              // Subcategorias com indentação visual
+              if (subs.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: subs
+                        .map((sub) => _CategoriaItem(
+                              cat: sub,
+                              editando: _editando?.id == sub.id,
+                              onEditar: () => _iniciarEdicao(sub),
+                              onDeletar: () => _deletar(sub),
+                              // Não permitimos subcategorias de subcategorias
+                              onAdicionarSubcategoria: null,
+                              isSubcategoria: true,
+                            ))
+                        .toList(),
+                  ),
+                ),
+            ],
+          );
+        }),
       ],
     );
   }
 
   Widget _buildFormulario() {
     final isEdit = _editando != null;
+    final isSub = _criandoSubcategoriaDe != null;
+
+    // Título dinâmico do formulário
+    final String tituloForm = isEdit
+        ? 'Editando: ${_editando!.nome}'
+        : isSub
+            ? 'Nova Subcategoria de "${_criandoSubcategoriaDe!.nome}"'
+            : 'Nova Categoria';
+
+    final IconData iconForm = isEdit
+        ? Icons.edit_rounded
+        : isSub
+            ? Icons.subdirectory_arrow_right_rounded
+            : Icons.add_circle_outline_rounded;
+
+    final Color corForm = isSub
+        ? const Color(0xFF6366F1) // roxo para subcategoria
+        : const Color(0xFFec5b13);
 
     return Form(
       key: _formKey,
@@ -339,29 +420,69 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
         children: [
           Row(
             children: [
-              Icon(
-                isEdit ? Icons.edit_rounded : Icons.add_circle_outline_rounded,
-                color: const Color(0xFFec5b13),
-                size: 18,
-              ),
+              Icon(iconForm, color: corForm, size: 18),
               const SizedBox(width: 8),
-              Text(
-                isEdit
-                    ? 'Editando: ${_editando!.nome}'
-                    : 'Nova Categoria',
-                style: GoogleFonts.publicSans(
-                    fontSize: 14, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  tituloForm,
+                  style: GoogleFonts.publicSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isSub ? const Color(0xFF6366F1) : Colors.black87),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              if (isSub || isEdit)
+                TextButton(
+                  onPressed: _salvando ? null : _cancelarEdicao,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: Colors.grey.shade600,
+                  ),
+                  child: Text('Cancelar',
+                      style: GoogleFonts.publicSans(fontSize: 13)),
+                ),
             ],
           ),
+          // Banner explicativo para subcategoria
+          if (isSub) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: .07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: const Color(0xFF6366F1).withValues(alpha: .25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 15, color: const Color(0xFF6366F1)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta subcategoria ficará aninhada dentro de "${_criandoSubcategoriaDe!.nome}".',
+                      style: GoogleFonts.publicSans(
+                          fontSize: 12, color: const Color(0xFF6366F1)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
 
           // Nome
           TextFormField(
             controller: _nomeCtrl,
             style: GoogleFonts.publicSans(fontSize: 14),
-            decoration: _dec('Nome da categoria *',
-                hint: 'Ex: Lanches, Bebidas, Sobremesas...'),
+            decoration: _dec(
+              isSub ? 'Nome da subcategoria *' : 'Nome da categoria *',
+              hint: isSub
+                  ? 'Ex: Bolos no pote, Cupcakes...'
+                  : 'Ex: Lanches, Bebidas, Sobremesas...',
+            ),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Nome obrigatório' : null,
             textCapitalization: TextCapitalization.words,
@@ -373,7 +494,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
             controller: _descCtrl,
             style: GoogleFonts.publicSans(fontSize: 14),
             decoration: _dec('Descrição (opcional)',
-                hint: 'Breve descrição da categoria'),
+                hint: 'Breve descrição'),
             maxLines: 2,
             minLines: 1,
           ),
@@ -399,7 +520,8 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                     Switch(
                       value: _ativa,
                       activeThumbColor: const Color(0xFFec5b13),
-                      activeTrackColor: const Color(0xFFec5b13).withValues(alpha: .35),
+                      activeTrackColor:
+                          const Color(0xFFec5b13).withValues(alpha: .35),
                       onChanged: (v) => setState(() => _ativa = v),
                     ),
                     const SizedBox(width: 6),
@@ -415,52 +537,43 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
           ),
           const SizedBox(height: 18),
 
-          // Botões
-          Row(
-            children: [
-              if (isEdit) ...[
-                OutlinedButton(
-                  onPressed: _salvando ? null : _cancelarEdicao,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                  ),
-                  child: Text('Cancelar',
-                      style: GoogleFonts.publicSans(
-                          fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _salvando ? null : _salvar,
-                  icon: _salvando
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : Icon(
-                          isEdit ? Icons.save_rounded : Icons.add_rounded,
-                          size: 18),
-                  label: Text(
-                    isEdit ? 'Salvar alterações' : 'Criar categoria',
-                    style: GoogleFonts.publicSans(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFec5b13),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
+          // Botão salvar
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _salvando ? null : _salvar,
+              icon: _salvando
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Icon(
+                      isEdit
+                          ? Icons.save_rounded
+                          : isSub
+                              ? Icons.subdirectory_arrow_right_rounded
+                              : Icons.add_rounded,
+                      size: 18),
+              label: Text(
+                isEdit
+                    ? 'Salvar alterações'
+                    : isSub
+                        ? 'Criar subcategoria'
+                        : 'Criar categoria',
+                style: GoogleFonts.publicSans(fontWeight: FontWeight.bold),
               ),
-            ],
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSub
+                    ? const Color(0xFF6366F1)
+                    : const Color(0xFFec5b13),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
           ),
         ],
       ),
@@ -495,11 +608,18 @@ class _CategoriaItem extends StatelessWidget {
   final VoidCallback onEditar;
   final VoidCallback onDeletar;
 
+  /// Se não-null, exibe o botão "+ Subcategoria". Null desabilita (para subcategorias).
+  final VoidCallback? onAdicionarSubcategoria;
+
+  final bool isSubcategoria;
+
   const _CategoriaItem({
     required this.cat,
     required this.editando,
     required this.onEditar,
     required this.onDeletar,
+    required this.onAdicionarSubcategoria,
+    this.isSubcategoria = false,
   });
 
   @override
@@ -511,17 +631,28 @@ class _CategoriaItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: editando
             ? const Color(0xFFec5b13).withValues(alpha: .06)
-            : Colors.grey.shade50,
+            : isSubcategoria
+                ? const Color(0xFF6366F1).withValues(alpha: .04)
+                : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: editando
               ? const Color(0xFFec5b13).withValues(alpha: .35)
-              : Colors.grey.shade200,
+              : isSubcategoria
+                  ? const Color(0xFF6366F1).withValues(alpha: .2)
+                  : Colors.grey.shade200,
           width: 1.5,
         ),
       ),
       child: Row(
         children: [
+          // Indicador visual de subcategoria
+          if (isSubcategoria)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(Icons.subdirectory_arrow_right_rounded,
+                  size: 14, color: const Color(0xFF6366F1).withValues(alpha: .6)),
+            ),
           // Ativa/Inativa dot
           Container(
             width: 8,
@@ -560,7 +691,35 @@ class _CategoriaItem extends StatelessWidget {
                 style: GoogleFonts.publicSans(
                     fontSize: 11, color: Colors.grey.shade500)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
+
+          // Botão "+ Subcategoria" — só exibido para categorias raiz
+          if (onAdicionarSubcategoria != null)
+            Tooltip(
+              message: 'Adicionar subcategoria',
+              child: InkWell(
+                onTap: onAdicionarSubcategoria,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.subdirectory_arrow_right_rounded,
+                          size: 14,
+                          color: const Color(0xFF6366F1).withValues(alpha: .8)),
+                      const SizedBox(width: 2),
+                      Text('Sub',
+                          style: GoogleFonts.publicSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF6366F1).withValues(alpha: .8))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // Editar
           IconButton(
             onPressed: onEditar,

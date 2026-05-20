@@ -50,6 +50,7 @@ app.*.map.json
 
 # Ignore local secrets (API keys, local SDK paths)
 **/local.properties
+ios/Flutter/Maps.xcconfig
 
 # Claude Code worktrees
 .claude/worktrees/

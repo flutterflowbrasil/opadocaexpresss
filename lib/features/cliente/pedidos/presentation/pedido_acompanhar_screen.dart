@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
@@ -80,6 +81,10 @@ _Passo _statusToStep(String status) {
       return _Passo.preparando;
     case 'pronto':
       return _Passo.pronto;
+    case 'a_caminho_coleta':
+    case 'no_estabelecimento':
+    case 'coletado':
+    case 'a_caminho_cliente':
     case 'em_entrega':
       return _Passo.aCaminho;
     case 'entregue':
@@ -624,18 +629,11 @@ class _EstabelecimentoHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 56,
-              height: 56,
-              color: Colors.grey[200],
-              child: logoUrl != null
-                  ? Image.network(logoUrl!, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.storefront, color: Colors.grey))
-                  : const Icon(Icons.storefront, color: Colors.grey),
-            ),
+          EstabelecimentoLogo(
+            nome: nome,
+            logoUrl: logoUrl,
+            size: 56,
+            borderRadius: 12,
           ),
           const SizedBox(width: 14),
           Expanded(

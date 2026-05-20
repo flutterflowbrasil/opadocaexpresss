@@ -65,7 +65,7 @@ class AppBarEstabelecimento extends StatelessWidget
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'PADOCA EXPRESS',
+                      'Ôpadoca Express',
                       style: GoogleFonts.plusJakartaSans(
                         color: burgundyColor,
                         fontSize: 14,

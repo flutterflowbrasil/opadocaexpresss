@@ -286,13 +286,7 @@ class _TabVisaoGeral extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.7,
+        RelatorioKpiGrid(
           children: [
             KpiCardRelatorio(
               label: 'Receita Total',
@@ -454,13 +448,7 @@ class _TabFinanceiro extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.7,
+        RelatorioKpiGrid(
           children: [
             KpiCardRelatorio(
               label: 'GMV Total',
@@ -886,13 +874,7 @@ class _TabUsuarios extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.7,
+        RelatorioKpiGrid(
           children: [
             KpiCardRelatorio(
                 label: 'Total usuários',
@@ -1086,13 +1068,7 @@ class _TabQualidade extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.7,
+        RelatorioKpiGrid(
           children: [
             KpiCardRelatorio(
                 label: 'Média geral',

@@ -297,27 +297,55 @@ class ProdutoModel {
         categoriaCardapioId.hashCode;
   }
 
-  /// Verifica se a categoria do produto permite aplicar a promoção de "Última Mordida".
-  /// Remove categorias como Bebidas, Molhos, Doces pequenos, Combos e itens abstratos.
+
+  /// Verifica se o produto permite a promocao Ultima Mordida.
+  ///
+  /// Bloqueado por CATEGORIA (Bebidas, Paes, Molhos, Combos) e tambem
+  /// por NOME DO PRODUTO: produtos sem categoria tambem sao bloqueados.
   bool get permiteUltimaMordida {
+    // 1. Verificacao por CATEGORIA
     final nomeCat = categoriaCardapioNome?.toLowerCase() ?? '';
-    
-    // Categorias que NÃO devem exibir o botão
-    final List<String> categoriasExcluidas = [
-      'bebida', 'refrigerante', 'suco', 'água', 'agua', 'café', 'cafe',
+    final nomesCatPrincipais =
+        categoriaPrincipalNomes.map((n) => n.toLowerCase()).join(' ');
+
+    const categoriasExcluidas = [
+      'bebida', 'refrigerante', 'suco', 'agua', 'cafe',
+      'energetico', 'cerveja', 'long neck', 'chopp', 'drink', 'coquetel',
+      'pao', 'paes',
       'molho', 'adicional', 'extra', 'complemento',
       'doce', 'bala', 'chiclete', 'confeito',
-      'gelo', 'talher', 'embalagem', 'descartável',
-      'combo', 'kit',
-      'marmita', 'prato', 'executivo',
-      'porção', 'porcao', 'compartilhável', 'compartilhavel',
-      'promoç', 'promoc', 'pedido',
+      'gelo', 'talher', 'embalagem', 'descartavel',
+      'combo', 'kit', 'marmita', 'prato', 'executivo',
+      'porcao', 'compartilhavel', 'promoc', 'pedido',
     ];
 
     for (final excluido in categoriasExcluidas) {
-      if (nomeCat.contains(excluido)) {
+      if (nomeCat.contains(excluido) || nomesCatPrincipais.contains(excluido)) {
         return false;
       }
+    }
+
+    // 2. Verificacao por NOME DO PRODUTO
+    final nomeProd = nome.toLowerCase();
+
+    const termosBebidas = [
+      'coca', 'pepsi', 'guarana', 'sprite', 'fanta', 'suco', 'agua',
+      'energetico', 'red bull', 'monster', 'cerveja', 'chopp', 'heineken',
+      'brahma', 'skol', 'itaipava', 'caipirinha', 'drink', 'coquetel',
+      'limonada', 'milkshake', 'shake', 'vitamina', 'cafe', 'cappuccino',
+      'espresso', 'smoothie', 'isotonico', 'refrigerante', '350ml', '600ml',
+    ];
+
+    const termosPaes = [
+      'pao', 'paes', 'baguete', 'ciabatta', 'bisnaguinha', 'croissant',
+      'torrada', 'broa', 'paozinho',
+    ];
+
+    for (final t in termosBebidas) {
+      if (nomeProd.contains(t)) return false;
+    }
+    for (final t in termosPaes) {
+      if (nomeProd.contains(t)) return false;
     }
 
     return true;

@@ -14,8 +14,8 @@ import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/shared/camera/camera_capture_screen.dart';
-import 'package:padoca_express/shared/widgets/responsive_layout.dart';
 
 class CadastroEntregadorScreen extends ConsumerStatefulWidget {
   const CadastroEntregadorScreen({super.key});
@@ -404,28 +404,17 @@ class _CadastroEntregadorScreenState
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFFF7034);
-    const burgundyColor = Color(0xFF8E2A2B);
+    const burgundyColor = Color(0xFF7D2D35);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1A1614) : const Color(0xFFF9F5F0);
-    final textColor = isDark ? const Color(0xFFFFE0B2) : burgundyColor;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobile: (context) => _buildContent(
-            primaryColor: primaryColor,
-            burgundyColor: burgundyColor,
-            textColor: textColor,
-            isDark: isDark,
-          ),
-          desktop: (context) => _buildContent(
-            primaryColor: primaryColor,
-            burgundyColor: burgundyColor,
-            textColor: textColor,
-            isDark: isDark,
-          ),
-        ),
+      backgroundColor:
+          isDark ? const Color(0xFF23150F) : const Color(0xFFF9F5F0),
+      appBar: const AppBarEstabelecimento(),
+      body: _buildContent(
+        primaryColor: primaryColor,
+        burgundyColor: burgundyColor,
+        isDark: isDark,
       ),
     );
   }
@@ -433,14 +422,13 @@ class _CadastroEntregadorScreenState
   Widget _buildContent({
     required Color primaryColor,
     required Color burgundyColor,
-    required Color textColor,
     required bool isDark,
   }) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: const BoxConstraints(maxWidth: 500),
           child: Form(
             key: _formKey,
             autovalidateMode: _showValidationErrors
@@ -449,14 +437,29 @@ class _CadastroEntregadorScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Header(
-                  title: 'Cadastro de entregador',
-                  subtitle:
-                      'Envie seus dados para análise. O acesso ao app será liberado após aprovação do admin.',
-                  isDark: isDark,
-                  textColor: textColor,
-                  primaryColor: primaryColor,
-                  burgundyColor: burgundyColor,
+                Text(
+                  'Cadastro de Entregador',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark ? Colors.white : burgundyColor,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  switch (_step) {
+                    0 => 'Etapa 1 de 3: Dados pessoais e credenciais',
+                    1 => 'Etapa 2 de 3: Veículo e endereço',
+                    _ => 'Etapa 3 de 3: Documentação',
+                  },
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark
+                        ? Colors.grey[400]
+                        : burgundyColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _StepIndicator(currentStep: _step, primaryColor: primaryColor),
@@ -464,9 +467,17 @@ class _CadastroEntregadorScreenState
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   child: switch (_step) {
-                    0 => _buildIdentificacao(primaryColor, textColor, isDark),
-                    1 => _buildVeiculo(primaryColor, textColor, isDark),
-                    _ => _buildDocumentacao(primaryColor, textColor, isDark),
+                    0 => _buildIdentificacao(
+                        primaryColor,
+                        burgundyColor,
+                        isDark,
+                      ),
+                    1 => _buildVeiculo(primaryColor, burgundyColor, isDark),
+                    _ => _buildDocumentacao(
+                        primaryColor,
+                        burgundyColor,
+                        isDark,
+                      ),
                   },
                 ),
                 const SizedBox(height: 24),
@@ -484,7 +495,7 @@ class _CadastroEntregadorScreenState
                             side: BorderSide(
                                 color: burgundyColor.withValues(alpha: .25)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: const Text('Voltar'),
@@ -502,7 +513,7 @@ class _CadastroEntregadorScreenState
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 4,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: _isLoading
@@ -533,6 +544,14 @@ class _CadastroEntregadorScreenState
     return Column(
       key: const ValueKey('identificacao'),
       children: [
+        _buildSectionTitle(
+          Icons.person,
+          'Dados Pessoais',
+          isDark,
+          textColor,
+          primaryColor,
+        ),
+        const SizedBox(height: 16),
         _buildInput(
           controller: _nomeController,
           label: 'Nome completo',
@@ -579,6 +598,15 @@ class _CadastroEntregadorScreenState
           ),
           validator: BrazilianDocumentValidator.adultBrazilianDateFormValidator,
         ),
+        const SizedBox(height: 20),
+        _buildSectionTitle(
+          Icons.lock,
+          'Credenciais de Acesso',
+          isDark,
+          textColor,
+          primaryColor,
+        ),
+        const SizedBox(height: 16),
         _buildInput(
           controller: _emailController,
           label: 'E-mail',
@@ -650,35 +678,48 @@ class _CadastroEntregadorScreenState
           validator: (v) =>
               v == _senhaController.text ? null : 'As senhas não coincidem',
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: _acceptedTerms,
-              activeColor: primaryColor,
-              onChanged: (value) =>
-                  setState(() => _acceptedTerms = value ?? false),
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: _acceptedTerms,
+                onChanged: (value) =>
+                    setState(() => _acceptedTerms = value ?? false),
+                fillColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? primaryColor
+                      : Colors.transparent,
+                ),
+              ),
             ),
+            const SizedBox(width: 8),
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark
+                        ? Colors.grey[400]
+                        : textColor.withValues(alpha: 0.7),
+                    fontSize: 12,
                   ),
                   children: [
                     const TextSpan(text: 'Eu aceito os '),
                     TextSpan(
-                      text: 'termos de serviço e política de privacidade',
+                      text: 'Termos de Serviço e Política de Privacidade',
                       style: GoogleFonts.outfit(
                         color: primaryColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () => context.push('/privacy'),
                     ),
-                    const TextSpan(text: ' da Padoca Express.'),
+                    const TextSpan(text: ' da Ôpadoca Express.'),
                   ],
                 ),
               ),
@@ -694,15 +735,14 @@ class _CadastroEntregadorScreenState
       key: const ValueKey('veiculo'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        _buildSectionTitle(
+          Icons.two_wheeler,
           'Selecione seu veículo',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: textColor,
-          ),
+          isDark,
+          textColor,
+          primaryColor,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             _vehicleCard(
@@ -738,13 +778,12 @@ class _CadastroEntregadorScreenState
           ],
         ),
         const SizedBox(height: 24),
-        Text(
-          'Endereco',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: textColor,
-          ),
+        _buildSectionTitle(
+          Icons.location_on,
+          'Endereço',
+          isDark,
+          textColor,
+          primaryColor,
         ),
         const SizedBox(height: 4),
         Text(
@@ -886,13 +925,12 @@ class _CadastroEntregadorScreenState
       key: const ValueKey('documentacao'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        _buildSectionTitle(
+          Icons.verified_user,
           'Documentação',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: textColor,
-          ),
+          isDark,
+          textColor,
+          primaryColor,
         ),
         const SizedBox(height: 8),
         Text(
@@ -971,7 +1009,7 @@ class _CadastroEntregadorScreenState
     final selected = _tipoVeiculo == value;
     return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => setState(() {
           _tipoVeiculo = value;
           if (_usaCnh) {
@@ -988,13 +1026,13 @@ class _CadastroEntregadorScreenState
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: selected
-                ? primaryColor.withValues(alpha: .12)
-                : (isDark ? const Color(0xFF171717) : Colors.white),
-            borderRadius: BorderRadius.circular(12),
+                ? primaryColor.withValues(alpha: 0.1)
+                : (isDark ? const Color(0xFF27272A) : Colors.white),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected
                   ? primaryColor
-                  : (isDark ? Colors.grey[700]! : const Color(0xFFE5E7EB)),
+                  : (isDark ? Colors.grey[800]! : Colors.grey[200]!),
               width: selected ? 2 : 1,
             ),
           ),
@@ -1033,15 +1071,15 @@ class _CadastroEntregadorScreenState
   }) {
     final hasFile = file != null;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF171717) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isDark ? const Color(0xFF27272A) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: hasFile ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
+            color: hasFile ? const Color(0xFF10B981) : primaryColor.withValues(alpha: 0.3),
             width: hasFile ? 2 : 1,
           ),
         ),
@@ -1111,44 +1149,111 @@ class _CadastroEntregadorScreenState
     String? Function(String?)? validator,
     void Function(String)? onChanged,
   }) {
+    const burgundyColor = Color(0xFF7D2D35);
+
     return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        textCapitalization: textCapitalization,
-        validator: validator,
-        onChanged: onChanged,
-        style: GoogleFonts.outfit(
-          color: isDark ? Colors.grey[100] : Colors.grey[800],
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: Icon(icon, size: 20),
-          suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: isDark ? const Color(0xFF171717) : Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDark ? Colors.grey[700]! : const Color(0xFFE5E7EB),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFD4D4D8) : burgundyColor,
+              ),
             ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDark ? Colors.grey[700]! : const Color(0xFFE5E7EB),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF27272A) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: controller,
+              obscureText: obscureText,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              textCapitalization: textCapitalization,
+              validator: validator,
+              onChanged: onChanged,
+              style: GoogleFonts.plusJakartaSans(
+                color: isDark ? Colors.white : burgundyColor,
+              ),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  color: isDark ? Colors.grey[600] : Colors.grey[400],
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  icon,
+                  color: isDark
+                      ? Colors.grey[600]
+                      : burgundyColor.withValues(alpha: 0.4),
+                ),
+                suffixIcon: suffixIcon,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red[400]!),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red[400]!, width: 2),
+                ),
+                contentPadding: const EdgeInsets.all(20),
+              ),
             ),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: primaryColor, width: 2),
-          ),
-        ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(
+    IconData icon,
+    String title,
+    bool isDark,
+    Color color,
+    Color primary,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, color: primary, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: GoogleFonts.plusJakartaSans(
+            color: isDark ? Colors.white : color,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1163,101 +1268,6 @@ class _DocumentoArquivo {
     required this.name,
     required this.bytes,
   });
-}
-
-class _Header extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final bool isDark;
-  final Color textColor;
-  final Color primaryColor;
-  final Color burgundyColor;
-
-  const _Header({
-    required this.title,
-    required this.subtitle,
-    required this.isDark,
-    required this.textColor,
-    required this.primaryColor,
-    required this.burgundyColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back_ios_new, color: textColor),
-              onPressed: () => context.pop(),
-            ),
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bakery_dining,
-                      color: isDark ? primaryColor : burgundyColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    'PAD0CA EXPRESS'.replaceAll('0', 'O'),
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: textColor,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 48),
-          ],
-        ),
-        const SizedBox(height: 22),
-        Container(
-          width: 82,
-          height: 82,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF262626) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Image.asset(
-            'assets/imagens/6ecd0f44-dfa4-4738-9674-3876102610c9.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            height: 1.45,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _StepIndicator extends StatelessWidget {

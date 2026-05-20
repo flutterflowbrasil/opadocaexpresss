@@ -63,7 +63,7 @@ class BaixarAppEntregadorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Para garantir a melhor experiência e utilizar recursos como GPS e câmera durante as entregas, o cadastro e uso do painel de entregador devem ser feitos diretamente no aplicativo mobile do Padoca Express.',
+                  'Para garantir a melhor experiência e utilizar recursos como GPS e câmera durante as entregas, o cadastro e uso do painel de entregador devem ser feitos diretamente no aplicativo mobile do Ôpadoca Express.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 16,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
@@ -52,6 +53,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) async {
+      final loc = state.matchedLocation;
+
+      // ── Bloqueio de plataforma para entregador ────────────────────────────
+      // Qualquer rota do entregador (cadastro, pendente, dashboard e sub-rotas)
+      // é exclusiva do app mobile. No browser, redirecionamos para a tela
+      // informativa de download do aplicativo.
+      const entregadorRoutes = [
+        '/cadastro_entregador',
+        '/entregador/cadastro-pendente',
+        '/dashboard_entregador',
+      ];
+      if (kIsWeb &&
+          entregadorRoutes.any((r) => loc == r || loc.startsWith('$r/'))) {
+        return '/baixar_app_entregador';
+      }
+
       // Rotas públicas: acessíveis sem autenticação
       const publicRoutes = [
         '/',
@@ -61,12 +78,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/privacy',
         '/pre_cadastro',
         '/cadastro_cliente',
-        '/cadastro_entregador',
         '/baixar_app_entregador',
         '/cadastro-estabelecimento',
       ];
 
-      final loc = state.matchedLocation;
       final isPublic = publicRoutes.any((r) => loc == r || loc.startsWith('$r/'));
 
       // Redireciona para login se não autenticado em rota protegida
@@ -80,7 +95,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/login',
         '/pre_cadastro',
         '/cadastro_cliente',
-        '/cadastro_entregador',
         '/baixar_app_entregador',
         '/cadastro-estabelecimento',
       ];

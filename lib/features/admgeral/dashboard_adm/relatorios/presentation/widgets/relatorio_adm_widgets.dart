@@ -147,6 +147,38 @@ class KpiCardRelatorio extends StatelessWidget {
 }
 
 // ── Seção container ───────────────────────────────────────────────────────────
+class RelatorioKpiGrid extends StatelessWidget {
+  final List<Widget> children;
+
+  const RelatorioKpiGrid({super.key, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 980
+            ? 4
+            : width >= 700
+                ? 3
+                : width >= 360
+                    ? 2
+                    : 1;
+
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: columns == 1 ? 2.6 : 1.65,
+          children: children,
+        );
+      },
+    );
+  }
+}
+
 class SecaoRelatorio extends StatelessWidget {
   final String titulo;
   final String? sub;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 // ─── Card do estabelecimento ──────────────────────────────────────────────────
@@ -103,30 +104,19 @@ class EstabelecimentoCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (estabelecimento.logoUrl != null)
-                      Container(
-                        width: 48,
-                        height: 48,
-                        margin: const EdgeInsets.only(right: 12, top: 2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _primaryColor.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            estabelecimento.logoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFFEDE8E3),
-                              child: const Icon(Icons.store_rounded,
-                                  size: 24, color: Color(0x337D2D35)),
-                            ),
-                          ),
+                    Container(
+                      margin: const EdgeInsets.only(right: 12, top: 2),
+                      child: EstabelecimentoLogo(
+                        nome: estabelecimento.nome,
+                        logoUrl: estabelecimento.logoUrl,
+                        size: 48,
+                        circle: true,
+                        border: Border.all(
+                          color: _primaryColor.withValues(alpha: 0.3),
+                          width: 2,
                         ),
                       ),
+                    ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

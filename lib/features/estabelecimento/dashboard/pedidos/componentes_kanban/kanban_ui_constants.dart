@@ -83,6 +83,10 @@ class StatusMeta {
             border: KanbanColors.prontoBorder,
             dark: KanbanColors.prontoDark);
       case 'em_entrega':
+      case 'a_caminho_coleta':
+      case 'no_estabelecimento':
+      case 'coletado':
+      case 'a_caminho_cliente':
         return const StatusMeta(
             label: 'Em Entrega',
             color: KanbanColors.emEntregaColor,

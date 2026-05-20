@@ -15,6 +15,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -55,9 +56,9 @@ extension StatusEntregaExt on StatusEntrega {
       case StatusEntrega.confirmado:
         return 'confirmado';
       case StatusEntrega.emColeta:
-        return 'preparando';
+        return 'a_caminho_coleta';
       case StatusEntrega.coletado:
-        return 'pronto';
+        return 'coletado';
       case StatusEntrega.emEntrega:
         return 'em_entrega';
       case StatusEntrega.entregue:
@@ -136,6 +137,8 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   String? _clienteTelefone;
   double _taxaEntrega = 0;
   double _distanciaKm = 0;
+  String? _distanciaRotaTexto;
+  String? _etaRotaTexto;
   String? _entregadorId;
 
   // Códigos de validação do pedido
@@ -212,12 +215,16 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
       final dbStatus = row['status'] ?? 'confirmado';
       StatusEntrega statusAtual;
       switch (dbStatus) {
+        case 'a_caminho_coleta':
+        case 'no_estabelecimento':
         case 'preparando':
           statusAtual = StatusEntrega.emColeta;
           break;
+        case 'coletado':
         case 'pronto':
           statusAtual = StatusEntrega.coletado;
           break;
+        case 'a_caminho_cliente':
         case 'em_entrega':
           statusAtual = StatusEntrega.emEntrega;
           break;
@@ -362,7 +369,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
 
       switch (proximo) {
         case StatusEntrega.emColeta:
-          updates['confirmado_em'] = agora;
+          updates['a_caminho_coleta_em'] = agora;
           break;
         case StatusEntrega.emEntrega:
           updates['em_entrega_em'] = agora;
@@ -507,7 +514,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     try {
       await Supabase.instance.client
           .from('pedidos')
-          .update({'status': 'pronto', 'coletado_em': DateTime.now().toIso8601String()})
+          .update({'status': 'coletado', 'coletado_em': DateTime.now().toIso8601String()})
           .eq('id', widget.pedidoId);
 
       if (!mounted) return;
@@ -764,6 +771,15 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     }
   }
 
+  void _atualizarResumoRota(String? distancia, String? eta) {
+    if (!mounted) return;
+    if (_distanciaRotaTexto == distancia && _etaRotaTexto == eta) return;
+    setState(() {
+      _distanciaRotaTexto = distancia;
+      _etaRotaTexto = eta;
+    });
+  }
+
   @override
   void dispose() {
     _posStream?.cancel();
@@ -791,7 +807,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
       body: Column(
         children: [
           // Mapa (visualização customizada)
-          _MapArea(
+          _GoogleMapArea(
             status: _status,
             origem: _estabelecimentoNome,
             destino: _clienteNome,
@@ -801,6 +817,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             clienteLat: _clienteLat,
             clienteLng: _clienteLng,
             onNavegar: _abrirGoogleMaps,
+            onRotaAtualizada: _atualizarResumoRota,
           ),
 
           // Painel deslizante
@@ -831,6 +848,8 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
                       numeroPedido: _numeroPedido,
                       taxaEntrega: _taxaEntrega,
                       distanciaKm: _distanciaKm,
+                      distanciaTexto: _distanciaRotaTexto,
+                      etaTexto: _etaRotaTexto,
                     ),
                     const SizedBox(height: 14),
                     _RotaSimples(
@@ -925,6 +944,380 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
 // ═══════════════════════════════════════════════════════════════════════════
 // MAP AREA — com rota dinâmica via MapService
 // ═══════════════════════════════════════════════════════════════════════════
+class _GoogleMapArea extends StatefulWidget {
+  final StatusEntrega status;
+  final String origem, destino;
+  final Position? posAtual;
+  final double? estabelecimentoLat;
+  final double? estabelecimentoLng;
+  final double? clienteLat;
+  final double? clienteLng;
+  final VoidCallback onNavegar;
+  final void Function(String? distancia, String? eta)? onRotaAtualizada;
+
+  const _GoogleMapArea({
+    required this.status,
+    required this.origem,
+    required this.destino,
+    this.posAtual,
+    this.estabelecimentoLat,
+    this.estabelecimentoLng,
+    this.clienteLat,
+    this.clienteLng,
+    required this.onNavegar,
+    this.onRotaAtualizada,
+  });
+
+  @override
+  State<_GoogleMapArea> createState() => _GoogleMapAreaState();
+}
+
+class _GoogleMapAreaState extends State<_GoogleMapArea> {
+  gm.GoogleMapController? _mapController;
+  List<gm.LatLng> _rota = [];
+  bool _carregandoRota = false;
+  String? _ultimaRotaKey;
+
+  bool get _indoEstabelecimento =>
+      widget.status == StatusEntrega.confirmado ||
+      widget.status == StatusEntrega.emColeta;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _carregarRota());
+  }
+
+  @override
+  void didUpdateWidget(covariant _GoogleMapArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final statusMudou = oldWidget.status != widget.status;
+    final primeiroGps = oldWidget.posAtual == null && widget.posAtual != null;
+    final moveuBastante =
+        _moveuDistanciaRelevante(oldWidget.posAtual, widget.posAtual);
+    final destinoMudou =
+        oldWidget.estabelecimentoLat != widget.estabelecimentoLat ||
+        oldWidget.estabelecimentoLng != widget.estabelecimentoLng ||
+        oldWidget.clienteLat != widget.clienteLat ||
+        oldWidget.clienteLng != widget.clienteLng;
+
+    if (statusMudou || primeiroGps || moveuBastante || destinoMudou) {
+      _carregarRota();
+    }
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  bool _moveuDistanciaRelevante(Position? anterior, Position? atual) {
+    if (anterior == null || atual == null) return false;
+    final metros = Geolocator.distanceBetween(
+      anterior.latitude,
+      anterior.longitude,
+      atual.latitude,
+      atual.longitude,
+    );
+    return metros >= 60;
+  }
+
+  gm.LatLng? _destinoAtivo() {
+    final lat = _indoEstabelecimento ? widget.estabelecimentoLat : widget.clienteLat;
+    final lng = _indoEstabelecimento ? widget.estabelecimentoLng : widget.clienteLng;
+    if (lat == null || lng == null) return null;
+    return gm.LatLng(lat, lng);
+  }
+
+  gm.LatLng? _origemAtiva() {
+    if (widget.posAtual != null) {
+      return gm.LatLng(widget.posAtual!.latitude, widget.posAtual!.longitude);
+    }
+    if (!_indoEstabelecimento &&
+        widget.estabelecimentoLat != null &&
+        widget.estabelecimentoLng != null) {
+      return gm.LatLng(widget.estabelecimentoLat!, widget.estabelecimentoLng!);
+    }
+    return null;
+  }
+
+  Future<void> _carregarRota() async {
+    if (_carregandoRota) return;
+
+    final origem = _origemAtiva();
+    final destino = _destinoAtivo();
+    if (origem == null || destino == null) {
+      widget.onRotaAtualizada?.call(null, null);
+      return;
+    }
+
+    final rotaKey =
+        '${widget.status.name}|${origem.latitude.toStringAsFixed(5)},'
+        '${origem.longitude.toStringAsFixed(5)}|'
+        '${destino.latitude.toStringAsFixed(5)},'
+        '${destino.longitude.toStringAsFixed(5)}';
+    if (rotaKey == _ultimaRotaKey) return;
+
+    setState(() => _carregandoRota = true);
+    _ultimaRotaKey = rotaKey;
+
+    try {
+      final info = await mapsvc.MapService.instance.buscarRotaDetalhada(
+        origem: mapsvc.LatLng(origem.latitude, origem.longitude),
+        destino: mapsvc.LatLng(destino.latitude, destino.longitude),
+      );
+
+      if (!mounted) return;
+      final pontos = info.pontos
+          .map((p) => gm.LatLng(p.latitude, p.longitude))
+          .toList();
+
+      setState(() {
+        _rota = pontos;
+        _carregandoRota = false;
+      });
+      widget.onRotaAtualizada?.call(info.distanciaTexto, info.duracaoTexto);
+      await _enquadrarRota(pontos.isEmpty ? [origem, destino] : pontos);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _rota = [origem, destino];
+        _carregandoRota = false;
+      });
+      widget.onRotaAtualizada?.call(null, null);
+      await _enquadrarRota(_rota);
+    }
+  }
+
+  Future<void> _enquadrarRota(List<gm.LatLng> pontos) async {
+    final controller = _mapController;
+    if (controller == null || pontos.isEmpty) return;
+
+    try {
+      if (pontos.length == 1) {
+        await controller.animateCamera(
+          gm.CameraUpdate.newLatLngZoom(pontos.first, 15),
+        );
+        return;
+      }
+
+      var minLat = pontos.first.latitude;
+      var maxLat = pontos.first.latitude;
+      var minLng = pontos.first.longitude;
+      var maxLng = pontos.first.longitude;
+      for (final ponto in pontos) {
+        if (ponto.latitude < minLat) minLat = ponto.latitude;
+        if (ponto.latitude > maxLat) maxLat = ponto.latitude;
+        if (ponto.longitude < minLng) minLng = ponto.longitude;
+        if (ponto.longitude > maxLng) maxLng = ponto.longitude;
+      }
+
+      if (minLat == maxLat && minLng == maxLng) {
+        await controller.animateCamera(
+          gm.CameraUpdate.newLatLngZoom(gm.LatLng(minLat, minLng), 15),
+        );
+        return;
+      }
+
+      await controller.animateCamera(
+        gm.CameraUpdate.newLatLngBounds(
+          gm.LatLngBounds(
+            southwest: gm.LatLng(minLat, minLng),
+            northeast: gm.LatLng(maxLat, maxLng),
+          ),
+          56,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Set<gm.Marker> _markers() {
+    final markers = <gm.Marker>{};
+
+    if (widget.posAtual != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('entregador'),
+          position: gm.LatLng(widget.posAtual!.latitude, widget.posAtual!.longitude),
+          icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+            gm.BitmapDescriptor.hueOrange,
+          ),
+          infoWindow: const gm.InfoWindow(title: 'Entregador'),
+        ),
+      );
+    }
+
+    if (widget.estabelecimentoLat != null && widget.estabelecimentoLng != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('estabelecimento'),
+          position: gm.LatLng(widget.estabelecimentoLat!, widget.estabelecimentoLng!),
+          icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+            _indoEstabelecimento
+                ? gm.BitmapDescriptor.hueOrange
+                : gm.BitmapDescriptor.hueYellow,
+          ),
+          infoWindow: gm.InfoWindow(title: widget.origem),
+        ),
+      );
+    }
+
+    if (widget.clienteLat != null && widget.clienteLng != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('cliente'),
+          position: gm.LatLng(widget.clienteLat!, widget.clienteLng!),
+          icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+            _indoEstabelecimento
+                ? gm.BitmapDescriptor.hueRose
+                : gm.BitmapDescriptor.hueRed,
+          ),
+          infoWindow: gm.InfoWindow(title: widget.destino),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destino = _destinoAtivo();
+    final origem = _origemAtiva();
+    final center = origem ??
+        destino ??
+        (widget.estabelecimentoLat != null && widget.estabelecimentoLng != null
+            ? gm.LatLng(widget.estabelecimentoLat!, widget.estabelecimentoLng!)
+            : const gm.LatLng(-23.5505, -46.6333));
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * .38,
+      child: Stack(
+        children: [
+          gm.GoogleMap(
+            initialCameraPosition: gm.CameraPosition(target: center, zoom: 15),
+            markers: _markers(),
+            polylines: {
+              if (_rota.length >= 2)
+                gm.Polyline(
+                  polylineId: const gm.PolylineId('rota_entrega'),
+                  points: _rota,
+                  color: _orange,
+                  width: 5,
+                ),
+            },
+            myLocationEnabled: widget.posAtual != null,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            compassEnabled: false,
+            mapToolbarEnabled: false,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              if (_rota.isNotEmpty) {
+                _enquadrarRota(_rota);
+              } else {
+                _carregarRota();
+              }
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: _bg0.withValues(alpha: .85),
+                  border: Border.all(color: _border),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(Icons.arrow_back_ios_new_rounded, color: _text1, size: 16),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _bg0.withValues(alpha: .85),
+                border: Border.all(color: _orange.withValues(alpha: .25)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_carregandoRota) ...[
+                    const SizedBox(
+                      width: 10,
+                      height: 10,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: _orange,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    widget.status.label,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: widget.onNavegar,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _orange,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .4),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Navegar',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
 class _MapArea extends StatefulWidget {
   final StatusEntrega status;
   final String origem, destino;
@@ -1426,11 +1819,15 @@ class _ProgressoStepper extends StatelessWidget {
 class _InfoCard extends StatelessWidget {
   final String numeroPedido;
   final double taxaEntrega, distanciaKm;
+  final String? distanciaTexto;
+  final String? etaTexto;
 
   const _InfoCard({
     required this.numeroPedido,
     required this.taxaEntrega,
     required this.distanciaKm,
+    this.distanciaTexto,
+    this.etaTexto,
   });
 
   @override
@@ -1454,8 +1851,14 @@ class _InfoCard extends StatelessWidget {
           _InfoDivider(),
           _InfoItem(
             label: 'DISTÂNCIA',
-            valor: '${distanciaKm.toStringAsFixed(1)} km',
+            valor: distanciaTexto ?? '${distanciaKm.toStringAsFixed(1)} km',
             cor: _orange,
+          ),
+          _InfoDivider(),
+          _InfoItem(
+            label: 'ETA',
+            valor: etaTexto ?? '--',
+            cor: _text1,
           ),
         ],
       ),

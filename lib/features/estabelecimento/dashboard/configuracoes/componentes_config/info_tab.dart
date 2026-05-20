@@ -35,7 +35,7 @@ class InfoTab extends ConsumerWidget {
             children: [
               ConfigTextField(
                 label: 'Razão Social *',
-                placeholder: 'Ex: Padoca Express LTDA',
+                placeholder: 'Ex: Ôpadoca Express LTDA',
                 isDark: isDark,
                 controller: TextEditingController(text: editedEstab.razaoSocial)
                   ..selection = TextSelection.collapsed(
@@ -163,7 +163,7 @@ class InfoTab extends ConsumerWidget {
                   Expanded(
                     child: ConfigTextField(
                       label: 'Nome Fantasia',
-                      placeholder: 'Padoca Express',
+                      placeholder: 'Ôpadoca Express',
                       isDark: isDark,
                       controller: TextEditingController(
                           text: editedEstab.nomeFantasia)

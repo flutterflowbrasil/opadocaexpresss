@@ -1,5 +1,5 @@
 name: padoca_express
-description: App de delivery Padoca Express
+description: App de delivery Ôpadoca Express
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -33,6 +33,7 @@ dependencies:
   supabase_flutter: ^2.8.0
   
   # Localização e Mapas
+  google_maps_flutter: ^2.17.0
   flutter_map: ^7.0.0
   flutter_map_cancellable_tile_provider: ^3.0.2
   latlong2: ^0.9.0

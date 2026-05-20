@@ -2,8 +2,7 @@
 // map_service.dart — Serviço de Mapas
 // Ôpadoca Express · App do Entregador
 // Usa: supabase (geocode-proxy Edge Function)
-// NOTE: Quando google_maps_flutter for adicionado ao pubspec,
-//       substituir LatLng/LatLngBounds locais pelos da lib.
+// Mantem tipos simples para desacoplar o servico da implementacao visual do mapa.
 // ============================================================
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,6 +18,18 @@ class LatLngBounds {
   const LatLngBounds({required this.southwest, required this.northeast});
 }
 
+class RouteInfo {
+  final List<LatLng> pontos;
+  final String? distanciaTexto;
+  final String? duracaoTexto;
+
+  const RouteInfo({
+    required this.pontos,
+    this.distanciaTexto,
+    this.duracaoTexto,
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 class MapService {
   MapService._();
@@ -26,6 +37,14 @@ class MapService {
 
   // ── Busca rota entre dois pontos via Edge Function geocode-proxy ─────────
   Future<List<LatLng>> buscarRota({
+    required LatLng origem,
+    required LatLng destino,
+  }) async {
+    final info = await buscarRotaDetalhada(origem: origem, destino: destino);
+    return info.pontos;
+  }
+
+  Future<RouteInfo> buscarRotaDetalhada({
     required LatLng origem,
     required LatLng destino,
   }) async {
@@ -40,18 +59,29 @@ class MapService {
         },
       );
 
-      if (resp.status != 200) return _rotaReta(origem, destino);
+      if (resp.status != 200) return _rotaRetaInfo(origem, destino);
 
       final data = resp.data as Map<String, dynamic>;
       final routes = data['routes'] as List?;
-      if (routes == null || routes.isEmpty) return _rotaReta(origem, destino);
+      if (routes == null || routes.isEmpty) {
+        return _rotaRetaInfo(origem, destino);
+      }
 
-      final pontos = routes[0]['overview_polyline']?['points'] as String?;
-      if (pontos == null) return _rotaReta(origem, destino);
+      final route = routes[0] as Map<String, dynamic>;
+      final pontos = route['overview_polyline']?['points'] as String?;
+      if (pontos == null) return _rotaRetaInfo(origem, destino);
 
-      return _decodificarPolyline(pontos);
+      final legs = route['legs'] as List?;
+      final leg =
+          legs != null && legs.isNotEmpty ? legs.first as Map<String, dynamic>? : null;
+
+      return RouteInfo(
+        pontos: _decodificarPolyline(pontos),
+        distanciaTexto: leg?['distance']?['text'] as String?,
+        duracaoTexto: leg?['duration']?['text'] as String?,
+      );
     } catch (_) {
-      return _rotaReta(origem, destino);
+      return _rotaRetaInfo(origem, destino);
     }
   }
 
@@ -108,6 +138,9 @@ class MapService {
 
   // ── Fallback: linha reta entre dois pontos ────────────────────────────────
   List<LatLng> _rotaReta(LatLng a, LatLng b) => [a, b];
+
+  RouteInfo _rotaRetaInfo(LatLng a, LatLng b) =>
+      RouteInfo(pontos: _rotaReta(a, b));
 
   // ── Calcula bounds para encaixar todos os pontos na câmera ───────────────
   static LatLngBounds calcularBounds(List<LatLng> pontos) {

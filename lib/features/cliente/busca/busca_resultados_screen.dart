@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/cliente/busca/busca_repository.dart';
 import 'package:padoca_express/features/cliente/busca/models/resultado_busca_model.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 class BuscaResultadosScreen extends ConsumerStatefulWidget {
@@ -314,17 +315,11 @@ class _ResultadoCard extends StatelessWidget {
                 borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(20),
                 ),
-                child: SizedBox(
-                  width: 90,
-                  height: 90,
-                  child: item.logoUrl != null
-                      ? Image.network(
-                          item.logoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _PlaceholderLogo(isDark: isDark),
-                        )
-                      : _PlaceholderLogo(isDark: isDark),
+                child: EstabelecimentoLogo(
+                  nome: item.nome,
+                  logoUrl: item.logoUrl,
+                  size: 90,
+                  borderRadius: 0,
                 ),
               ),
 
@@ -456,27 +451,6 @@ class _ResultadoCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderLogo extends StatelessWidget {
-  final bool isDark;
-  const _PlaceholderLogo({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEDE8E3),
-      child: Center(
-        child: Icon(
-          Icons.store_rounded,
-          size: 36,
-          color: isDark
-              ? Colors.white24
-              : const Color(0xFF7D2D35).withValues(alpha: 0.2),
         ),
       ),
     );

@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'produtos_state.dart';
 import '../data/produtos_repository.dart';
 import '../models/produto_model.dart';
+import '../models/produto_preco_tamanho_model.dart';
 import '../../../models/categoria_cardapio_model.dart';
+import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
 
 final produtosControllerProvider =
     StateNotifierProvider.autoDispose<ProdutosController, ProdutosState>((ref) {
@@ -18,13 +20,11 @@ class ProdutosController extends StateNotifier<ProdutosState> {
 
   /// Carrega os dados primários usando a Injeção de Dependências
   Future<void> loadDados(String estabelecimentoId) async {
-    // Se já existem produtos, faz um refresh silencioso (instantâneo na UI)
     if (state.produtos.isEmpty) {
       state = state.copyWith(isLoading: true, clearError: true);
     }
 
     try {
-      // Usamos Future.wait para paralelizar chamadas independentes ao invés de await sequencial.
       final results = await Future.wait([
         _repository.fetchProdutos(estabelecimentoId),
         _repository.fetchCategorias(estabelecimentoId),
@@ -38,8 +38,7 @@ class ProdutosController extends StateNotifier<ProdutosState> {
       state = state.copyWith(
         isLoading: false,
         produtos: produtos.cast(),
-        produtosFiltrados:
-            produtos.cast(), // Inicialmente, os filtrados são todos os produtos
+        produtosFiltrados: produtos.cast(),
         categorias: categorias.cast(),
         categoriasPrincipais: categoriasPrincipais.cast(),
       );
@@ -57,20 +56,18 @@ class ProdutosController extends StateNotifier<ProdutosState> {
   }
 
   /// Aplica filtros combinados (Busca, Categoria, e Status)
-  void aplicarFiltros(
-      {String? query,
-      String? categoriaId,
-      bool setCategoriaId = false,
-      String? status,
-      bool setStatus = false}) {
-    // Guarda o filtro atual para persistir na UI
+  void aplicarFiltros({
+    String? query,
+    String? categoriaId,
+    bool setCategoriaId = false,
+    String? status,
+    bool setStatus = false,
+  }) {
     state = state.copyWith(
       searchQuery: query != null ? () => query : () => state.searchQuery,
-      // Se `setCategoriaId` for true, força o valor (inclusive null), senão mantém o atual
       selectedCategoriaId: (categoriaId != null || setCategoriaId)
           ? () => categoriaId
           : () => state.selectedCategoriaId,
-      // Se `setStatus` for true, força o valor (inclusive null), senão mantém o atual
       selectedStatusFilter: (status != null || setStatus)
           ? () => status
           : () => state.selectedStatusFilter,
@@ -81,14 +78,10 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     final stat = state.selectedStatusFilter;
 
     final result = state.produtos.where((p) {
-      // 1. Busca por nome
       final matchName = q.isEmpty || p.nome.toLowerCase().contains(q);
-
-      // 2. Por categoria
       final matchCat =
           catId == null || catId.isEmpty || p.categoriaCardapioId == catId;
 
-      // 3. Status dinâmico
       bool matchStatus = true;
       if (stat != null && stat.isNotEmpty) {
         if (stat == 'disponivel') {
@@ -116,35 +109,39 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     state = state.clearFilters();
   }
 
+  /// Retorna a CategoriaEstabelecimentoModel de uma categoria principal pelo ID.
+  /// Útil para verificar permiteAdicionais e permiteMultiplosPrecos.
+  CategoriaEstabelecimentoModel? getCategoriaById(String? categoriaId) {
+    if (categoriaId == null) return null;
+    try {
+      return state.categoriasPrincipais
+          .firstWhere((c) => c.id == categoriaId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Altera rapidamente a disponibilidade do switch na tela Principal
   Future<void> toggleDisponibilidade(
       String produtoId, bool wasDisponivel) async {
-    // Optimistic UI Update -> Mudamos rapidamente na tela para feedback imediato
     final novoProdutoValor = !wasDisponivel;
-
     final updatedList = state.produtos
         .map((p) =>
             p.id == produtoId ? p.copyWith(disponivel: novoProdutoValor) : p)
         .toList();
-
-    // Reaplica no estado base
     state = state.copyWith(produtos: updatedList);
-    // Para renderizar o novo "Disponivel/Indisponivel", re-rodamos o filtro atual.
     aplicarFiltros(
         query: state.searchQuery,
         categoriaId: state.selectedCategoriaId,
         status: state.selectedStatusFilter);
 
     try {
-      // Comunica Repository
       await _repository.updateDisponibilidade(produtoId, novoProdutoValor);
     } catch (e) {
-      // Se falhar (falta de net), faz o Rollback reverso
       final rollbackList = state.produtos
           .map((p) =>
               p.id == produtoId ? p.copyWith(disponivel: wasDisponivel) : p)
           .toList();
-
       state = state.copyWith(
           produtos: rollbackList, error: 'Falha ao alterar status online: $e');
       aplicarFiltros(
@@ -168,7 +165,6 @@ class ProdutosController extends StateNotifier<ProdutosState> {
         chamada: chamada,
         duracaoHoras: duracaoHoras,
       );
-      // Recarrega os produtos para refletir os novos campos
       final produto = state.produtos.firstWhere((p) => p.id == produtoId);
       await _recarregarProduto(produtoId, produto.estabelecimentoId);
     } catch (e) {
@@ -189,8 +185,7 @@ class ProdutosController extends StateNotifier<ProdutosState> {
 
   Future<void> _recarregarProduto(
       String produtoId, String estabelecimentoId) async {
-    final todos =
-        await _repository.fetchProdutos(estabelecimentoId);
+    final todos = await _repository.fetchProdutos(estabelecimentoId);
     state = state.copyWith(produtos: todos);
     aplicarFiltros(
       query: state.searchQuery,
@@ -201,7 +196,6 @@ class ProdutosController extends StateNotifier<ProdutosState> {
 
   // ── Categorias ─────────────────────────────────────────────────────────────
 
-  /// Cria ou atualiza uma categoria do cardápio.
   Future<void> salvarCategoria(CategoriaCardapioModel categoria) async {
     try {
       final saved = await _repository.saveCategoria(categoria);
@@ -218,13 +212,11 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     }
   }
 
-  /// Remove uma categoria do cardápio.
   Future<void> deletarCategoria(String categoriaId) async {
     try {
       await _repository.deleteCategoria(categoriaId);
       final updated =
           state.categorias.where((c) => c.id != categoriaId).toList();
-      // Se o filtro atual era por esta categoria, limpa o filtro
       final newCatFilter = state.selectedCategoriaId == categoriaId
           ? null
           : state.selectedCategoriaId;
@@ -243,19 +235,34 @@ class ProdutosController extends StateNotifier<ProdutosState> {
 
   // ── Produtos ────────────────────────────────────────────────────────────────
 
-  /// Cria ou atualiza um produto via upsert e atualiza a lista local.
-  Future<void> salvarProduto(ProdutoModel produto) async {
+  /// Cria ou atualiza um produto. Valida permissões de categoria antes de salvar.
+  Future<void> salvarProduto(
+    ProdutoModel produto, {
+    bool categoriaPermiteAdicionais = true,
+    List<ProdutoPrecoTamanhoModel> tamanhos = const [],
+    bool categoriaPermiteMultiplosPrecos = false,
+  }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final saved = await _repository.saveProduto(produto);
-      final isNew = !state.produtos.any((p) => p.id == saved.id);
+      final saved = await _repository.saveProduto(
+        produto,
+        categoriaPermiteAdicionais: categoriaPermiteAdicionais,
+      );
 
+      // Salva tamanhos somente se a categoria permitir múltiplos preços
+      if (categoriaPermiteMultiplosPrecos && tamanhos.isNotEmpty) {
+        await _repository.saveTamanhosBatch(saved.id, tamanhos);
+      } else if (!categoriaPermiteMultiplosPrecos) {
+        // Desativa tamanhos ao mudar para categoria sem suporte a múltiplos preços
+        await _repository.desativarTodosTamanhos(saved.id);
+      }
+
+      final isNew = !state.produtos.any((p) => p.id == saved.id);
       final updated = isNew
           ? [...state.produtos, saved]
           : state.produtos.map((p) => p.id == saved.id ? saved : p).toList();
 
       state = state.copyWith(isLoading: false, produtos: updated);
-      // Re-aplica filtros para refletir na lista filtrada
       aplicarFiltros(
         query: state.searchQuery,
         categoriaId: state.selectedCategoriaId,
@@ -264,6 +271,27 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     } catch (e) {
       state =
           state.copyWith(isLoading: false, error: 'Erro ao salvar produto: $e');
+    }
+  }
+
+  // ── Tamanhos (Pizza) ────────────────────────────────────────────────────────
+
+  Future<List<ProdutoPrecoTamanhoModel>> fetchTamanhos(
+      String produtoId) async {
+    try {
+      return await _repository.fetchTamanhos(produtoId);
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao carregar tamanhos: $e');
+      return [];
+    }
+  }
+
+  Future<void> deletarTamanho(String tamanhoId) async {
+    try {
+      await _repository.deleteTamanho(tamanhoId);
+    } catch (e) {
+      state = state.copyWith(error: 'Erro ao remover tamanho: $e');
+      rethrow;
     }
   }
 }

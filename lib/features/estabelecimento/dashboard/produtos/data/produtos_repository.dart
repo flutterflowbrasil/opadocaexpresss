@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
 import '../models/produto_model.dart';
+import '../models/produto_preco_tamanho_model.dart';
 import '../../../models/categoria_cardapio_model.dart';
 
 final produtosRepositoryProvider = Provider<ProdutosRepository>((ref) {
@@ -18,6 +19,8 @@ class ProdutosRepository {
       'produto_categorias_estabelecimento(categoria_id, '
       'categorias_estabelecimento:categoria_id(id, nome))';
 
+  // ── Produtos ──────────────────────────────────────────────────────────
+
   Future<List<ProdutoModel>> fetchProdutos(String estabelecimentoId) async {
     final response = await _supabase
         .from('produtos')
@@ -26,52 +29,6 @@ class ProdutosRepository {
         .order('ordem_exibicao');
 
     return response.map((json) => ProdutoModel.fromJson(json)).toList();
-  }
-
-  Future<List<CategoriaCardapioModel>> fetchCategorias(
-      String estabelecimentoId) async {
-    final response = await _supabase
-        .from('categorias_cardapio')
-        .select()
-        .eq('estabelecimento_id', estabelecimentoId)
-        .order('ordem_exibicao');
-
-    return response
-        .map((json) => CategoriaCardapioModel.fromJson(json))
-        .toList();
-  }
-
-  Future<List<CategoriaEstabelecimentoModel>> fetchCategoriasPrincipais() async {
-    final response = await _supabase
-        .from('categorias_estabelecimento')
-        .select('id, nome, icone, ativa, imagem_url, slug, ordem_exibicao')
-        .eq('ativa', true)
-        .order('ordem_exibicao', ascending: true);
-
-    return response
-        .map((json) => CategoriaEstabelecimentoModel.fromJson(json))
-        .toList();
-  }
-
-  Future<ProdutoModel> saveProduto(ProdutoModel produto) async {
-    final data = produto.toJson();
-    data.remove('created_at');
-    data.remove('updated_at');
-    if ((data['id'] as String?)?.isEmpty ?? false) data.remove('id');
-
-    final response = await _supabase
-        .from('produtos')
-        .upsert(data)
-        .select('id')
-        .single();
-
-    final produtoId = response['id'] as String;
-    await _saveCategoriasPrincipais(
-      produtoId,
-      produto.categoriaPrincipalIds,
-    );
-
-    return _fetchProdutoById(produtoId);
   }
 
   Future<void> deleteProduto(String produtoId) async {
@@ -106,25 +63,35 @@ class ProdutosRepository {
     });
   }
 
-  Future<CategoriaCardapioModel> saveCategoria(
-      CategoriaCardapioModel categoria) async {
-    final data = categoria.toJson();
-    if (categoria.id.isEmpty) data.remove('id');
+  /// Salva (cria ou atualiza) um produto.
+  /// Garante que opcoes seja [] se a categoria não permitir adicionais.
+  Future<ProdutoModel> saveProduto(
+    ProdutoModel produto, {
+    bool categoriaPermiteAdicionais = true,
+  }) async {
+    final data = produto.toJson();
+    data.remove('created_at');
+    data.remove('updated_at');
+    if ((data['id'] as String?)?.isEmpty ?? false) data.remove('id');
+
+    // Segurança backend: força opcoes=[] se categoria não permite adicionais
+    if (!categoriaPermiteAdicionais) {
+      data['opcoes'] = [];
+    }
 
     final response = await _supabase
-        .from('categorias_cardapio')
+        .from('produtos')
         .upsert(data)
-        .select()
+        .select('id')
         .single();
 
-    return CategoriaCardapioModel.fromJson(response);
-  }
+    final produtoId = response['id'] as String;
+    await _saveCategoriasPrincipais(
+      produtoId,
+      produto.categoriaPrincipalIds,
+    );
 
-  Future<void> deleteCategoria(String categoriaId) async {
-    await _supabase
-        .from('categorias_cardapio')
-        .delete()
-        .eq('id', categoriaId);
+    return _fetchProdutoById(produtoId);
   }
 
   Future<void> _saveCategoriasPrincipais(
@@ -157,5 +124,118 @@ class ProdutosRepository {
         .single();
 
     return ProdutoModel.fromJson(response);
+  }
+
+  // ── Categorias do cardápio ────────────────────────────────────────────
+
+  Future<List<CategoriaCardapioModel>> fetchCategorias(
+      String estabelecimentoId) async {
+    final response = await _supabase
+        .from('categorias_cardapio')
+        .select()
+        .eq('estabelecimento_id', estabelecimentoId)
+        .order('ordem_exibicao');
+
+    return response
+        .map((json) => CategoriaCardapioModel.fromJson(json))
+        .toList();
+  }
+
+  /// Busca categorias principais com os novos campos de permissão.
+  Future<List<CategoriaEstabelecimentoModel>> fetchCategoriasPrincipais() async {
+    final response = await _supabase
+        .from('categorias_estabelecimento')
+        .select(
+          'id, nome, icone, ativa, imagem_url, slug, ordem_exibicao, '
+          'permite_adicionais, permite_multiplos_precos',
+        )
+        .eq('ativa', true)
+        .order('ordem_exibicao', ascending: true);
+
+    return response
+        .map((json) => CategoriaEstabelecimentoModel.fromJson(json))
+        .toList();
+  }
+
+  Future<CategoriaCardapioModel> saveCategoria(
+      CategoriaCardapioModel categoria) async {
+    final data = categoria.toJson();
+    if (categoria.id.isEmpty) data.remove('id');
+
+    final response = await _supabase
+        .from('categorias_cardapio')
+        .upsert(data)
+        .select()
+        .single();
+
+    return CategoriaCardapioModel.fromJson(response);
+  }
+
+  Future<void> deleteCategoria(String categoriaId) async {
+    await _supabase
+        .from('categorias_cardapio')
+        .delete()
+        .eq('id', categoriaId);
+  }
+
+  // ── Tamanhos/Preços (Pizza) ───────────────────────────────────────────
+
+  Future<List<ProdutoPrecoTamanhoModel>> fetchTamanhos(String produtoId) async {
+    final response = await _supabase
+        .from('produto_precos_tamanhos')
+        .select()
+        .eq('produto_id', produtoId)
+        .order('ordem');
+
+    return response
+        .map((json) => ProdutoPrecoTamanhoModel.fromJson(json))
+        .toList();
+  }
+
+  Future<ProdutoPrecoTamanhoModel> saveTamanho(
+      ProdutoPrecoTamanhoModel tamanho) async {
+    final data = tamanho.toJson();
+
+    final response = await _supabase
+        .from('produto_precos_tamanhos')
+        .upsert(data)
+        .select()
+        .single();
+
+    return ProdutoPrecoTamanhoModel.fromJson(response);
+  }
+
+  Future<void> deleteTamanho(String tamanhoId) async {
+    await _supabase
+        .from('produto_precos_tamanhos')
+        .delete()
+        .eq('id', tamanhoId);
+  }
+
+  /// Desativa todos os tamanhos de um produto (quando categoria muda para não-pizza).
+  Future<void> desativarTodosTamanhos(String produtoId) async {
+    await _supabase
+        .from('produto_precos_tamanhos')
+        .update({'ativo': false})
+        .eq('produto_id', produtoId);
+  }
+
+  /// Salva a lista completa de tamanhos de um produto (upsert em lote).
+  Future<List<ProdutoPrecoTamanhoModel>> saveTamanhosBatch(
+    String produtoId,
+    List<ProdutoPrecoTamanhoModel> tamanhos,
+  ) async {
+    if (tamanhos.isEmpty) return [];
+
+    final rows = tamanhos.map((t) => t.toJson()).toList();
+
+    final response = await _supabase
+        .from('produto_precos_tamanhos')
+        .upsert(rows)
+        .select();
+
+    return response
+        .map((json) => ProdutoPrecoTamanhoModel.fromJson(json))
+        .toList();
   }
 }

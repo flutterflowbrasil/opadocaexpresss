@@ -32,6 +32,10 @@ class PedidosKanbanState {
 
   int get totalAtivos => pedidos
       .where((p) =>
+          p.status != 'a_caminho_coleta' &&
+          p.status != 'no_estabelecimento' &&
+          p.status != 'coletado' &&
+          p.status != 'a_caminho_cliente' &&
           p.status != 'em_entrega' &&
           p.status != 'entregue' &&
           !p.status.startsWith('cancelado'))

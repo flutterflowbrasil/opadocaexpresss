@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:padoca_express/features/cliente/pedidos/models/pedido_cliente_model.dart';
 import 'package:intl/intl.dart';
 
@@ -178,22 +179,11 @@ class PedidoCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                    image: pedido.estabelecimentoLogoUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(pedido.estabelecimentoLogoUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: pedido.estabelecimentoLogoUrl == null
-                      ? Icon(Icons.storefront, color: Colors.grey[400])
-                      : null,
+                EstabelecimentoLogo(
+                  nome: pedido.estabelecimentoNome ?? 'Padoca',
+                  logoUrl: pedido.estabelecimentoLogoUrl,
+                  size: 56,
+                  borderRadius: 8,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

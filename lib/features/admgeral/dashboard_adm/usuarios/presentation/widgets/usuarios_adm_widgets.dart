@@ -174,7 +174,7 @@ class UsuariosKpiStrip extends ConsumerWidget {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: cols,
-          childAspectRatio: 1.6,
+          mainAxisExtent: 86,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
         ),
@@ -182,7 +182,7 @@ class UsuariosKpiStrip extends ConsumerWidget {
         itemBuilder: (_, i) {
           final card = cards[i];
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: card['bg'] as Color,
               borderRadius: BorderRadius.circular(12),
@@ -223,7 +223,7 @@ class UsuariosKpiStrip extends ConsumerWidget {
                       Text(
                         '${card['value']}',
                         style: GoogleFonts.dmSans(
-                          fontSize: 22,
+                          fontSize: 21,
                           fontWeight: FontWeight.w800,
                           color: card['color'] as Color,
                         ),

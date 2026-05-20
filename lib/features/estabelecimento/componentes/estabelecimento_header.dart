@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 class EstabelecimentoHeader extends StatelessWidget {
@@ -92,36 +93,21 @@ class EstabelecimentoHeader extends StatelessWidget {
                   // Logo
                   Hero(
                     tag: 'logo_${estabelecimento.id}',
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDark ? const Color(0xFF27272A) : Colors.white,
-                        border: Border.all(
-                          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                          width: 2,
+                    child: EstabelecimentoLogo(
+                      nome: estabelecimento.nome,
+                      logoUrl: estabelecimento.logoUrl,
+                      size: 70,
+                      circle: true,
+                      border: Border.all(
+                        color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 12,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: estabelecimento.logoUrl != null
-                            ? Image.network(
-                                estabelecimento.logoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
-                                    Icons.store_rounded,
-                                    size: 36,
-                                    color: Colors.grey[400]),
-                              )
-                            : Icon(Icons.store_rounded,
-                                size: 36, color: Colors.grey[400]),
-                      ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),

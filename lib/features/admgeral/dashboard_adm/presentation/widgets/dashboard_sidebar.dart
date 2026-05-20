@@ -144,7 +144,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Padoca Express',
+                                    'Ôpadoca Express',
                                     style: GoogleFonts.publicSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,

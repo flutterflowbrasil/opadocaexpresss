@@ -7,12 +7,21 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepository(Supabase.instance.client);
 });
 
+class DespachoRespostaException implements Exception {
+  final String codigo;
+  final String mensagem;
+
+  const DespachoRespostaException(this.codigo, this.mensagem);
+
+  @override
+  String toString() => mensagem;
+}
+
 class DashboardRepository {
   final SupabaseClient _supabase;
 
   DashboardRepository(this._supabase);
 
-  // ── Perfil completo (RLS filtra por auth.uid()) ──────────────────────────
   Future<Map<String, dynamic>> fetchDriverProfile() async {
     final data = await _supabase.from('entregadores').select('''
       id,
@@ -32,13 +41,11 @@ class DashboardRepository {
     return data;
   }
 
-  // ── Ganhos de hoje e da semana ────────────────────────────────────────────
   Future<Map<String, dynamic>> fetchEarnings() async {
     final hoje = DateTime.now();
     final inicioHoje = DateTime(hoje.year, hoje.month, hoje.day);
     final inicioSemana = inicioHoje.subtract(Duration(days: hoje.weekday - 1));
 
-    // RLS filtra pedidos onde entregador_id = get_entregador_id()
     final pedidosHoje = await _supabase
         .from('pedidos')
         .select('id, taxa_entrega, splits_pagamento(entregador_valor_total)')
@@ -57,7 +64,6 @@ class DashboardRepository {
     };
   }
 
-  // ── Últimas 5 entregas concluídas ────────────────────────────────────────
   Future<List<Map<String, dynamic>>> fetchRecentDeliveries() async {
     final data = await _supabase
         .from('pedidos')
@@ -76,7 +82,6 @@ class DashboardRepository {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  // ── Pedido em andamento ───────────────────────────────────────────────────
   Future<Map<String, dynamic>?> fetchActivePedido(String pedidoId) async {
     try {
       final data = await _supabase
@@ -99,9 +104,7 @@ class DashboardRepository {
     }
   }
 
-  // ── Detalhes do pedido para despacho recebido ────────────────────────────
-  Future<Map<String, dynamic>?> fetchPedidoTaxaEntrega(
-      String pedidoId) async {
+  Future<Map<String, dynamic>?> fetchPedidoTaxaEntrega(String pedidoId) async {
     try {
       final data = await _supabase
           .from('pedidos')
@@ -115,71 +118,69 @@ class DashboardRepository {
     }
   }
 
-  // ── Toggle online/offline ────────────────────────────────────────────────
+  Future<Map<String, dynamic>?> fetchPendingDespacho(String entregadorId) async {
+    try {
+      final data = await _supabase
+          .from('despacho_pedidos')
+          .select('id, pedido_id, distancia_km, expira_em')
+          .eq('entregador_id', entregadorId)
+          .eq('status', 'aguardando')
+          .gt('expira_em', DateTime.now().toUtc().toIso8601String())
+          .order('ofertado_em', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return data;
+    } catch (e) {
+      debugPrint('[DashboardRepository] fetchPendingDespacho error: $e');
+      return null;
+    }
+  }
+
   Future<void> updateOnlineStatus(bool isOnline) async {
-    // RLS restringe a linha do entregador logado
     await _supabase
         .from('entregadores')
         .update({'status_online': isOnline})
         .eq('usuario_id', _supabase.auth.currentUser!.id);
   }
 
-  // ── Aceitar despacho ─────────────────────────────────────────────────────
-  // TODO: mover para Edge Function 'responder-despacho' quando criada
   Future<void> aceitarDespacho(String despachoId) async {
-    // Busca pedido_id e entregador_id antes de atualizar
-    final despacho = await _supabase
-        .from('despacho_pedidos')
-        .select('pedido_id, entregador_id')
-        .eq('id', despachoId)
-        .single();
-
-    final pedidoId = despacho['pedido_id'] as String;
-    final entregadorId = despacho['entregador_id'] as String;
-
-    await _supabase.from('despacho_pedidos').update({
-      'status': 'aceito',
-      'respondido_em': DateTime.now().toIso8601String(),
-    }).eq('id', despachoId);
-
-    // Atualiza o próprio registro do entregador (RLS permite ao próprio entregador)
-    await _supabase.from('entregadores').update({
-      'status_despacho': 'em_pedido',
-      'pedido_atual_id': pedidoId,
-    }).eq('id', entregadorId);
-
-    // Tenta atualizar o pedido — pode falhar por RLS em algumas configurações,
-    // mas já é coberto por trigger no banco. Ignoramos o erro se ocorrer.
-    try {
-      await _supabase.from('pedidos').update({
-        'status': 'confirmado',
-        'entregador_id': entregadorId,
-      }).eq('id', pedidoId);
-    } catch (e) {
-      debugPrint('[aceitarDespacho] pedidos update skipped (trigger handles it): $e');
-    }
+    await _responderDespacho(despachoId, 'aceitar');
   }
 
-  // ── Rejeitar despacho ────────────────────────────────────────────────────
-  Future<void> rejeitarDespacho(String despachoId,
-      {String? motivo}) async {
-    await _supabase.from('despacho_pedidos').update({
-      'status': 'rejeitado',
-      'respondido_em': DateTime.now().toIso8601String(),
-      if (motivo != null) 'motivo_rejeicao': motivo,
-    }).eq('id', despachoId);
+  Future<void> rejeitarDespacho(String despachoId, {String? motivo}) async {
+    await _responderDespacho(
+      despachoId,
+      'recusar',
+      motivo: motivo ?? 'Recusado pelo entregador',
+    );
   }
 
-  // ── Confirmar entrega ────────────────────────────────────────────────────
-  // Trigger 'atualizar_stats_entregador' e 'trg_pedido_libera_entregador'
-  // disparam automaticamente após este UPDATE
+  Future<void> _responderDespacho(
+    String despachoId,
+    String acao, {
+    String? motivo,
+  }) async {
+    final response = await _supabase.rpc('responder_despacho', params: {
+      'p_despacho_id': despachoId,
+      'p_acao': acao,
+      'p_motivo': motivo,
+    });
+
+    final data = Map<String, dynamic>.from(response as Map);
+    if (data['ok'] == true) return;
+
+    throw DespachoRespostaException(
+      data['codigo'] as String? ?? 'erro_responder_despacho',
+      data['mensagem'] as String? ?? 'Erro ao responder oferta.',
+    );
+  }
+
   Future<void> confirmarEntrega(String pedidoId) async {
     await _supabase
         .from('pedidos')
         .update({'status': 'entregue'}).eq('id', pedidoId);
   }
 
-  // ── Atualiza localização ─────────────────────────────────────────────────
   Future<void> updateLocation(String entregadorId) async {
     final perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied ||
@@ -187,8 +188,10 @@ class DashboardRepository {
       await Geolocator.requestPermission();
     }
     final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high));
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+      ),
+    );
 
     await _supabase.from('entregador_localizacao_atual').upsert({
       'entregador_id': entregadorId,

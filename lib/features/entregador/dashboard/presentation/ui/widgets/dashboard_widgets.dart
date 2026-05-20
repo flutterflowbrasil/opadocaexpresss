@@ -888,23 +888,44 @@ class DespachoRecebidoCard extends StatefulWidget {
 
 class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
   Timer? _timer;
-  int _segundosRestantes = 45; // 45 segundos padrão a partir do recebimento
+  late final int _totalSegundos;
+  bool _expiradoNotificado = false;
+  int _segundosRestantes = 0;
 
   @override
   void initState() {
     super.initState();
-    _segundosRestantes = 45;
+    _segundosRestantes = _secondsUntilExpiry();
+    _totalSegundos = _segundosRestantes <= 0 ? 1 : _segundosRestantes;
+    if (_segundosRestantes <= 0) {
+      scheduleMicrotask(_notificarExpiracao);
+    }
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) { return; }
+      final restante = _secondsUntilExpiry();
       setState(() {
-        _segundosRestantes--;
+        _segundosRestantes = restante;
       });
       if (_segundosRestantes <= 0) {
-        _timer?.cancel();
-        widget.onRejeitar(); // expirado = auto-rejeitar
+        _notificarExpiracao();
       }
     });
     HapticFeedback.vibrate();
+  }
+
+  int _secondsUntilExpiry() {
+    return widget.despacho.expiraEm
+        .difference(DateTime.now())
+        .inSeconds
+        .clamp(0, 86400)
+        .toInt();
+  }
+
+  void _notificarExpiracao() {
+    if (_expiradoNotificado) { return; }
+    _expiradoNotificado = true;
+    _timer?.cancel();
+    widget.onRejeitar();
   }
 
   @override
@@ -915,8 +936,7 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
 
   @override
   Widget build(BuildContext context) {
-    const int totalSec = 45;
-    final pct = (_segundosRestantes / totalSec).clamp(0.0, 1.0);
+    final pct = (_segundosRestantes / _totalSegundos).clamp(0.0, 1.0);
     final urgente = _segundosRestantes <= 10;
 
     return Container(

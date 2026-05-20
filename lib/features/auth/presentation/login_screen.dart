@@ -129,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Bem-vindo de volta ao Padoca Express!',
+                'Bem-vindo de volta ao Ôpadoca Express!',
                 style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: isDark

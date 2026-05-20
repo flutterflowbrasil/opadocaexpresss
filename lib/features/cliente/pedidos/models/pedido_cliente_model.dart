@@ -115,6 +115,11 @@ class PedidoClienteModel {
         return 'preparando';
       case 'pronto':
         return 'pronto';
+      case 'a_caminho_coleta':
+      case 'no_estabelecimento':
+        return 'retirada';
+      case 'coletado':
+      case 'a_caminho_cliente':
       case 'em_entrega':
         return 'a caminho';
       case 'entregue':

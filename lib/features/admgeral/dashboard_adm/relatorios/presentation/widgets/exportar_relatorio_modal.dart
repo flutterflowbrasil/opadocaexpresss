@@ -38,7 +38,7 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
   String _buildCsv(RelatorioSnapshot snap) {
     final buf = StringBuffer();
 
-    buf.writeln('## RELATÓRIO PADOCA EXPRESS');
+    buf.writeln('## RELATÓRIO Ôpadoca Express');
     buf.writeln('Gerado em,${DateTime.now().toIso8601String()}');
     buf.writeln();
 
@@ -152,7 +152,7 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
       final now = DateTime.now().toString().substring(0, 16);
 
       final htmlContent = '''<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>Relatório Padoca Express</title>
+<meta charset="UTF-8"><title>Relatório Ôpadoca Express</title>
 <style>
   body{font-family:Arial,sans-serif;padding:24px;color:#1a0910;}
   h1{color:#8b5cf6;} h2{color:#374151;border-bottom:2px solid #eae8e4;padding-bottom:4px;margin-top:24px;}
@@ -165,7 +165,7 @@ class _ExportarRelatorioModalState extends State<ExportarRelatorioModal> {
   .kpi-lbl{font-size:11px;color:#6b7280;}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body>
-<h1>📊 Relatório Completo Padoca Express</h1>
+<h1>📊 Relatório Completo Ôpadoca Express</h1>
 <p style="color:#9ca3af;font-size:12px;">Gerado em $now</p>
 
 <h2>KPIs Gerais</h2>

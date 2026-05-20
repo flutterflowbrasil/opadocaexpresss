@@ -595,7 +595,7 @@ class _CadastroEstabelecimentoStep1ScreenState
                                     context.push('/privacy');
                                   },
                               ),
-                              const TextSpan(text: ' da Padoca Express.'),
+                              const TextSpan(text: ' da Ôpadoca Express.'),
                             ],
                           ),
                         ),

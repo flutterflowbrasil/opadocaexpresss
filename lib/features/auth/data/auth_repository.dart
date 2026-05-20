@@ -883,6 +883,8 @@ class AuthRepository {
         (result as Map<String, dynamic>)['rota'] as String? ?? '/home';
 
     if (route.startsWith('/dashboard_entregador')) {
+      // Entregador nunca pode usar o painel pelo navegador web
+      if (kIsWeb) return '/baixar_app_entregador';
       final entregador = await _supabase
           .from('entregadores')
           .select('status_cadastro')

@@ -83,6 +83,7 @@ class DashboardController extends StateNotifier<DashboardState> {
 
       // Inicia realtime se online
       if (profile['status_online'] == true) {
+        await _loadPendingDespacho(driverId);
         _iniciarRealtimeDespacho(driverId);
       }
 
@@ -162,6 +163,38 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   // ── Toggle online/offline ────────────────────────────────────────────────
+  Future<void> _loadPendingDespacho(String driverId) async {
+    try {
+      final record = await _repository.fetchPendingDespacho(driverId);
+      if (record == null) return;
+
+      final despachoId = record['id'] as String?;
+      final pedidoId = record['pedido_id'] as String?;
+      final expiraEm = record['expira_em'] != null
+          ? DateTime.tryParse(record['expira_em'] as String)
+          : null;
+
+      if (despachoId == null || pedidoId == null || expiraEm == null) return;
+
+      final pedido = await _repository.fetchPedidoTaxaEntrega(pedidoId);
+      final valorEntrega =
+          (pedido?['taxa_entrega'] as num?)?.toDouble() ?? 0.0;
+
+      state = state.copyWith(
+        statusDespacho: 'aguardando_aceite',
+        despachoRecebido: DespachoRecebido(
+          id: despachoId,
+          pedidoId: pedidoId,
+          distanciaKm: (record['distancia_km'] as num?)?.toDouble() ?? 0.0,
+          valorEntrega: valorEntrega,
+          expiraEm: expiraEm,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[DashboardController] _loadPendingDespacho error: $e');
+    }
+  }
+
   Future<void> toggleOnlineStatus() async {
     if (state.isTogglingStatus) return;
     state = state.copyWith(isTogglingStatus: true, clearError: true);
@@ -174,9 +207,11 @@ class DashboardController extends StateNotifier<DashboardState> {
         try {
           await _repository.updateLocation(state.driverId);
         } catch (_) {}
+        await _loadPendingDespacho(state.driverId);
         _iniciarRealtimeDespacho(state.driverId);
       } else {
         _cancelarRealtime();
+        state = state.copyWith(clearDespacho: true, statusDespacho: 'livre');
       }
 
       state = state.copyWith(isOnline: novoStatus, isTogglingStatus: false);
@@ -202,6 +237,13 @@ class DashboardController extends StateNotifier<DashboardState> {
         statusDespacho: 'em_pedido',
         pedidoAtualId: despacho.pedidoId,
       );
+    } on DespachoRespostaException catch (e) {
+      debugPrint('[DashboardController] aceitarDespacho rejected: ${e.codigo}');
+      state = state.copyWith(
+        isRespondingDespacho: false,
+        clearDespacho: true,
+        error: e.mensagem,
+      );
     } catch (e) {
       debugPrint('[DashboardController] aceitarDespacho error: $e');
       state = state.copyWith(
@@ -224,6 +266,15 @@ class DashboardController extends StateNotifier<DashboardState> {
         isRespondingDespacho: false,
         clearDespacho: true,
         statusDespacho: 'livre',
+      );
+    } on DespachoRespostaException catch (e) {
+      debugPrint('[DashboardController] rejeitarDespacho rejected: ${e.codigo}');
+      state = state.copyWith(
+        isRespondingDespacho: false,
+        clearDespacho: true,
+        statusDespacho: 'livre',
+        clearError: e.codigo == 'oferta_expirada',
+        error: e.codigo == 'oferta_expirada' ? null : e.mensagem,
       );
     } catch (e) {
       debugPrint('[DashboardController] rejeitarDespacho error: $e');

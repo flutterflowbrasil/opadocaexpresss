@@ -103,7 +103,7 @@ class PreCadastroScreen extends StatelessWidget {
 
                     // Title
                     Text(
-                      'Como você deseja usar o Padoca Express?',
+                      'Como você deseja usar o Ôpadoca Express?',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
                         fontSize: isDesktop ? 32 : 24,
@@ -182,7 +182,10 @@ class PreCadastroScreen extends StatelessWidget {
                         icon: Icons.two_wheeler_outlined,
                         buttonText: 'Cadastrar como Entregador',
                         onTap: () {
-                          context.push('/cadastro_entregador');
+                          // Entregadores só podem se cadastrar pelo app mobile
+                          context.push(
+                            kIsWeb ? '/baixar_app_entregador' : '/cadastro_entregador',
+                          );
                         },
                         isDark: isDark,
                         cardColor: cardColor,
@@ -236,7 +239,10 @@ class PreCadastroScreen extends StatelessWidget {
                         icon: Icons.two_wheeler_outlined,
                         buttonText: 'Cadastrar como Entregador',
                         onTap: () {
-                          context.push('/cadastro_entregador');
+                          // Entregadores só podem se cadastrar pelo app mobile
+                          context.push(
+                            kIsWeb ? '/baixar_app_entregador' : '/cadastro_entregador',
+                          );
                         },
                         isDark: isDark,
                         cardColor: cardColor,
@@ -250,7 +256,7 @@ class PreCadastroScreen extends StatelessWidget {
               // Back Button
               SizedBox(height: isDesktop ? 48 : 32),
               TextButton(
-                onPressed: () => context.pop(),
+                onPressed: () => context.go('/login'),
                 child: Text(
                   'Voltar para Login',
                   style: GoogleFonts.outfit(

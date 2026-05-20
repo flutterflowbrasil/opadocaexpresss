@@ -41,8 +41,20 @@ class _PedidosScreenState extends ConsumerState<PedidosScreen> {
       return matchSearch && matchPgto;
     }).toList();
 
-    List<PedidoKanbanModel> porColuna(String status) =>
-        filtrados.where((p) => p.status == status).toList();
+    List<PedidoKanbanModel> porColuna(String status) {
+      if (status == 'em_entrega') {
+        return filtrados
+            .where((p) => const {
+                  'a_caminho_coleta',
+                  'no_estabelecimento',
+                  'coletado',
+                  'a_caminho_cliente',
+                  'em_entrega',
+                }.contains(p.status))
+            .toList();
+      }
+      return filtrados.where((p) => p.status == status).toList();
+    }
 
     return Scaffold(
       backgroundColor:
@@ -422,7 +434,7 @@ class _PedidosScreenState extends ConsumerState<PedidosScreen> {
       case 'preparando':
         return 'pronto';
       case 'pronto':
-        return 'em_entrega';
+        return 'pronto';
       case 'em_entrega':
         return 'entregue'; // Optional, might want manual action
       default:

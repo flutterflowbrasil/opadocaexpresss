@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 
 class BakeryCard extends StatelessWidget {
   final String name;
@@ -49,15 +50,11 @@ class BakeryCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 90,
-                height: 90,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      _BakeryCardPlaceholder(isDark: isDark),
-                ),
+              child: EstabelecimentoLogo(
+                nome: name,
+                logoUrl: imageUrl,
+                size: 90,
+                borderRadius: 16,
               ),
             ),
             const SizedBox(width: 16),
@@ -130,27 +127,6 @@ class BakeryCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BakeryCardPlaceholder extends StatelessWidget {
-  final bool isDark;
-  const _BakeryCardPlaceholder({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEDE8E3),
-      child: Center(
-        child: Icon(
-          Icons.store_rounded,
-          size: 32,
-          color: isDark
-              ? Colors.white24
-              : const Color(0xFF7D2D35).withValues(alpha: 0.2),
         ),
       ),
     );
