@@ -46,11 +46,20 @@ class _CadastroPendenteScreenState
                   final docs = _docsByTipo(data);
                   final status = data?['status_cadastro'] as String? ?? 'pendente';
                   final rejected = status == 'rejeitado';
-                  final title =
-                      rejected ? 'Documentacao nao aprovada' : 'Cadastro em analise';
+                  final tiposEsperados = _tiposEsperados(data?['tipo_veiculo'] as String?);
+                  final cadastroIncompleto = tiposEsperados.any(
+                    (tipo) => docs[tipo] == null,
+                  );
+                  final title = rejected
+                      ? 'Documentacao nao aprovada'
+                      : cadastroIncompleto
+                          ? 'Cadastro incompleto'
+                          : 'Cadastro em analise';
                   final message = rejected
                       ? 'Revise os motivos abaixo e reenvie somente os documentos solicitados.'
-                      : 'Sua solicitacao foi enviada para o administrador. O acesso ao app de entregador sera liberado apos a aprovacao.';
+                      : cadastroIncompleto
+                          ? 'Envie os documentos abaixo para concluir seu cadastro. O administrador so podera analisar apos o envio completo.'
+                          : 'Sua solicitacao foi enviada para o administrador. O acesso ao app de entregador sera liberado apos a aprovacao.';
 
                   return Container(
                     padding: const EdgeInsets.all(24),
@@ -115,7 +124,7 @@ class _CadastroPendenteScreenState
                             _ReasonBox(text: data!['motivo_rejeicao'] as String),
                           ],
                           const SizedBox(height: 18),
-                          _buildDocsSection(data, docs, rejected),
+                          _buildDocsSection(data, docs, rejected, tiposEsperados),
                         ],
                         const SizedBox(height: 24),
                         SizedBox(
@@ -154,23 +163,21 @@ class _CadastroPendenteScreenState
     Map<String, dynamic>? data,
     Map<String, Map<String, dynamic>> docs,
     bool rejected,
+    List<String> tiposEsperados,
   ) {
     if (data == null) {
       return const SizedBox.shrink();
     }
-    final tipoVeiculo = data['tipo_veiculo'] as String?;
-    final tipos = tipoVeiculo == 'moto' || tipoVeiculo == 'carro'
-        ? const ['cnh_frente', 'cnh_verso', 'selfie']
-        : const ['identidade_frente', 'identidade_verso', 'selfie'];
 
     return Column(
       children: [
-        ...tipos.map((tipo) {
+        ...tiposEsperados.map((tipo) {
           final doc = docs[tipo];
+          final enviado = doc != null;
           final status = doc?['status_validacao'] as String?;
           final motivo = doc?['motivo_rejeicao'] as String?;
           final needsUpload =
-              rejected && (doc == null || status == 'reprovado');
+              !enviado || (rejected && status == 'reprovado');
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(12),
@@ -181,7 +188,7 @@ class _CadastroPendenteScreenState
             ),
             child: Row(
               children: [
-                Icon(_docIcon(tipo), color: _statusColor(status), size: 22),
+                Icon(_docIcon(tipo), color: _statusColor(status, enviado: enviado), size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -193,7 +200,7 @@ class _CadastroPendenteScreenState
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF1A0910))),
                       Text(
-                        motivo ?? _statusLabel(status),
+                        motivo ?? _statusLabel(status, enviado: enviado),
                         style: GoogleFonts.outfit(
                             fontSize: 12,
                             color: motivo != null
@@ -206,8 +213,11 @@ class _CadastroPendenteScreenState
                 if (needsUpload)
                   TextButton.icon(
                     onPressed: _isUploading ? null : () => _reenviar(tipo),
-                    icon: const Icon(Icons.upload_file_rounded, size: 16),
-                    label: const Text('Reenviar'),
+                    icon: Icon(
+                      enviado ? Icons.upload_file_rounded : Icons.add_a_photo_rounded,
+                      size: 16,
+                    ),
+                    label: Text(enviado ? 'Reenviar' : 'Enviar'),
                   ),
               ],
             ),
@@ -231,10 +241,13 @@ class _CadastroPendenteScreenState
     setState(() => _isUploading = true);
     try {
       final file = XFile(path);
+      final fileName = file.name.isNotEmpty
+          ? file.name
+          : path.split(RegExp(r'[\\/]')).last;
       await ref.read(authRepositoryProvider).reenviarDocumentoEntregador(
             tipo: tipo,
             bytes: await file.readAsBytes(),
-            fileName: file.name,
+            fileName: fileName,
           );
       if (!mounted) return;
       setState(() {
@@ -254,11 +267,23 @@ class _CadastroPendenteScreenState
   }
 
   Map<String, Map<String, dynamic>> _docsByTipo(Map<String, dynamic>? data) {
-    final docs = (data?['entregador_documentos'] as List?) ?? const [];
-    return {
-      for (final doc in docs.cast<Map>())
-        doc['tipo'] as String: Map<String, dynamic>.from(doc)
-    };
+    final raw = data?['entregador_documentos'];
+    if (raw is! List) return {};
+    final result = <String, Map<String, dynamic>>{};
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final doc = Map<String, dynamic>.from(item);
+      final tipo = doc['tipo'] as String?;
+      if (tipo != null) result[tipo] = doc;
+    }
+    return result;
+  }
+
+  List<String> _tiposEsperados(String? tipoVeiculo) {
+    if (tipoVeiculo == 'moto' || tipoVeiculo == 'carro') {
+      return const ['cnh_frente', 'cnh_verso', 'selfie'];
+    }
+    return const ['identidade_frente', 'identidade_verso', 'selfie'];
   }
 
   String _docLabel(String tipo) => switch (tipo) {
@@ -273,18 +298,24 @@ class _CadastroPendenteScreenState
   IconData _docIcon(String tipo) =>
       tipo == 'selfie' ? Icons.face_retouching_natural : Icons.badge_outlined;
 
-  Color _statusColor(String? status) => switch (status) {
-        'aprovado' => const Color(0xFF10B981),
-        'reprovado' => const Color(0xFFEF4444),
-        _ => const Color(0xFFF59E0B),
-      };
+  Color _statusColor(String? status, {required bool enviado}) {
+    if (!enviado) return const Color(0xFFEF4444);
+    return switch (status) {
+      'aprovado' => const Color(0xFF10B981),
+      'reprovado' => const Color(0xFFEF4444),
+      _ => const Color(0xFFF59E0B),
+    };
+  }
 
-  String _statusLabel(String? status) => switch (status) {
-        'aprovado' => 'Aprovado',
-        'reprovado' => 'Reprovado',
-        'pendente' => 'Aguardando revisao',
-        _ => 'Nao enviado',
-      };
+  String _statusLabel(String? status, {required bool enviado}) {
+    if (!enviado) return 'Nao enviado';
+    return switch (status) {
+      'aprovado' => 'Aprovado',
+      'reprovado' => 'Reprovado',
+      'pendente' => 'Aguardando revisao',
+      _ => 'Aguardando revisao',
+    };
+  }
 }
 
 class _ReasonBox extends StatelessWidget {

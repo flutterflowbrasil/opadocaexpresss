@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 enum CaptureMode { selfie, document }
 
@@ -36,14 +37,23 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     _initializeFuture = _initializeCamera();
   }
 
+  Future<void> _disposeController() async {
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      try {
+        await controller.dispose();
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
+
   Future<void> _initializeCamera() async {
     final token = ++_cameraInitToken;
     try {
       _errorMessage = null;
-      final previousController = _controller;
-      _controller = null;
-      await previousController?.dispose();
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await _disposeController();
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -73,20 +83,36 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       _controller = controller;
       setState(() {});
     } on CameraException catch (e) {
-      await _controller?.dispose();
-      _controller = null;
+      await _disposeController();
       _errorMessage = _cameraErrorMessage(e);
       if (mounted) setState(() {});
     } on PlatformException catch (e) {
-      await _controller?.dispose();
-      _controller = null;
+      await _disposeController();
       _errorMessage = _platformCameraErrorMessage(e);
       if (mounted) setState(() {});
     } catch (e) {
-      await _controller?.dispose();
-      _controller = null;
+      await _disposeController();
       _errorMessage = 'Não foi possível abrir a câmera.\nDetalhe: $e';
       if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _pickWithImagePicker() async {
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice:
+            _isSelfie ? CameraDevice.front : CameraDevice.rear,
+        imageQuality: 85,
+      );
+      if (!mounted || file == null) return;
+      await _disposeController();
+      if (!mounted) return;
+      Navigator.pop(context, file.path);
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Não foi possível obter a foto: $e');
     }
   }
 
@@ -126,21 +152,18 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraInitToken++;
-    unawaited(_controller?.dispose());
+    unawaited(_disposeController());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final controller = _controller;
+    if (_isCapturing) return;
 
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused) {
       _cameraInitToken++;
-      if (controller != null && controller.value.isInitialized) {
-        unawaited(controller.dispose());
-      }
-      _controller = null;
+      unawaited(_disposeController());
+      if (mounted) setState(() {});
     } else if (state == AppLifecycleState.resumed) {
       _initializeFuture = _initializeCamera();
       if (mounted) setState(() {});
@@ -159,8 +182,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     setState(() => _isCapturing = true);
     try {
       final file = await controller.takePicture();
+      final path = file.path;
+      _cameraInitToken++;
+      await _disposeController();
       if (!mounted) return;
-      Navigator.pop(context, file.path);
+      Navigator.pop(context, path);
     } on CameraException catch (e) {
       if (!mounted) return;
       setState(() => _isCapturing = false);
@@ -240,6 +266,16 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                             ),
                             icon: const Icon(Icons.refresh),
                             label: const Text('Tentar novamente'),
+                          ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: _pickWithImagePicker,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white70,
+                              side: const BorderSide(color: Colors.white54),
+                            ),
+                            icon: const Icon(Icons.photo_camera_outlined),
+                            label: const Text('Usar câmera do sistema'),
                           ),
                         ],
                       ),

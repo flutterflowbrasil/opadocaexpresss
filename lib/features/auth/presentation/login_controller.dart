@@ -64,6 +64,16 @@ class LoginController extends StateNotifier<LoginState> {
         state = state.copyWith(isLoading: false);
         return;
       }
+      if (code == 'google_popup_fechado') {
+        state = state.copyWith(
+          isLoading: false,
+          error:
+              'Login Google cancelado ou bloqueado. Se viu "no registered origin", '
+              'registre http://localhost:8085 no OAuth Client Web (Google Cloud) '
+              'ou mantenha GOOGLE_WEB_USE_NATIVE_SIGNIN=false no .env.',
+        );
+        return;
+      }
       state = state.copyWith(
         isLoading: false,
         error: SupabaseErrorHandler.parseError(e),

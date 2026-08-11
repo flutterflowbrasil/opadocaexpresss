@@ -18,11 +18,24 @@ class AuthRepository {
     _uniquenessValidator = AccountUniquenessValidator(_supabase);
   }
 
-  final _googleSignIn = GoogleSignIn(
-    clientId:
-        '330398810543-noqpc71p7c0jo5k5mt2udkp9k3hhjb0s.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
-  );
+  /// Client ID OAuth Web (tipo "Aplicativo da Web" no Google Cloud).
+  static String get _googleWebClientId {
+    const fromEnv = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return '330398810543-noqpc71p7c0jo5k5mt2udkp9k3hhjb0s.apps.googleusercontent.com';
+  }
+
+  /// Native sign-in no Web exige origin registrado no Google Cloud (ex.: http://localhost:8085).
+  static bool get _nativeGoogleSignInOnWeb {
+    const flag =
+        String.fromEnvironment('GOOGLE_WEB_USE_NATIVE_SIGNIN', defaultValue: 'false');
+    return flag == 'true' || flag == '1';
+  }
+
+  GoogleSignIn get _googleSignIn => GoogleSignIn(
+        clientId: _googleWebClientId,
+        scopes: const ['email', 'profile'],
+      );
 
   Future<void> signUpCliente({
     required String email,
@@ -505,10 +518,6 @@ class AuthRepository {
           )
         : null;
 
-    await _supabase.from('entregadores').update({
-      'foto_perfil_url': fotoPerfilUrl,
-    }).eq('id', entregadorId);
-
     final documentos = <Map<String, dynamic>>[
       {
         'entregador_id': entregadorId,
@@ -548,6 +557,10 @@ class AuthRepository {
 
     await _supabase.from('entregador_documentos').insert(documentos);
 
+    await _supabase.from('entregadores').update({
+      'foto_perfil_url': fotoPerfilUrl,
+      'status_cadastro': 'pendente',
+    }).eq('id', entregadorId);
   }
 
   Future<String> _uploadEntregadorDocumento({
@@ -611,22 +624,23 @@ class AuthRepository {
   }
 
   /// Retorna a rota após login com Google, ou lança exceção com código de erro.
+  ///
+  /// Web: usa OAuth via Supabase por padrão (funciona sem origin no GCP).
+  /// Com [GOOGLE_WEB_USE_NATIVE_SIGNIN=true] no .env, usa popup nativo (sem *.supabase.co)
+  /// — requer origin registrado no OAuth Client Web do Google Cloud.
   Future<String> loginComGoogle() async {
-    if (kIsWeb) {
-      return _loginComGoogleWeb();
+    if (kIsWeb && !_nativeGoogleSignInOnWeb) {
+      return _loginComGoogleSupabaseOAuth();
     }
-    return _loginComGoogleMobile();
+    return _loginComGoogleComIdToken();
   }
 
-  Future<String> _loginComGoogleWeb() async {
-    // Web não suporta signIn() nativo — usa OAuth popup do Supabase.
-    // redirectTo usa a origem atual para funcionar tanto em localhost quanto em produção.
+  Future<String> _loginComGoogleSupabaseOAuth() async {
     await _supabase.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: Uri.base.origin,
     );
 
-    // Aguarda o evento signedIn no stream (popup fecha e Supabase seta sessão).
     final event = await _supabase.auth.onAuthStateChange
         .where((e) => e.event == AuthChangeEvent.signedIn)
         .first
@@ -641,15 +655,21 @@ class AuthRepository {
     return validateSessionAndRoute();
   }
 
-  Future<String> _loginComGoogleMobile() async {
+  Future<String> _loginComGoogleComIdToken() async {
     final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) throw Exception('cancelado');
+    if (googleUser == null) {
+      if (kIsWeb) {
+        throw Exception('google_popup_fechado');
+      }
+      throw Exception('cancelado');
+    }
 
     final googleAuth = await googleUser.authentication;
     final idToken = googleAuth.idToken;
     final accessToken = googleAuth.accessToken;
-    if (idToken == null || accessToken == null)
+    if (idToken == null || accessToken == null) {
       throw Exception('tokens_invalidos');
+    }
 
     final response = await _supabase.auth.signInWithIdToken(
       provider: OAuthProvider.google,
@@ -729,14 +749,28 @@ class AuthRepository {
   Future<Map<String, dynamic>?> getMeuCadastroEntregador() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return null;
-    return await _supabase
+
+    final entregador = await _supabase
         .from('entregadores')
-        .select(
-          'id, status_cadastro, motivo_rejeicao, tipo_veiculo, '
-          'entregador_documentos(id, tipo, status_validacao, motivo_rejeicao)',
-        )
+        .select('id, status_cadastro, motivo_rejeicao, tipo_veiculo')
         .eq('usuario_id', user.id)
         .maybeSingle();
+    if (entregador == null) return null;
+
+    final entregadorId = entregador['id'] as String;
+    final documentos = await _supabase
+        .from('entregador_documentos')
+        .select('id, tipo, status_validacao, motivo_rejeicao')
+        .eq('entregador_id', entregadorId);
+
+    return {
+      ...Map<String, dynamic>.from(entregador),
+      'entregador_documentos': List<Map<String, dynamic>>.from(
+        (documentos as List).map(
+          (doc) => Map<String, dynamic>.from(doc as Map),
+        ),
+      ),
+    };
   }
 
   Future<void> reenviarDocumentoEntregador({
