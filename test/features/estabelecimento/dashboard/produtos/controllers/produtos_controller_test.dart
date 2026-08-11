@@ -16,6 +16,8 @@ void main() {
   setUp(() {
     mockRepository = MockProdutosRepository();
     controller = ProdutosController(mockRepository);
+    when(() => mockRepository.fetchCategoriasPrincipais())
+        .thenAnswer((_) async => []);
   });
 
   final dummyEstId = 'estab-123';
@@ -180,6 +182,26 @@ void main() {
       expect(controller.state.produtos.first.disponivel, isFalse);
       verify(() => mockRepository.updateDisponibilidade('p1', false))
           .called(1); // Checa que disparou para BD
+    });
+
+    test('9. Deve deletar produto e remover da lista', () async {
+      when(() => mockRepository.fetchProdutos(dummyEstId))
+          .thenAnswer((_) async => [prod1, prod2]);
+      when(() => mockRepository.fetchCategorias(dummyEstId))
+          .thenAnswer((_) async => [catPao]);
+      when(() => mockRepository.deleteProduto('p1')).thenAnswer((_) async {});
+
+      await controller.loadDados(dummyEstId);
+
+      expect(controller.state.produtos.length, 2);
+
+      // Act
+      await controller.deletarProduto('p1');
+
+      // Assert
+      expect(controller.state.produtos.length, 1);
+      expect(controller.state.produtos.first.id, 'p2');
+      verify(() => mockRepository.deleteProduto('p1')).called(1);
     });
   });
 }

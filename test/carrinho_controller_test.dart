@@ -115,4 +115,48 @@ void main() {
     expect(state.valorTotalProdutos, 0.0);
     expect(state.valorTotal, 0.0);
   });
+
+  test('Deve tratar variações de tamanho como itens separados e cobrar pelo preço da variação', () async {
+    final mockCupomRepo = MockCupomRepository();
+    final controller = CarrinhoController(mockCupomRepo);
+
+    final estab = EstabelecimentoModel(
+      id: 'estab_1',
+      nome: 'Padoca Teste',
+      avaliacaoMedia: 5.0,
+      totalAvaliacoes: 10,
+      statusAberto: true,
+      configEntrega: {'taxa_entrega_fixa': 5.0},
+    );
+
+    final produto = ProdutoModel(
+      id: 'prod_1',
+      estabelecimentoId: 'estab_1',
+      nome: 'Pizza',
+      preco: 10.00, // Preço normal ignorado
+      isAtivo: true,
+      permiteObservacoes: false,
+    );
+
+    // Adiciona pizza pequena
+    controller.adicionarProduto(produto, 1, 
+      estabelecimento: estab, 
+      tamanhoProdutoId: 't1', 
+      tamanhoProdutoNome: 'Pequena', 
+      precoBaseProduto: 30.0,
+      precoUnitario: 30.0);
+      
+    // Adiciona pizza grande
+    controller.adicionarProduto(produto, 1, 
+      estabelecimento: estab, 
+      tamanhoProdutoId: 't2', 
+      tamanhoProdutoNome: 'Grande', 
+      precoBaseProduto: 50.0,
+      precoUnitario: 50.0);
+
+    final state = controller.state;
+    expect(state.itens.length, 2); // Devem ser itens separados
+    expect(state.valorTotalProdutos, 80.0); // 30 + 50 = 80
+    expect(state.valorTotal, 85.0); // 80 + 5 (taxa) = 85
+  });
 }

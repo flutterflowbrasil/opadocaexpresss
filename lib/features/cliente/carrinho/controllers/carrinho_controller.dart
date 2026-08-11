@@ -146,6 +146,8 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     double? precoBaseProduto,
     double? precoUnitario,
     List<Map<String, dynamic>> opcoesSelecionadas = const [],
+    String? tamanhoProdutoId,
+    String? tamanhoProdutoNome,
   }) {
     if (state.estabelecimento != null &&
         estabelecimento != null &&
@@ -158,6 +160,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
           produto,
           observacao,
           opcoesSelecionadas,
+          tamanhoProdutoId,
         ));
 
     if (index >= 0) {
@@ -181,6 +184,8 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
       precoUnitario: precoUnitario ?? produto.precoAtual,
       opcoesSelecionadas: opcoesSelecionadas,
       observacao: observacao?.trim().isEmpty == true ? null : observacao,
+      tamanhoProdutoId: tamanhoProdutoId,
+      tamanhoProdutoNome: tamanhoProdutoNome,
     );
     final novaLista = List<ItemCarrinhoModel>.from(state.itens)..add(novoItem);
     unawaited(_updateState(state.copyWith(
@@ -194,12 +199,14 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     ProdutoModel produto, {
     String? observacao,
     List<Map<String, dynamic>> opcoesSelecionadas = const [],
+    String? tamanhoProdutoId,
   }) {
     final index = state.itens.indexWhere((item) => _sameCartEntry(
           item,
           produto,
           observacao,
           opcoesSelecionadas,
+          tamanhoProdutoId,
         ));
 
     if (index < 0) return;
@@ -227,12 +234,14 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     int novaQuantidade, {
     String? observacao,
     List<Map<String, dynamic>> opcoesSelecionadas = const [],
+    String? tamanhoProdutoId,
   }) {
     if (novaQuantidade <= 0) {
       removerProduto(
         produto,
         observacao: observacao,
         opcoesSelecionadas: opcoesSelecionadas,
+        tamanhoProdutoId: tamanhoProdutoId,
       );
       return;
     }
@@ -242,6 +251,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
           produto,
           observacao,
           opcoesSelecionadas,
+          tamanhoProdutoId,
         ));
 
     if (index < 0) return;
@@ -258,6 +268,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     String? observacaoAntiga,
     String novaObservacao, {
     List<Map<String, dynamic>> opcoesSelecionadas = const [],
+    String? tamanhoProdutoId,
   }) {
     final observacaoNormalizada =
         novaObservacao.trim().isEmpty ? null : novaObservacao.trim();
@@ -266,6 +277,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
           produto,
           observacaoAntiga,
           opcoesSelecionadas,
+          tamanhoProdutoId,
         ));
 
     if (index < 0) return;
@@ -274,7 +286,7 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     final novaLista = List<ItemCarrinhoModel>.from(state.itens);
     final existingIndex = state.itens.indexWhere((i) =>
         i != item &&
-        _sameCartEntry(i, produto, observacaoNormalizada, opcoesSelecionadas));
+        _sameCartEntry(i, produto, observacaoNormalizada, opcoesSelecionadas, tamanhoProdutoId));
 
     if (existingIndex >= 0) {
       final atualizado = novaLista[existingIndex].copyWith(
@@ -360,9 +372,11 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     ProdutoModel produto,
     String? observacao,
     List<Map<String, dynamic>> opcoesSelecionadas,
+    String? tamanhoProdutoId,
   ) {
     return item.produto.id == produto.id &&
         (item.observacao ?? '') == (observacao ?? '') &&
+        item.tamanhoProdutoId == tamanhoProdutoId &&
         _optionsKey(item.opcoesSelecionadas) == _optionsKey(opcoesSelecionadas);
   }
 

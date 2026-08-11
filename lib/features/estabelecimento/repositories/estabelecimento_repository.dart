@@ -49,7 +49,7 @@ class EstabelecimentoRepository {
     final response = await _client
         .from('produtos')
         .select(
-            'id, nome, descricao, preco, preco_promocional, foto_principal_url, ativo, disponivel, permite_observacao, categoria_cardapio_id, estabelecimento_id, tipo_produto, opcoes, total_vendidos')
+            'id, nome, descricao, preco, preco_promocional, foto_principal_url, ativo, disponivel, permite_observacao, categoria_cardapio_id, estabelecimento_id, tipo_produto, opcoes, total_vendidos, produto_precos_tamanhos(id, produto_id, nome_tamanho, preco, ordem, ativo)')
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('ativo', true);
 

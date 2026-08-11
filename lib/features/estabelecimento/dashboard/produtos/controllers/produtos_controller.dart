@@ -274,6 +274,26 @@ class ProdutosController extends StateNotifier<ProdutosState> {
     }
   }
 
+  Future<void> deletarProduto(String produtoId) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _repository.deleteProduto(produtoId);
+      final updated = state.produtos.where((p) => p.id != produtoId).toList();
+      state = state.copyWith(isLoading: false, produtos: updated);
+      aplicarFiltros(
+        query: state.searchQuery,
+        categoriaId: state.selectedCategoriaId,
+        status: state.selectedStatusFilter,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Erro ao excluir produto: $e',
+      );
+      rethrow;
+    }
+  }
+
   // ── Tamanhos (Pizza) ────────────────────────────────────────────────────────
 
   Future<List<ProdutoPrecoTamanhoModel>> fetchTamanhos(

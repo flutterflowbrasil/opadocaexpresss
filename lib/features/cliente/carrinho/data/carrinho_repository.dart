@@ -97,6 +97,8 @@ class CarrinhoRepository {
           opcoes_selecionadas,
           observacao,
           subtotal,
+          tamanho_produto_id,
+          tamanho_produto_nome,
           produtos(
             id,
             estabelecimento_id,
@@ -174,6 +176,10 @@ class CarrinhoRepository {
       'opcoes_selecionadas': item.opcoesSelecionadas,
       'observacao': item.observacao,
       'updated_at': DateTime.now().toIso8601String(),
+      if (item.tamanhoProdutoId != null)
+        'tamanho_produto_id': item.tamanhoProdutoId,
+      if (item.tamanhoProdutoNome != null)
+        'tamanho_produto_nome': item.tamanhoProdutoNome,
     };
 
     if (item.id != null) {
@@ -229,7 +235,8 @@ class CarrinhoRepository {
   }) async {
     final rows = await _client
         .from('itens_carrinho')
-        .select('id, observacao, opcoes_selecionadas')
+        .select(
+            'id, observacao, opcoes_selecionadas, tamanho_produto_id')
         .eq('carrinho_id', carrinhoId)
         .eq('produto_id', item.produto.id);
 
@@ -241,6 +248,7 @@ class CarrinhoRepository {
           .map((opcao) => Map<String, dynamic>.from(opcao))
           .toList();
       if ((row['observacao'] as String? ?? '') == (item.observacao ?? '') &&
+          (row['tamanho_produto_id'] as String?) == item.tamanhoProdutoId &&
           _opcoesKey(rowOpcoes) == opcoesKey) {
         return row['id'] as String?;
       }

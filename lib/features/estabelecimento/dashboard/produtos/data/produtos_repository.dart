@@ -74,6 +74,14 @@ class ProdutosRepository {
     data.remove('updated_at');
     if ((data['id'] as String?)?.isEmpty ?? false) data.remove('id');
 
+    // Sanitiza UUIDs vazios para evitar erro de sintaxe PostgrestException
+    if ((data['categoria_id'] as String?)?.isEmpty ?? false) {
+      data['categoria_id'] = null;
+    }
+    if ((data['categoria_cardapio_id'] as String?)?.isEmpty ?? false) {
+      data['categoria_cardapio_id'] = null;
+    }
+
     // Segurança backend: força opcoes=[] se categoria não permite adicionais
     if (!categoriaPermiteAdicionais) {
       data['opcoes'] = [];
@@ -227,7 +235,10 @@ class ProdutosRepository {
   ) async {
     if (tamanhos.isEmpty) return [];
 
-    final rows = tamanhos.map((t) => t.toJson()).toList();
+    final rows = tamanhos.map((t) {
+      final json = t.copyWith(produtoId: produtoId).toJson();
+      return json;
+    }).toList();
 
     final response = await _supabase
         .from('produto_precos_tamanhos')

@@ -88,15 +88,29 @@ class ItemCarrinhoCard extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        produto.nome,
-                        style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            produto.nome,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (item.tamanhoProdutoNome != null)
+                            Text(
+                              'Tamanho: ${item.tamanhoProdutoNome}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: mutedTextColor,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -109,7 +123,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
                             .read(carrinhoControllerProvider.notifier)
                             .removerProduto(produto,
                                 observacao: item.observacao,
-                                opcoesSelecionadas: item.opcoesSelecionadas);
+                                opcoesSelecionadas: item.opcoesSelecionadas,
+                                tamanhoProdutoId: item.tamanhoProdutoId);
                       },
                     ),
                   ],
@@ -219,7 +234,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
               ref.read(carrinhoControllerProvider.notifier).atualizarQuantidade(
                   produto, item.quantidade - 1,
                   observacao: item.observacao,
-                  opcoesSelecionadas: item.opcoesSelecionadas);
+                  opcoesSelecionadas: item.opcoesSelecionadas,
+                  tamanhoProdutoId: item.tamanhoProdutoId);
             },
             borderRadius:
                 const BorderRadius.horizontal(left: Radius.circular(20)),
@@ -246,7 +262,8 @@ class ItemCarrinhoCard extends ConsumerWidget {
               ref.read(carrinhoControllerProvider.notifier).atualizarQuantidade(
                   produto, item.quantidade + 1,
                   observacao: item.observacao,
-                  opcoesSelecionadas: item.opcoesSelecionadas);
+                  opcoesSelecionadas: item.opcoesSelecionadas,
+                  tamanhoProdutoId: item.tamanhoProdutoId);
             },
             borderRadius:
                 const BorderRadius.horizontal(right: Radius.circular(20)),
@@ -426,6 +443,7 @@ void _mostrarDialogoObservacao(
                         item.observacao,
                         obsController.text.trim(),
                         opcoesSelecionadas: item.opcoesSelecionadas,
+                        tamanhoProdutoId: item.tamanhoProdutoId,
                       );
                   Navigator.of(context).pop();
                 },

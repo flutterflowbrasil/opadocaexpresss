@@ -8,6 +8,8 @@ class ItemCarrinhoModel {
   final double precoUnitario;
   final List<Map<String, dynamic>> opcoesSelecionadas;
   final String? observacao;
+  final String? tamanhoProdutoId;
+  final String? tamanhoProdutoNome;
 
   ItemCarrinhoModel({
     this.id,
@@ -17,6 +19,8 @@ class ItemCarrinhoModel {
     double? precoUnitario,
     List<Map<String, dynamic>>? opcoesSelecionadas,
     this.observacao,
+    this.tamanhoProdutoId,
+    this.tamanhoProdutoNome,
   })  : precoBaseProduto = precoBaseProduto ?? produto.precoAtual,
         precoUnitario = precoUnitario ?? produto.precoAtual,
         opcoesSelecionadas = opcoesSelecionadas ?? const [];
@@ -30,6 +34,8 @@ class ItemCarrinhoModel {
     List<Map<String, dynamic>>? opcoesSelecionadas,
     String? observacao,
     bool clearObservacao = false,
+    String? tamanhoProdutoId,
+    String? tamanhoProdutoNome,
   }) {
     return ItemCarrinhoModel(
       id: id ?? this.id,
@@ -39,6 +45,8 @@ class ItemCarrinhoModel {
       precoUnitario: precoUnitario ?? this.precoUnitario,
       opcoesSelecionadas: opcoesSelecionadas ?? this.opcoesSelecionadas,
       observacao: clearObservacao ? null : (observacao ?? this.observacao),
+      tamanhoProdutoId: tamanhoProdutoId ?? this.tamanhoProdutoId,
+      tamanhoProdutoNome: tamanhoProdutoNome ?? this.tamanhoProdutoNome,
     );
   }
 
@@ -67,6 +75,8 @@ class ItemCarrinhoModel {
           (json['preco_unitario'] as num?)?.toDouble() ?? produto.precoAtual,
       opcoesSelecionadas: opcoes,
       observacao: json['observacao'] as String?,
+      tamanhoProdutoId: json['tamanho_produto_id'] as String?,
+      tamanhoProdutoNome: json['tamanho_produto_nome'] as String?,
     );
   }
 
@@ -79,6 +89,8 @@ class ItemCarrinhoModel {
       'preco_unitario': precoUnitario,
       'opcoes_selecionadas': opcoesSelecionadas,
       'observacao': observacao,
+      if (tamanhoProdutoId != null) 'tamanho_produto_id': tamanhoProdutoId,
+      if (tamanhoProdutoNome != null) 'tamanho_produto_nome': tamanhoProdutoNome,
     };
   }
 
@@ -94,6 +106,8 @@ class ItemCarrinhoModel {
       'opcoes_selecionadas': opcoesSelecionadas,
       if (observacao != null && observacao!.isNotEmpty)
         'observacao': observacao,
+      if (tamanhoProdutoId != null) 'tamanho_produto_id': tamanhoProdutoId,
+      if (tamanhoProdutoNome != null) 'tamanho_produto_nome': tamanhoProdutoNome,
       'subtotal': subtotal,
     };
   }

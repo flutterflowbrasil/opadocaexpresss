@@ -86,15 +86,20 @@ class ProdutoCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Text(
-                    'R\$ ${produto.precoAtual.toStringAsFixed(2).replaceAll('.', ',')}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: _primaryColor,
+                  Expanded(
+                    child: Text(
+                      produto.temVariacoesDePreco
+                          ? 'A partir de R\$ ${produto.precoMinimo.toStringAsFixed(2).replaceAll('.', ',')}'
+                          : 'R\$ ${produto.precoAtual.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (produto.precoPromocional != null) ...[
+                  if (!produto.temVariacoesDePreco && produto.precoPromocional != null) ...[
                     const SizedBox(width: 6),
                     Text(
                       'R\$ ${produto.preco.toStringAsFixed(2).replaceAll('.', ',')}',
@@ -190,28 +195,36 @@ class ProdutoCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  'R\$ ${produto.precoAtual.toStringAsFixed(2).replaceAll('.', ',')}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: _primaryColor,
-                  ),
-                ),
-                if (produto.precoPromocional != null) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    'R\$ ${produto.preco.toStringAsFixed(2).replaceAll('.', ',')}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: mutedTextColor,
-                      decoration: TextDecoration.lineThrough,
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      produto.temVariacoesDePreco
+                          ? 'A partir de R\$ ${produto.precoMinimo.toStringAsFixed(2).replaceAll('.', ',')}'
+                          : 'R\$ ${produto.precoAtual.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
+                  if (!produto.temVariacoesDePreco && produto.precoPromocional != null) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      'R\$ ${produto.preco.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: mutedTextColor,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
             InkWell(
               onTap: onAddTap,

@@ -14,6 +14,7 @@ import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_co
 import 'package:padoca_express/features/cliente/componentes/cart_conflict_dialog.dart';
 import 'package:padoca_express/features/cliente/componentes/produto_simples_dialog.dart';
 import 'package:padoca_express/features/cliente/componentes/produto_variavel_dialog.dart';
+import 'package:padoca_express/features/cliente/componentes/produto_com_tamanho_dialog.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 
 class EstabelecimentoScreen extends ConsumerWidget {
@@ -160,7 +161,43 @@ class EstabelecimentoScreen extends ConsumerWidget {
           child: Consumer(
             builder: (context, ref, child) {
               void processAddLogic() {
-                if (produto.tipoProduto == 'variavel' ||
+                if (produto.temVariacoesDePreco) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => ProdutoComTamanhoDialog(
+                      produto: produto,
+                      estabelecimento: modelAtualizado,
+                      onAddTap: (qtd, obs, selecoes, tamanhoSelecionado) {
+                        final adicionais =
+                            selecoes.fold<double>(0, (total, grupo) {
+                          final itens = grupo['itens'] as List? ?? [];
+                          return total +
+                              itens.fold<double>(
+                                0,
+                                (subtotal, item) =>
+                                    subtotal +
+                                    ((item as Map)['preco'] as num? ?? 0)
+                                        .toDouble(),
+                              );
+                        });
+
+                        ref
+                            .read(carrinhoControllerProvider.notifier)
+                            .adicionarProduto(
+                              produto,
+                              qtd,
+                              observacao: obs,
+                              estabelecimento: modelAtualizado,
+                              precoBaseProduto: tamanhoSelecionado.preco,
+                              precoUnitario: tamanhoSelecionado.preco + adicionais,
+                              opcoesSelecionadas: selecoes,
+                              tamanhoProdutoId: tamanhoSelecionado.id,
+                              tamanhoProdutoNome: tamanhoSelecionado.nomeTamanho,
+                            );
+                      },
+                    ),
+                  );
+                } else if (produto.tipoProduto == 'variavel' ||
                     produto.opcoes.isNotEmpty) {
                   showDialog(
                     context: context,
