@@ -156,6 +156,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
 
   StreamSubscription<Position>? _posStream;
   Position? _posicaoAtual;
+  bool _checkinFeito = false;
 
   late AnimationController _statusAnim;
   late Animation<double> _statusScale;
@@ -219,6 +220,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
         case 'no_estabelecimento':
         case 'preparando':
           statusAtual = StatusEntrega.emColeta;
+          _checkinFeito = dbStatus == 'no_estabelecimento';
           break;
         case 'coletado':
         case 'pronto':
@@ -295,32 +297,58 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     } catch (_) {}
   }
 
+  DateTime? _ultimoGpsEnviado;
+
   Future<void> _enviarLocalizacao(Position pos) async {
     if (_entregadorId == null) return;
+    final agora = DateTime.now();
+    if (_ultimoGpsEnviado != null &&
+        agora.difference(_ultimoGpsEnviado!) < const Duration(seconds: 8)) {
+      return;
+    }
+    _ultimoGpsEnviado = agora;
     try {
-      await Supabase.instance.client.from('entregador_localizacao_atual').upsert({
-        'entregador_id': _entregadorId,
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
-        'velocidade_kmh': (pos.speed * 3.6).clamp(0, 200),
-        'updated_at': DateTime.now().toIso8601String(),
+      await _rpcOk('fn_atualizar_localizacao_entrega', {
+        'p_pedido_id': widget.pedidoId,
+        'p_lat': pos.latitude,
+        'p_lng': pos.longitude,
+        'p_velocidade_kmh': (pos.speed * 3.6).clamp(0, 200),
       });
-
-      await Supabase.instance.client.from('rastreamento_entregadores').insert({
-        'entregador_id': _entregadorId,
-        'pedido_id': widget.pedidoId,
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
-        'velocidade_kmh': (pos.speed * 3.6).clamp(0, 200),
-      });
-
-      await Supabase.instance.client
-          .from('pedidos')
-          .update({
-            'localizacao_entregador': {'lat': pos.latitude, 'lng': pos.longitude},
-          })
-          .eq('id', widget.pedidoId);
+      await _talvezCheckinEstabelecimento(pos);
     } catch (_) {}
+  }
+
+  Future<void> _talvezCheckinEstabelecimento(Position pos) async {
+    if (_checkinFeito) return;
+    if (_status != StatusEntrega.emColeta) return;
+    if (_estabelecimentoLat == null || _estabelecimentoLng == null) return;
+    final dist = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      _estabelecimentoLat!,
+      _estabelecimentoLng!,
+    );
+    if (dist > 150) return;
+    try {
+      await _rpcOk('fn_checkin_estabelecimento', {
+        'p_pedido_id': widget.pedidoId,
+        'p_lat': pos.latitude,
+        'p_lng': pos.longitude,
+      });
+      _checkinFeito = true;
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>> _rpcOk(
+    String fn,
+    Map<String, dynamic> params,
+  ) async {
+    final response = await Supabase.instance.client.rpc(fn, params: params);
+    final data = Map<String, dynamic>.from(response as Map);
+    if (data['ok'] != true) {
+      throw Exception(data['erro'] ?? data['mensagem'] ?? 'Operacao recusada.');
+    }
+    return data;
   }
 
   // ── Cronômetro ────────────────────────────────────────────────────────────
@@ -364,26 +392,15 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     setState(() => _atualizando = true);
 
     try {
-      final agora = DateTime.now().toIso8601String();
-      final updates = <String, dynamic>{'status': proximo.dbStatus};
-
-      switch (proximo) {
-        case StatusEntrega.emColeta:
-          updates['a_caminho_coleta_em'] = agora;
-          break;
-        case StatusEntrega.emEntrega:
-          updates['em_entrega_em'] = agora;
-          _inicioEntrega = DateTime.now();
-          _iniciarCronometro();
-          break;
-        default:
-          break;
+      if (proximo == StatusEntrega.emColeta) {
+        await _rpcOk('fn_iniciar_coleta', {'p_pedido_id': widget.pedidoId});
+      } else if (proximo == StatusEntrega.emEntrega) {
+        await _rpcOk('fn_saiu_para_cliente', {'p_pedido_id': widget.pedidoId});
+        _inicioEntrega = DateTime.now();
+        _iniciarCronometro();
+      } else {
+        throw Exception('Transicao nao suportada.');
       }
-
-      await Supabase.instance.client
-          .from('pedidos')
-          .update(updates)
-          .eq('id', widget.pedidoId);
 
       if (!mounted) return;
       _statusAnim.reset();
@@ -480,23 +497,23 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () {
+              onPressed: () async {
                 final entrada = ctrl.text.trim().toUpperCase();
-                final esperado =
-                    (_codigoColeta ?? '').trim().toUpperCase();
-
                 if (entrada.isEmpty) {
                   setDlg(() => erroMsg = 'Digite o código.');
                   return;
                 }
-                if (esperado.isNotEmpty && entrada != esperado) {
-                  setDlg(() => erroMsg = 'Código incorreto. Tente novamente.');
+                try {
+                  await _rpcOk('fn_validar_codigo_balcao', {
+                    'p_pedido_id': widget.pedidoId,
+                    'p_codigo': entrada,
+                  });
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _avancarParaColetado();
+                } catch (e) {
+                  setDlg(() => erroMsg = e.toString().replaceFirst('Exception: ', ''));
                   HapticFeedback.heavyImpact();
-                  return;
                 }
-                // Código correto (ou pedido sem código definido)
-                Navigator.pop(ctx);
-                _avancarParaColetado();
               },
               child: Text('Confirmar retirada',
                   style: GoogleFonts.outfit(
@@ -510,26 +527,14 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
 
   Future<void> _avancarParaColetado() async {
     HapticFeedback.mediumImpact();
-    setState(() => _atualizando = true);
-    try {
-      await Supabase.instance.client
-          .from('pedidos')
-          .update({'status': 'coletado', 'coletado_em': DateTime.now().toIso8601String()})
-          .eq('id', widget.pedidoId);
-
-      if (!mounted) return;
-      _statusAnim.reset();
-      setState(() {
-        _status = StatusEntrega.coletado;
-        _atualizando = false;
-      });
-      _statusAnim.forward();
-      HapticFeedback.heavyImpact();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _atualizando = false);
-      _mostrarErro('Erro ao confirmar retirada.');
-    }
+    if (!mounted) return;
+    _statusAnim.reset();
+    setState(() {
+      _status = StatusEntrega.coletado;
+      _atualizando = false;
+    });
+    _statusAnim.forward();
+    HapticFeedback.heavyImpact();
   }
 
   // ── Confirmar entrega ─────────────────────────────────────────────────────
@@ -572,7 +577,9 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             fileOptions: const FileOptions(contentType: 'image/jpeg'),
           );
 
-      await _finalizarEntrega(fotoPath: path);
+      if (!mounted) return;
+      setState(() => _atualizando = false);
+      _mostrarDialogCodigo(fotoPath: path);
     } catch (e) {
       if (mounted) {
         setState(() => _atualizando = false);
@@ -581,7 +588,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     }
   }
 
-  void _mostrarDialogCodigo() {
+  void _mostrarDialogCodigo({String? fotoPath}) {
     final ctrl = TextEditingController();
     String? erroMsg;
 
@@ -665,23 +672,20 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () {
+              onPressed: () async {
                 final entrada = ctrl.text.trim().toUpperCase();
-                final esperado =
-                    (_codigoEntrega ?? '').trim().toUpperCase();
-
                 if (entrada.isEmpty) {
                   setDlg(() => erroMsg = 'Digite o código.');
                   return;
                 }
-                if (esperado.isNotEmpty && entrada != esperado) {
-                  setDlg(
-                      () => erroMsg = 'Código incorreto. Tente novamente.');
+                try {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _finalizarEntrega(codigo: entrada, fotoPath: fotoPath);
+                } catch (e) {
+                  setDlg(() => erroMsg =
+                      e.toString().replaceFirst('Exception: ', ''));
                   HapticFeedback.heavyImpact();
-                  return;
                 }
-                Navigator.pop(ctx);
-                _finalizarEntrega(codigo: entrada);
               },
               child: Text(
                 'Confirmar entrega',
@@ -695,25 +699,16 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     );
   }
 
-  Future<void> _finalizarEntrega({String? fotoPath, String? codigo}) async {
+  Future<void> _finalizarEntrega({required String codigo, String? fotoPath}) async {
     setState(() => _atualizando = true);
     _cronoTimer?.cancel();
 
     try {
-      final agora = DateTime.now().toIso8601String();
-
-      await Supabase.instance.client
-          .from('pedidos')
-          .update({'status': 'entregue', 'entregue_em': agora})
-          .eq('id', widget.pedidoId);
-
-      if (_entregadorId != null) {
-        await Supabase.instance.client.from('entregadores').update({
-          'status_despacho': 'livre',
-          'pedido_atual_id': null,
-          'ultima_entrega_em': agora,
-        }).eq('id', _entregadorId!);
-      }
+      await _rpcOk('fn_confirmar_entrega', {
+        'p_pedido_id': widget.pedidoId,
+        'p_codigo': codigo,
+        'p_foto_path': fotoPath,
+      });
 
       if (!mounted) return;
       _statusAnim.reset();

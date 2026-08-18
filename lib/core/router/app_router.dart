@@ -41,7 +41,8 @@ import 'package:padoca_express/features/cliente/pedidos/presentation/meus_pedido
 import 'package:padoca_express/features/cliente/pedidos/presentation/pedido_acompanhar_screen.dart';
 import 'package:padoca_express/features/entregador/carteira/presentation/ui/carteira_screen.dart';
 import 'package:padoca_express/features/entregador/historico/presentation/ui/historico_screen.dart';
-import 'package:padoca_express/features/entregador/entregas/presentation/ui/entrega_andamento_screen.dart';
+import 'package:padoca_express/features/entregador/entregas/presentation/ui/entrega_andamento_screen_web.dart'
+    if (dart.library.io) 'package:padoca_express/features/entregador/entregas/presentation/ui/entrega_andamento_screen.dart';
 import 'package:padoca_express/features/entregador/avaliacoes/presentation/ui/avaliacoes_screen.dart';
 import 'package:padoca_express/features/entregador/perfil/presentation/ui/perfil_screen.dart';
 import 'package:padoca_express/features/entregador/configuracoes/presentation/ui/configuracoes_screen.dart' as ent_cfg;

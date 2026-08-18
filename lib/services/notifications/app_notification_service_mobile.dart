@@ -5,8 +5,39 @@ class MobileNotificationService implements AppNotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static const AndroidNotificationChannel _channel =
+  static const AndroidNotificationChannel entregasUrgente =
       AndroidNotificationChannel(
+    'padoca_entregas_urgente',
+    'Ofertas de entrega',
+    description: 'Novas ofertas de despacho para o entregador',
+    importance: Importance.max,
+    playSound: true,
+    sound: RawResourceAndroidNotificationSound('notificacoes_entregador'),
+  );
+
+  static const AndroidNotificationChannel pedidosUrgente =
+      AndroidNotificationChannel(
+    'padoca_pedidos_urgente',
+    'Pedidos urgentes',
+    description: 'Novos pedidos para o estabelecimento',
+    importance: Importance.max,
+  );
+
+  static const AndroidNotificationChannel pedidos = AndroidNotificationChannel(
+    'padoca_pedidos',
+    'Pedidos',
+    description: 'Atualizacoes de pedidos',
+    importance: Importance.high,
+  );
+
+  static const AndroidNotificationChannel geral = AndroidNotificationChannel(
+    'padoca_geral',
+    'Geral',
+    description: 'Notificacoes gerais da plataforma',
+    importance: Importance.defaultImportance,
+  );
+
+  static const AndroidNotificationChannel legado = AndroidNotificationChannel(
     'padoca_express_channel',
     'Notificações Ôpadoca Express',
     description: 'Canal de notificações do Ôpadoca Express',
@@ -35,7 +66,11 @@ class MobileNotificationService implements AppNotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
-    await androidPlatform?.createNotificationChannel(_channel);
+    await androidPlatform?.createNotificationChannel(entregasUrgente);
+    await androidPlatform?.createNotificationChannel(pedidosUrgente);
+    await androidPlatform?.createNotificationChannel(pedidos);
+    await androidPlatform?.createNotificationChannel(geral);
+    await androidPlatform?.createNotificationChannel(legado);
   }
 
   @override
@@ -80,9 +115,9 @@ class MobileNotificationService implements AppNotificationService {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'padoca_express_channel',
-      'Notificações Ôpadoca Express',
-      channelDescription: 'Canal de notificações do Ôpadoca Express',
+      'padoca_geral',
+      'Geral',
+      channelDescription: 'Notificacoes gerais da plataforma',
       importance: Importance.max,
       priority: Priority.high,
     );

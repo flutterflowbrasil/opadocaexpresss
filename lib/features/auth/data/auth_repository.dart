@@ -8,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:padoca_express/core/maps_loader.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 
 class AuthRepository {
   final SupabaseClient _supabase;
@@ -693,6 +695,7 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    await PushDeviceRegistrar.logout();
     await _googleSignIn.signOut();
     await _supabase.auth.signOut();
     // M1: Limpar todos os dados locais criptografados ao fazer logout
@@ -946,6 +949,16 @@ class AuthRepository {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
+  final sub = supabase.auth.onAuthStateChange.listen((data) {
+    if (data.session == null) return;
+    PushDeviceRegistrar.sync();
+    MapsLoader.load();
+  });
+  ref.onDispose(sub.cancel);
+  if (supabase.auth.currentSession != null) {
+    PushDeviceRegistrar.sync();
+    MapsLoader.load();
+  }
   return AuthRepository(supabase);
 });
 

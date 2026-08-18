@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,6 +10,8 @@ import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/core/router/app_router.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
 import 'package:padoca_express/core/maps_loader.dart';
+import 'package:padoca_express/services/notifications/onesignal_service.dart';
+import 'package:padoca_express/services/notifications/push_notification_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -29,6 +33,9 @@ void main() async {
   // Inicializa Supabase e Datas
   await initializeDateFormatting('pt_BR', null);
   await SupabaseConfig.initialize();
+  // OneSignal no Chrome pode rejeitar (SW, localhost, SDK defer).
+  // Nunca bloquear nem derrubar o app por falha de push.
+  unawaited(_initOneSignal());
 
   // Carrega a Google Maps JavaScript API apenas na Web.
   // A chave é obtida de forma segura via Edge Function `maps-config` (JWT).
@@ -40,6 +47,14 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
+Future<void> _initOneSignal() async {
+  try {
+    await OneSignalService.initialize();
+  } catch (e) {
+    debugPrint('[OneSignal] falha na inicializacao: $e');
+  }
+}
+
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -47,6 +62,15 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final router = ref.watch(appRouterProvider);
+
+    ref.listen<PushNotificationState>(pushNotificationControllerProvider,
+        (previous, next) {
+      final route = next.pendingRoute;
+      if (route == null || route == previous?.pendingRoute) return;
+      router.go(route);
+      ref.read(pushNotificationControllerProvider.notifier).clearPendingRoute();
+    });
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
@@ -75,7 +99,7 @@ class MyApp extends ConsumerWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      routerConfig: ref.watch(appRouterProvider),
+      routerConfig: router,
     );
   }
 }

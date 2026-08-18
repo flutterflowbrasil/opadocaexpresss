@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 
 // Estado do formulário de cadastro
 class CadastroClienteState {
@@ -48,6 +49,7 @@ class CadastroClienteController extends StateNotifier<CadastroClienteState> {
         nome: nome,
         telefone: telefone,
       );
+      await PushDeviceRegistrar.sync();
       if (!mounted) return;
       state = state.copyWith(isLoading: false, success: true);
     } catch (e) {

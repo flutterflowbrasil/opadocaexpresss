@@ -175,10 +175,18 @@ class DashboardRepository {
     );
   }
 
-  Future<void> confirmarEntrega(String pedidoId) async {
-    await _supabase
-        .from('pedidos')
-        .update({'status': 'entregue'}).eq('id', pedidoId);
+  Future<void> confirmarEntrega(String pedidoId, {required String codigo}) async {
+    final response = await _supabase.rpc('fn_confirmar_entrega', params: {
+      'p_pedido_id': pedidoId,
+      'p_codigo': codigo,
+    });
+    final data = Map<String, dynamic>.from(response as Map);
+    if (data['ok'] != true) {
+      throw DespachoRespostaException(
+        'entrega_recusada',
+        data['erro'] as String? ?? 'Nao foi possivel confirmar a entrega.',
+      );
+    }
   }
 
   Future<void> updateLocation(String entregadorId) async {

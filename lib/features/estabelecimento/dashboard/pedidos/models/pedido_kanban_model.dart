@@ -42,6 +42,7 @@ class PedidoKanbanModel {
   final String status;
   final DateTime at;
   final String end;
+  final String? codigoColeta;
 
   const PedidoKanbanModel({
     required this.id,
@@ -55,6 +56,7 @@ class PedidoKanbanModel {
     required this.status,
     required this.at,
     required this.end,
+    this.codigoColeta,
   });
 
   factory PedidoKanbanModel.fromJson(Map<String, dynamic> json) {
@@ -110,11 +112,13 @@ class PedidoKanbanModel {
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
       end: enderecoStr,
+      codigoColeta: json['codigo_coleta_balcao'] as String?,
     );
   }
 
   PedidoKanbanModel copyWith({
     String? status,
+    String? codigoColeta,
   }) {
     return PedidoKanbanModel(
       id: id,
@@ -128,6 +132,7 @@ class PedidoKanbanModel {
       status: status ?? this.status,
       at: at,
       end: end,
+      codigoColeta: codigoColeta ?? this.codigoColeta,
     );
   }
 

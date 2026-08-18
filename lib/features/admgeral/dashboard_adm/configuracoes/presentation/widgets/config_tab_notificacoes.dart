@@ -85,7 +85,7 @@ class ConfigTabNotificacoes extends ConsumerWidget {
           rows: [
             ConfigRow(
               label: 'Canal Android padrão',
-              descricao: 'Canal FCM para Android',
+              descricao: 'Canal Android OneSignal',
               editavel: editable('canal_android'),
               control: ConfigSel(
                 value: val('canal_android'),

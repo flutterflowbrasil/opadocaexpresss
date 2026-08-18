@@ -94,34 +94,16 @@ class PagamentoController extends StateNotifier<PagamentoState> {
       }
 
       final estabelecimento = carrinho.estabelecimento!;
-      final enderecoId = endereco.id ?? '';
-      final subtotal = carrinho.valorTotalProdutos;
-      final taxaEntrega = estabelecimento.taxaEntregaValor;
-      const taxaServicoPct = 0.05; // 5% — conforme plataforma_configuracoes
-      final taxaServicoApp =
-          double.parse((subtotal * taxaServicoPct).toStringAsFixed(2));
-      final desconto = carrinho.desconto;
-      // Total = subtotal + taxas - desconto cupom (nunca negativo)
-      final total = (subtotal + taxaEntrega + taxaServicoApp - desconto)
-          .clamp(0.0, double.infinity);
+      final enderecoId = endereco.id;
+      if (enderecoId == null || enderecoId.isEmpty) {
+        throw Exception('Selecione um endereço de entrega salvo.');
+      }
 
-      // Cupom (se aplicado)
-      final cupom = carrinho.cupomAplicado;
-
-      // 1. INSERT pedido
-      final pedidoId = await _repository.inserirPedido(
+      final pedidoId = await _repository.criarPedidoValidado(
         estabelecimentoId: estabelecimento.id,
-        clienteId: clienteId,
-        itens: carrinho.itens,
-        subtotalProdutos: subtotal,
-        taxaEntrega: taxaEntrega,
-        taxaServicoApp: taxaServicoApp,
-        total: total,
-        pagamentoMetodo: metodoPagamento,
         enderecoEntregaId: enderecoId,
-        enderecoSnapshot: endereco.toJson(),
-        cupomId: cupom?.id,
-        descontoCupom: desconto > 0 ? desconto : null,
+        pagamentoMetodo: metodoPagamento,
+        cupomCodigo: carrinho.cupomAplicado?.codigo,
         observacaoGeral: carrinho.observacaoGeral,
       );
 

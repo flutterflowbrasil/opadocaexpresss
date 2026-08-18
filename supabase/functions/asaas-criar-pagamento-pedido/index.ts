@@ -82,6 +82,9 @@ serve(async (req) => {
       cartao,
     );
     const financeiro = await calcularFinanceiro(supabase, pedido);
+    const { data: cfgFin } = await supabase.rpc('fn_get_config_financeira');
+    const modoRepasse = String(cfgFin?.modo_repasse ?? 'pos_entrega');
+    const splitNoCheckout = Boolean(cfgFin?.split_automatico_ativo) && modoRepasse === 'checkout_imediato';
     const split = buildSplit({
       pedido,
       financeiro,
@@ -96,8 +99,10 @@ serve(async (req) => {
       dueDate: dueDate(),
       description: `Pedido ${pedido.numero_pedido ?? pedido.id}`,
       externalReference: pedido.id,
-      split: split.asaasSplit,
     };
+    if (splitNoCheckout && split.asaasSplit.length > 0) {
+      paymentPayload.split = split.asaasSplit;
+    }
 
     if (metodo === 'cartao_credito') {
       Object.assign(paymentPayload, {
@@ -141,10 +146,14 @@ serve(async (req) => {
       valor_liquido: numberOrNull(asaasData.netValue),
       metadata: {
         calculo_financeiro: financeiro,
-        entregador_split_pendente: pedido.entregador_id == null,
-        observacao: pedido.entregador_id == null
-          ? 'Pedido cobrado antes de entregador atribuido; nao ha saque interno no Opadoca.'
-          : null,
+        modo_repasse: modoRepasse,
+        split_no_checkout: splitNoCheckout,
+        entregador_split_pendente: !splitNoCheckout || pedido.entregador_id == null,
+        observacao: splitNoCheckout
+          ? (pedido.entregador_id == null
+            ? 'Pedido cobrado antes de entregador atribuido; nao ha saque interno no Opadoca.'
+            : null)
+          : 'Valor retido na master; repasse via Transfer apos confirmacao de entrega.',
       },
     }, { onConflict: 'pedido_id' }).select('id').single();
     if (splitError) throw splitError;
@@ -227,7 +236,8 @@ async function activeSubaccount(supabase: ReturnType<typeof createClient>, tipo:
     .select('asaas_wallet_id, status_conta')
     .eq('entidade_tipo', tipo)
     .eq('entidade_id', id)
-    .in('status_conta', ['pending', 'active'])
+    .eq('status_conta', 'active')
+    .eq('homologada', true)
     .maybeSingle();
   if (error) throw error;
   return data;

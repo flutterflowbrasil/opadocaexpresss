@@ -46,8 +46,8 @@ class SuporteNotificacoesTab extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Notificações são enviadas via Edge Function pelo worker FCM. '
-                    'Erros persistentes indicam tokens inválidos ou limite de quota atingido.',
+                    'Notificações são enviadas via Edge Function pelo worker OneSignal. '
+                    'Erros persistentes indicam subscriptions inválidas ou limite de quota atingido.',
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: const Color(0xFF92400E),

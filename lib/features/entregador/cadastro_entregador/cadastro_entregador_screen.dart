@@ -15,6 +15,7 @@ import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 import 'package:padoca_express/shared/camera/camera_capture_screen.dart';
 
 class CadastroEntregadorScreen extends ConsumerStatefulWidget {
@@ -282,6 +283,7 @@ class _CadastroEntregadorScreenState
         fotoPerfilFileName: _fotoPerfilFile!.name,
       );
 
+      await PushDeviceRegistrar.sync();
       if (!mounted) return;
       context.go('/entregador/cadastro-pendente');
     } catch (e) {

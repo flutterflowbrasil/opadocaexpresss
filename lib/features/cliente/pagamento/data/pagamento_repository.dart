@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
-import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
 import 'package:padoca_express/features/cliente/pagamento/models/cobranca_asaas_model.dart';
 
 class PagamentoRepository {
@@ -25,54 +24,30 @@ class PagamentoRepository {
     }
   }
 
-  // ── Inserir pedido na tabela pedidos ─────────────────────────────────────
-  Future<String> inserirPedido({
+  /// Cria o pedido no servidor (preços, cupom e taxas recalculados no banco).
+  Future<String> criarPedidoValidado({
     required String estabelecimentoId,
-    required String clienteId,
-    required List<ItemCarrinhoModel> itens,
-    required double subtotalProdutos,
-    required double taxaEntrega,
-    required double taxaServicoApp,
-    required double total,
-    required String pagamentoMetodo,
     required String enderecoEntregaId,
-    required Map<String, dynamic> enderecoSnapshot,
-    // Cupom (opcional)
-    String? cupomId,
-    double? descontoCupom,
-    // Observação geral (opcional)
+    required String pagamentoMetodo,
+    String? cupomCodigo,
     String? observacaoGeral,
   }) async {
     try {
-      final itensJson = itens.map((item) => item.toPedidoSnapshot()).toList();
-
-      final result = await _supabase
-          .from('pedidos')
-          .insert({
-            'estabelecimento_id': estabelecimentoId,
-            'cliente_id': clienteId,
-            'itens': itensJson,
-            'subtotal_produtos': subtotalProdutos,
-            'taxa_entrega': taxaEntrega,
-            'taxa_servico_app': taxaServicoApp,
-            'total': total,
-            'pagamento_metodo': pagamentoMetodo,
-            'pagamento_status': 'pendente',
-            'status': 'pendente',
-            'endereco_entrega_id': enderecoEntregaId,
-            'endereco_entrega_snapshot': enderecoSnapshot,
-            if (cupomId != null) 'cupom_id': cupomId,
-            if (descontoCupom != null && descontoCupom > 0)
-              'desconto_cupom': descontoCupom,
-            if (observacaoGeral != null && observacaoGeral.isNotEmpty)
-              'observacao_geral': observacaoGeral,
-          })
-          .select('id')
-          .single();
-
-      return result['id'] as String;
+      final response = await _supabase.rpc('criar_pedido_validado', params: {
+        'p_estabelecimento_id': estabelecimentoId,
+        'p_endereco_entrega_id': enderecoEntregaId,
+        'p_pagamento_metodo': pagamentoMetodo,
+        'p_cupom_codigo': cupomCodigo,
+        'p_observacao_geral': observacaoGeral,
+      });
+      final data = Map<String, dynamic>.from(response as Map);
+      if (data['ok'] != true) {
+        throw Exception(data['erro'] ?? 'Erro ao registrar pedido.');
+      }
+      return data['pedido_id'] as String;
     } catch (e) {
-      debugPrint('[PagamentoRepository] inserirPedido erro: $e');
+      debugPrint('[PagamentoRepository] criarPedidoValidado erro: $e');
+      if (e is Exception) rethrow;
       throw Exception('Erro ao registrar pedido. Tente novamente.');
     }
   }

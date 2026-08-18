@@ -33,6 +33,7 @@ class PedidosKanbanRepository {
             created_at,
             itens,
             endereco_entrega_snapshot,
+            codigo_coleta_balcao,
             clientes (
               usuarios (
                 nome_completo_fantasia,
@@ -61,9 +62,17 @@ class PedidosKanbanRepository {
 
   Future<void> atualizarStatus(String pedidoId, String novoStatus) async {
     try {
-      await _supabase
-          .from('pedidos')
-          .update({'status': novoStatus}).eq('id', pedidoId);
+      final response = await _supabase.rpc(
+        'fn_atualizar_status_pedido_estab',
+        params: {
+          'p_pedido_id': pedidoId,
+          'p_novo_status': novoStatus,
+        },
+      );
+      final data = Map<String, dynamic>.from(response as Map);
+      if (data['ok'] != true) {
+        throw Exception(data['erro'] ?? 'Falha ao atualizar o status.');
+      }
     } catch (e) {
       throw Exception('Falha ao atualizar o status no banco: $e');
     }

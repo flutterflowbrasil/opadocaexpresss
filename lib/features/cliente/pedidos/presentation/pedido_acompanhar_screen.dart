@@ -6,9 +6,13 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -120,8 +124,13 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
   String _enderecoFormatado = '';
   List<dynamic> _itens = [];
   DateTime? _criadoEm;
+  String? _codigoEntrega;
+  String? _entregadorId;
+  double? _entregadorLat;
+  double? _entregadorLng;
 
   RealtimeChannel? _channel;
+  RealtimeChannel? _gpsChannel;
 
   @override
   void initState() {
@@ -132,6 +141,7 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
   @override
   void dispose() {
     _channel?.unsubscribe();
+    _gpsChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -142,7 +152,8 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
           .select('''
             numero_pedido, status, pagamento_status, pagamento_metodo,
             subtotal_produtos, taxa_entrega, total,
-            created_at, itens,
+            created_at, itens, entregador_id,
+            codigo_confirmacao_entrega,
             endereco_entrega_snapshot,
             estabelecimentos(nome_fantasia, logo_url)
           ''')
@@ -170,10 +181,13 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
             ? DateTime.tryParse(row['created_at'] as String)
             : null;
         _enderecoFormatado = _fmtEndereco(snap);
+        _codigoEntrega = row['codigo_confirmacao_entrega'] as String?;
+        _entregadorId = row['entregador_id'] as String?;
         _loading = false;
       });
 
       _assinarRealtime();
+      await _carregarGpsEntregador();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -213,6 +227,80 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
               _status = novo['status'] as String? ?? _status;
               _pagamentoStatus =
                   novo['pagamento_status'] as String? ?? _pagamentoStatus;
+              _codigoEntrega = novo['codigo_confirmacao_entrega'] as String? ??
+                  _codigoEntrega;
+              _entregadorId = novo['entregador_id'] as String? ?? _entregadorId;
+            });
+            if (_entregadorId != null) _carregarGpsEntregador();
+          },
+        )
+        .subscribe();
+  }
+
+  bool get _mostrarCodigoEntrega {
+    const ativos = {
+      'a_caminho_coleta',
+      'no_estabelecimento',
+      'coletado',
+      'a_caminho_cliente',
+      'em_entrega',
+    };
+    return ativos.contains(_status) &&
+        _codigoEntrega != null &&
+        _codigoEntrega!.isNotEmpty;
+  }
+
+  bool get _mostrarMapa {
+    const ativos = {
+      'a_caminho_coleta',
+      'no_estabelecimento',
+      'coletado',
+      'a_caminho_cliente',
+      'em_entrega',
+    };
+    return ativos.contains(_status) && _entregadorLat != null && _entregadorLng != null;
+  }
+
+  Future<void> _carregarGpsEntregador() async {
+    try {
+      final row = await Supabase.instance.client
+          .from('rastreamento_entregadores')
+          .select('latitude, longitude, entregador_id')
+          .eq('pedido_id', widget.pedidoId)
+          .order('registrado_em', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (!mounted) return;
+      if (row != null) {
+        setState(() {
+          _entregadorLat = (row['latitude'] as num?)?.toDouble();
+          _entregadorLng = (row['longitude'] as num?)?.toDouble();
+          _entregadorId = row['entregador_id'] as String? ?? _entregadorId;
+        });
+      }
+      _assinarGps();
+    } catch (_) {}
+  }
+
+  void _assinarGps() {
+    _gpsChannel?.unsubscribe();
+    _gpsChannel = Supabase.instance.client
+        .channel('pedido_gps_${widget.pedidoId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'rastreamento_entregadores',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'pedido_id',
+            value: widget.pedidoId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
+            final rec = payload.newRecord;
+            setState(() {
+              _entregadorLat = (rec['latitude'] as num?)?.toDouble();
+              _entregadorLng = (rec['longitude'] as num?)?.toDouble();
             });
           },
         )
@@ -288,6 +376,97 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
             // ── Stepper de status ─────────────────────────────────────
             _buildStepper(step, isDark),
             const SizedBox(height: 20),
+
+            if (_mostrarCodigoEntrega) ...[
+              _SectionCard(
+                title: 'Código para o entregador',
+                isDark: isDark,
+                child: InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: _codigoEntrega!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Código copiado')),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          _codigoEntrega!,
+                          style: GoogleFonts.outfit(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 6,
+                            color: _primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Mostre este código ao entregador para confirmar a entrega',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (_mostrarMapa) ...[
+              _SectionCard(
+                title: 'Entregador a caminho',
+                isDark: isDark,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    height: 180,
+                    child: FlutterMap(
+                      options: MapOptions(
+                        initialCenter: LatLng(_entregadorLat!, _entregadorLng!),
+                        initialZoom: 15,
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                        ),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.opadocaexpress.app',
+                          tileProvider: CancellableNetworkTileProvider(),
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: LatLng(_entregadorLat!, _entregadorLng!),
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.delivery_dining_rounded,
+                                color: _primary,
+                                size: 36,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
 
             // ── Itens do pedido ───────────────────────────────────────

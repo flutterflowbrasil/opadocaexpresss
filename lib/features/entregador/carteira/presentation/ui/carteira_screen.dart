@@ -117,7 +117,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
       });
 
       final conf = await Supabase.instance.client
-          .from('plataforma_configuracoes')
+          .from('v_plataforma_config_publica')
           .select('chave, valor')
           .inFilter('chave', ['saque_valor_minimo', 'saque_tarifa_fixa', 'saque_limite_diario']);
 

@@ -284,12 +284,12 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   // ── Confirmar entrega ────────────────────────────────────────────────────
-  Future<void> confirmarEntrega() async {
+  Future<void> confirmarEntrega(String codigo) async {
     final pedidoId = state.pedidoAtualId;
     if (pedidoId == null) return;
 
     try {
-      await _repository.confirmarEntrega(pedidoId);
+      await _repository.confirmarEntrega(pedidoId, codigo: codigo);
       // Triggers disparam automaticamente: libera entregador, atualiza ganhos
       await Future.wait([
         _loadEarnings(),

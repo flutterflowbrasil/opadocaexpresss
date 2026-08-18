@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/auth/domain/user_type.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 
 class LoginState {
   final bool isLoading;
@@ -48,6 +49,7 @@ class LoginController extends StateNotifier<LoginState> {
     try {
       final route = await _authRepository.loginComGoogle();
       if (!mounted) return;
+      await PushDeviceRegistrar.sync();
       // Grava cache ANTES de invalidar — o redirect do router usa esse valor
       _ref.read(sessionRouteCacheProvider.notifier).state = route;
       _ref.invalidate(sessionRouteProvider);
@@ -95,6 +97,7 @@ class LoginController extends StateNotifier<LoginState> {
       if (!mounted) return;
 
       if (response.user != null) {
+        await PushDeviceRegistrar.sync();
         final route = await _authRepository.validateSessionAndRoute();
         if (!mounted) return;
         // Grava cache ANTES de invalidar — o redirect do router usa esse valor

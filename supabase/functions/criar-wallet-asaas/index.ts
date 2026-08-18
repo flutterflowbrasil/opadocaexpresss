@@ -19,6 +19,10 @@ serve(async (req) => {
     return json({ error: 'Metodo nao permitido.' }, 405);
   }
 
+  return json({
+    error: 'criar-wallet-asaas foi descontinuada. Use asaas-criar-subconta.',
+  }, 410);
+
   try {
     const supabaseUrl = requiredEnv('SUPABASE_URL');
     const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');

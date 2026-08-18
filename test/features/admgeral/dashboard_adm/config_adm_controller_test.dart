@@ -223,4 +223,27 @@ void main() {
 
     expect(container.read(configAdmControllerProvider).errorMessage, isNull);
   });
+
+  test('modificacoesSensiveis: true para modo_repasse e comissao', () async {
+    final items = [
+      _item(chave: 'modo_repasse', valor: 'pos_entrega'),
+      _item(
+        id: 'id02',
+        chave: 'percentual_comissao_estabelecimento',
+        valor: '6',
+      ),
+    ];
+    when(() => repo.buscarConfigs()).thenAnswer((_) async => items);
+
+    final container = _makeContainer(repo);
+    addTearDown(container.dispose);
+    await container.read(configAdmControllerProvider.notifier).fetch();
+
+    final notifier = container.read(configAdmControllerProvider.notifier);
+    notifier.setValor('percentual_comissao_estabelecimento', '8');
+    expect(
+      container.read(configAdmControllerProvider).modificacoesSensiveis,
+      isTrue,
+    );
+  });
 }

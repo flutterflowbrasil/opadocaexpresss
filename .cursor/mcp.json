@@ -2,6 +2,12 @@
   "mcpServers": {
     "supabase": {
       "url": "https://mcp.supabase.com/mcp?project_ref=blibxmylxcrztfhvllkj"
+    },
+    "asaas": {
+      "url": "https://docs.asaas.com/mcp"
+    },
+    "onesignal": {
+      "url": "https://api.onesignal.com/mcp/oauth"
     }
   }
 }

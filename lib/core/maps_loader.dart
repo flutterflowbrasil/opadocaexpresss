@@ -25,6 +25,7 @@ class MapsLoader {
   /// Idempotente — segunda chamada retorna imediatamente.
   static Future<void> load() async {
     if (_loaded || !kIsWeb) return;
+    if (Supabase.instance.client.auth.currentSession == null) return;
 
     try {
       final res = await Supabase.instance.client.functions

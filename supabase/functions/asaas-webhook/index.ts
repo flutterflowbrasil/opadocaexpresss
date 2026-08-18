@@ -37,17 +37,19 @@ serve(async (req) => {
       : { data: null };
 
     const { data: split } = paymentId
-      ? await supabase.from('splits_pagamento').select('id').eq('asaas_payment_id', paymentId).maybeSingle()
+      ? await supabase.from('splits_pagamento').select('id, metadata').eq('asaas_payment_id', paymentId).maybeSingle()
       : { data: null };
 
     const pagamentoStatus = statusFromEvent(evento, payment.status);
     const updatePedido: Record<string, unknown> = {};
     if (pagamentoStatus) updatePedido.pagamento_status = pagamentoStatus;
+    const splitNoCheckout = (split?.metadata as Record<string, unknown> | null)?.split_no_checkout === true;
+
     if (['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento)) {
       updatePedido.pagamento_confirmado_em = new Date().toISOString();
       updatePedido.financeiro_processado = true;
       updatePedido.financeiro_processado_em = new Date().toISOString();
-      updatePedido.split_processado = true;
+      if (splitNoCheckout) updatePedido.split_processado = true;
     }
     if (evento === 'PAYMENT_DELETED') updatePedido.pagamento_cancelado_em = new Date().toISOString();
     if (['PAYMENT_REFUNDED', 'PAYMENT_CHARGEBACK'].includes(evento)) {
@@ -62,13 +64,19 @@ serve(async (req) => {
 
     if (split) {
       await supabase.from('splits_pagamento').update({
-        status: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento) ? 'processado' : undefined,
+        status: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento)
+          ? (splitNoCheckout ? 'processado' : 'pendente')
+          : undefined,
         status_asaas: payment.status ?? evento,
         webhook_confirmado: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento),
         webhook_evento_id: asaasEventId,
-        taxa_asaas_valor: payment.value != null && payment.netValue != null ? round2(Number(payment.value) - Number(payment.netValue)) : undefined,
+        taxa_asaas_valor: payment.value != null && payment.netValue != null
+          ? round2(Number(payment.value) - Number(payment.netValue))
+          : undefined,
         valor_liquido: payment.netValue ?? undefined,
-        processado_em: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento) ? new Date().toISOString() : undefined,
+        processado_em: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento) && splitNoCheckout
+          ? new Date().toISOString()
+          : undefined,
       }).eq('id', split.id);
     }
 
@@ -103,7 +111,7 @@ serve(async (req) => {
 
 function validateWebhookToken(req: Request) {
   const expected = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
-  if (!expected) return;
+  if (!expected) throw new HttpError('Webhook token nao configurado.', 503);
   const received =
     req.headers.get('asaas-access-token') ??
     req.headers.get('x-asaas-token') ??

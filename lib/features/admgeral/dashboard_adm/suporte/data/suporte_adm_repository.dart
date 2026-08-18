@@ -27,7 +27,7 @@ class SuporteAdmRepository {
     }
   }
 
-  /// Busca fila de notificações FCM (pendentes e com erro).
+  /// Busca fila de notificações push (pendentes e com erro).
   Future<List<NotificacaoFila>> buscarNotificacoes() async {
     try {
       final r = await _client
@@ -101,7 +101,7 @@ class SuporteAdmRepository {
     required String chamadoId,
   }) async {
     try {
-      await _client.rpc('enfileirar_notificacao', params: {
+      await _client.rpc('fn_enfileirar_notificacao_admin', params: {
         'p_usuario_id': usuarioId,
         'p_evento': 'suporte_resposta',
         'p_entidade_tipo': 'chamado',

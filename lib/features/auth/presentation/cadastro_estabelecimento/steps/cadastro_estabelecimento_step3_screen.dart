@@ -11,6 +11,7 @@ import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/auth/presentation/cadastro_estabelecimento/cadastro_estabelecimento_controller.dart';
 import 'package:padoca_express/features/estabelecimento/componentes/app_bar_estabelecimento.dart';
 import 'package:padoca_express/features/estabelecimento/data/storage_service.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 
 class CadastroEstabelecimentoStep3Screen extends ConsumerStatefulWidget {
   const CadastroEstabelecimentoStep3Screen({super.key});
@@ -198,6 +199,7 @@ class _CadastroEstabelecimentoStep3ScreenState
         dadosCadastro: state,
         storageService: storageService,
       );
+      await PushDeviceRegistrar.sync();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

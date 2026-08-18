@@ -30,8 +30,8 @@ class FinanceiroSaquesTab extends ConsumerWidget {
         children: [
           const FinanceiroEdgeFunctionBanner(
             mensagem:
-                'Saques são solicitados pelo app do entregador via Edge Function solicitar-saque. '
-                'Status atualizado automaticamente via webhook Asaas. Mín: R\$ 10,00 — Máx: 3 por dia.',
+                'Saques são feitos no portal Asaas pela carteira do entregador. '
+                'Não há saque interno no Opadoca. Acompanhe o status da subconta pela sincronização Asaas.',
           ),
           if (isLoading)
             const _SaquesShimmer()

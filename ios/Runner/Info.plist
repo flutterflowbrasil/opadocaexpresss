@@ -47,8 +47,13 @@
 	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
-	<key>NSCameraUsageDescription</key>
+  <key>NSCameraUsageDescription</key>
 	<string>Precisamos acessar a câmera para capturar selfies e documentos do cadastro.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 	<key>GMSApiKey</key>
 	<string>$(MAPS_API_KEY)</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

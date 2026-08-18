@@ -216,6 +216,45 @@ class KanbanCardNovo extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
+                if (pedido.codigoColeta != null &&
+                    pedido.codigoColeta!.isNotEmpty &&
+                    ['pronto', 'a_caminho_coleta', 'no_estabelecimento']
+                        .contains(pedido.status)) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFED7AA)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'CÓDIGO DE COLETA',
+                          style: GoogleFonts.publicSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                            color: const Color(0xFFEA580C),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pedido.codigoColeta!,
+                          style: GoogleFonts.publicSans(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 4,
+                            color: const Color(0xFF9A3412),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Actions
                 Row(
                   children: [
