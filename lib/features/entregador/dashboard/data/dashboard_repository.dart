@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:padoca_express/services/entregador/entregador_gps_service.dart';
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepository(Supabase.instance.client);
@@ -27,6 +28,7 @@ class DashboardRepository {
       id,
       tipo_veiculo,
       status_online,
+      status_cadastro,
       raio_atuacao_km,
       avaliacao_media,
       total_avaliacoes,
@@ -35,10 +37,57 @@ class DashboardRepository {
       status_despacho,
       pedido_atual_id,
       usuarios!entregadores_usuario_id_fkey(nome_completo_fantasia),
-      entregador_saldos(saldo_disponivel, saldo_bloqueado, total_ganho)
+      entregador_saldos(saldo_disponivel, saldo_bloqueado, total_ganho),
+      entregador_kyc(status)
     ''').single();
 
     return data;
+  }
+
+  /// Valida se o entregador pode ficar online.
+  Future<String?> validateCanGoOnline(Map<String, dynamic> profile) async {
+    final statusCadastro = profile['status_cadastro'] as String? ?? '';
+    if (statusCadastro != 'aprovado' && statusCadastro != 'ativo') {
+      return 'Seu cadastro ainda não foi aprovado. Aguarde a análise.';
+    }
+
+    Map<String, dynamic>? kycMap;
+    final kyc = profile['entregador_kyc'];
+    if (kyc is Map<String, dynamic>) {
+      kycMap = kyc;
+    } else if (kyc is List && kyc.isNotEmpty && kyc.first is Map) {
+      kycMap = Map<String, dynamic>.from(kyc.first as Map);
+    }
+    if (kycMap != null) {
+      final kycStatus = kycMap['status'] as String? ?? '';
+      if (kycStatus == 'reprovado') {
+        return 'Verificação de identidade reprovada. Entre em contato com o suporte.';
+      }
+      if (kycStatus.isNotEmpty &&
+          kycStatus != 'aprovado' &&
+          kycStatus != 'approved') {
+        return 'Complete a verificação de identidade antes de ficar online.';
+      }
+    }
+
+    if (profile['status_despacho'] == 'em_pedido') {
+      return 'Finalize a entrega em andamento antes de alterar o status.';
+    }
+
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchDespachoById(String despachoId) async {
+    try {
+      return await _supabase
+          .from('despacho_pedidos')
+          .select('id, pedido_id, distancia_km, expira_em, status')
+          .eq('id', despachoId)
+          .maybeSingle();
+    } catch (e) {
+      debugPrint('[DashboardRepository] fetchDespachoById error: $e');
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> fetchEarnings() async {
@@ -190,10 +239,9 @@ class DashboardRepository {
   }
 
   Future<void> updateLocation(String entregadorId) async {
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied ||
-        perm == LocationPermission.deniedForever) {
-      await Geolocator.requestPermission();
+    final ok = await EntregadorGpsService.instance.ensurePermission();
+    if (!ok) {
+      throw Exception('Permissão de localização negada.');
     }
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
@@ -205,7 +253,12 @@ class DashboardRepository {
       'entregador_id': entregadorId,
       'latitude': pos.latitude,
       'longitude': pos.longitude,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'entregador_id');
+
+    await _supabase.from('entregadores').update({
+      'latitude': pos.latitude,
+      'longitude': pos.longitude,
+    }).eq('id', entregadorId);
   }
 }

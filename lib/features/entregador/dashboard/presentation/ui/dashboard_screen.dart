@@ -9,6 +9,7 @@ import 'widgets/dashboard_widgets.dart';
 
 import 'package:padoca_express/features/entregador/avaliacoes/presentation/ui/avaliacoes_screen.dart';
 import 'package:padoca_express/features/entregador/perfil/presentation/ui/perfil_screen.dart';
+import 'package:padoca_express/services/notifications/push_notification_controller.dart';
 
 // ─── Cores locais (mesmas do widgets file) ────────────────────────────────────
 const _bg0 = Color(0xFF0A0704);
@@ -29,6 +30,7 @@ class _EntregadorDashboardScreenState
     extends ConsumerState<EntregadorDashboardScreen> {
   int _currentIndex = 0;
   bool _despachoDialogOpen = false;
+  bool _resumeNavegado = false;
 
   static const _tabs = [
     _TabItem(icon: Icons.home_rounded, label: 'Início'),
@@ -39,6 +41,19 @@ class _EntregadorDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
+
+    ref.listen<PushNotificationState>(pushNotificationControllerProvider,
+        (previous, next) {
+      final despachoId = next.pendingDespachoId;
+      if (despachoId == null ||
+          despachoId == previous?.pendingDespachoId) {
+        return;
+      }
+      ref
+          .read(dashboardControllerProvider.notifier)
+          .openDespachoFromPush(despachoId);
+      ref.read(pushNotificationControllerProvider.notifier).clearPendingDespacho();
+    });
 
     ref.listen<DashboardState>(dashboardControllerProvider, (previous, next) {
       // Erros
@@ -96,7 +111,21 @@ class _EntregadorDashboardScreenState
       if (previous?.statusDespacho != 'em_pedido' &&
           next.statusDespacho == 'em_pedido' &&
           next.pedidoAtualId != null) {
+        _resumeNavegado = true;
         context.push('/dashboard_entregador/entrega/${next.pedidoAtualId}');
+      }
+
+      // Retomar entrega ativa após reinício do app
+      if (!_resumeNavegado &&
+          !next.isLoading &&
+          (previous == null || previous.isLoading) &&
+          next.statusDespacho == 'em_pedido' &&
+          next.pedidoAtualId != null) {
+        _resumeNavegado = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.push('/dashboard_entregador/entrega/${next.pedidoAtualId}');
+        });
       }
     });
 

@@ -44,15 +44,18 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
+	<string>Usamos sua localização para encontrar padarias próximas e, no app do entregador, traçar a rota até o estabelecimento e o cliente.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Com a entrega em andamento, precisamos da localização em segundo plano para atualizar a rota e o cliente acompanhar o pedido.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Precisamos da sua localização para mostrar padarias próximas.</string>
+	<string>Com a entrega em andamento, precisamos da localização em segundo plano para atualizar a rota e o cliente acompanhar o pedido.</string>
   <key>NSCameraUsageDescription</key>
 	<string>Precisamos acessar a câmera para capturar selfies e documentos do cadastro.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>location</string>
 	</array>
 	<key>GMSApiKey</key>
 	<string>$(MAPS_API_KEY)</string>

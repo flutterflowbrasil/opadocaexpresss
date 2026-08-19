@@ -7,6 +7,7 @@ class ProfileState {
   final String? name;
   final String? email;
   final String? fotoPerfilUrl;
+  final String? cpf;
   final String? error;
 
   ProfileState(
@@ -14,6 +15,7 @@ class ProfileState {
       this.name,
       this.email,
       this.fotoPerfilUrl,
+      this.cpf,
       this.error});
 
   ProfileState copyWith({
@@ -21,6 +23,7 @@ class ProfileState {
     String? name,
     String? email,
     String? fotoPerfilUrl,
+    String? cpf,
     String? error,
   }) {
     return ProfileState(
@@ -28,6 +31,7 @@ class ProfileState {
       name: name ?? this.name,
       email: email ?? this.email,
       fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
+      cpf: cpf ?? this.cpf,
       error: error,
     );
   }
@@ -52,11 +56,12 @@ class ProfileController extends StateNotifier<ProfileState> {
 
       final data = await _authRepository.getProfile(userId);
       if (data != null) {
-        state = state.copyWith(
+        state = ProfileState(
           isLoading: false,
-          name: data['nome'],
-          email: data['email'],
-          fotoPerfilUrl: data['foto_perfil_url'],
+          name: data['nome'] as String?,
+          email: data['email'] as String?,
+          fotoPerfilUrl: data['foto_perfil_url'] as String?,
+          cpf: data['cpf'] as String?,
         );
       } else {
         state = state.copyWith(

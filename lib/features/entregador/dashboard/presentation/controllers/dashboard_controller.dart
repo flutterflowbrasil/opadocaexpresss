@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:padoca_express/services/entregador/entregador_gps_service.dart';
+import 'package:padoca_express/services/notifications/push_device_registrar.dart';
 import '../../data/dashboard_repository.dart';
 import 'dashboard_state.dart';
 
@@ -27,6 +31,7 @@ class DashboardController extends StateNotifier<DashboardState> {
   @override
   void dispose() {
     _cancelarRealtime();
+    EntregadorGpsService.instance.stop();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -42,6 +47,7 @@ class DashboardController extends StateNotifier<DashboardState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
+      unawaited(PushDeviceRegistrar.sync());
       final profile = await _repository.fetchDriverProfile();
       final driverId = profile['id'] as String;
       final usuarios = profile['usuarios'] as Map<String, dynamic>?;
@@ -85,6 +91,9 @@ class DashboardController extends StateNotifier<DashboardState> {
       if (profile['status_online'] == true) {
         await _loadPendingDespacho(driverId);
         _iniciarRealtimeDespacho(driverId);
+        if (profile['status_despacho'] != 'em_pedido') {
+          EntregadorGpsService.instance.startOnlineTracking(driverId);
+        }
       }
 
       state = state.copyWith(isLoading: false);
@@ -200,7 +209,25 @@ class DashboardController extends StateNotifier<DashboardState> {
     state = state.copyWith(isTogglingStatus: true, clearError: true);
 
     final novoStatus = !state.isOnline;
+
+    if (!novoStatus && state.statusDespacho == 'em_pedido') {
+      state = state.copyWith(
+        isTogglingStatus: false,
+        error: 'Finalize a entrega em andamento antes de ficar offline.',
+      );
+      return;
+    }
+
     try {
+      if (novoStatus) {
+        final profile = await _repository.fetchDriverProfile();
+        final blockReason = await _repository.validateCanGoOnline(profile);
+        if (blockReason != null) {
+          state = state.copyWith(isTogglingStatus: false, error: blockReason);
+          return;
+        }
+      }
+
       await _repository.updateOnlineStatus(novoStatus);
 
       if (novoStatus) {
@@ -209,8 +236,10 @@ class DashboardController extends StateNotifier<DashboardState> {
         } catch (_) {}
         await _loadPendingDespacho(state.driverId);
         _iniciarRealtimeDespacho(state.driverId);
+        EntregadorGpsService.instance.startOnlineTracking(state.driverId);
       } else {
         _cancelarRealtime();
+        EntregadorGpsService.instance.stop();
         state = state.copyWith(clearDespacho: true, statusDespacho: 'livre');
       }
 
@@ -222,6 +251,39 @@ class DashboardController extends StateNotifier<DashboardState> {
     }
   }
 
+  /// Abre oferta pendente a partir de push (despacho_id).
+  Future<void> openDespachoFromPush(String despachoId) async {
+    if (state.driverId.isEmpty) return;
+    try {
+      final record = await _repository.fetchDespachoById(despachoId);
+      if (record == null || record['status'] != 'aguardando') {
+        await _loadPendingDespacho(state.driverId);
+        return;
+      }
+
+      final pedidoId = record['pedido_id'] as String?;
+      final expiraEm = record['expira_em'] != null
+          ? DateTime.tryParse(record['expira_em'] as String)
+          : null;
+      if (pedidoId == null || expiraEm == null) return;
+      if (expiraEm.isBefore(DateTime.now())) return;
+
+      final pedido = await _repository.fetchPedidoTaxaEntrega(pedidoId);
+      state = state.copyWith(
+        statusDespacho: 'aguardando_aceite',
+        despachoRecebido: DespachoRecebido(
+          id: despachoId,
+          pedidoId: pedidoId,
+          distanciaKm: (record['distancia_km'] as num?)?.toDouble() ?? 0.0,
+          valorEntrega: (pedido?['taxa_entrega'] as num?)?.toDouble() ?? 0.0,
+          expiraEm: expiraEm,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[DashboardController] openDespachoFromPush: $e');
+    }
+  }
+
   // ── Aceitar despacho ─────────────────────────────────────────────────────
   Future<void> aceitarDespacho() async {
     final despacho = state.despachoRecebido;
@@ -230,6 +292,7 @@ class DashboardController extends StateNotifier<DashboardState> {
     state = state.copyWith(isRespondingDespacho: true, clearError: true);
     try {
       await _repository.aceitarDespacho(despacho.id);
+      EntregadorGpsService.instance.stop();
       await _loadActivePedido(despacho.pedidoId);
       state = state.copyWith(
         isRespondingDespacho: false,

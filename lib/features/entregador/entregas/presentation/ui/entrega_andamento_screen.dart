@@ -1,6 +1,6 @@
-// ============================================================
-// entrega_andamento_screen.dart — Entrega em Andamento
-// Ôpadoca Express · App do Entregador
+﻿// ============================================================
+// entrega_andamento_screen.dart â€” Entrega em Andamento
+// Ã”padoca Express Â· App do Entregador
 // Rota: /dashboard_entregador/entrega/:pedidoId
 // Tabelas: pedidos, entregadores, rastreamento_entregadores,
 //          entregador_localizacao_atual
@@ -13,12 +13,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
-import 'package:latlong2/latlong.dart' as ll;
+import 'package:padoca_express/services/entregador/entregador_gps_service.dart';
 import 'package:padoca_express/services/map_service.dart' as mapsvc;
 
 const _bg0 = Color(0xFF0A0704);
@@ -32,7 +31,7 @@ const _text2 = Color(0xA6FAFAF9);
 const _text3 = Color(0x59FAFAF9);
 const _border = Color(0x12FFFFFF);
 
-// ─── Status do pedido ──────────────────────────────────────────────────────
+// â”€â”€â”€ Status do pedido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum StatusEntrega { confirmado, emColeta, coletado, emEntrega, entregue }
 
 extension StatusEntregaExt on StatusEntrega {
@@ -47,7 +46,7 @@ extension StatusEntregaExt on StatusEntrega {
       case StatusEntrega.emEntrega:
         return 'Entregando ao cliente';
       case StatusEntrega.entregue:
-        return 'Entrega concluída!';
+        return 'Entrega concluÃ­da!';
     }
   }
 
@@ -69,15 +68,15 @@ extension StatusEntregaExt on StatusEntrega {
   String get emoji {
     switch (this) {
       case StatusEntrega.confirmado:
-        return '✅';
+        return 'âœ…';
       case StatusEntrega.emColeta:
-        return '🛵';
+        return 'ðŸ›µ';
       case StatusEntrega.coletado:
-        return '📦';
+        return 'ðŸ“¦';
       case StatusEntrega.emEntrega:
-        return '🚀';
+        return 'ðŸš€';
       case StatusEntrega.entregue:
-        return '🎉';
+        return 'ðŸŽ‰';
     }
   }
 
@@ -90,7 +89,7 @@ extension StatusEntregaExt on StatusEntrega {
       case StatusEntrega.coletado:
         return StatusEntrega.emEntrega;
       case StatusEntrega.emEntrega:
-        return null; // Requer confirmação especial
+        return null; // Requer confirmaÃ§Ã£o especial
       case StatusEntrega.entregue:
         return null;
     }
@@ -107,14 +106,14 @@ extension StatusEntregaExt on StatusEntrega {
       case StatusEntrega.emEntrega:
         return 'Confirmar entrega';
       case StatusEntrega.entregue:
-        return 'Concluído';
+        return 'ConcluÃ­do';
     }
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SCREEN
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class EntregaAndamentoScreen extends StatefulWidget {
   final String pedidoId;
   const EntregaAndamentoScreen({super.key, required this.pedidoId});
@@ -141,7 +140,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   String? _etaRotaTexto;
   String? _entregadorId;
 
-  // Códigos de validação do pedido
+  // CÃ³digos de validaÃ§Ã£o do pedido
   String? _codigoColeta;   // estabelecimento exibe ao entregador na retirada
   String? _codigoEntrega;  // cliente informa ao entregador na entrega
 
@@ -154,7 +153,6 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   int _segundosEntrega = 0;
   DateTime? _inicioEntrega;
 
-  StreamSubscription<Position>? _posStream;
   Position? _posicaoAtual;
   bool _checkinFeito = false;
 
@@ -210,7 +208,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
         final l = m['logradouro'] ?? '';
         final n = m['numero'] ?? '';
         final b = m['bairro'] ?? '';
-        return '$l${n.toString().isNotEmpty ? ", $n" : ""}${b.toString().isNotEmpty ? " — $b" : ""}';
+        return '$l${n.toString().isNotEmpty ? ", $n" : ""}${b.toString().isNotEmpty ? " â€” $b" : ""}';
       }
 
       final dbStatus = row['status'] ?? 'confirmado';
@@ -272,29 +270,22 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   }
 
   // ── GPS ───────────────────────────────────────────────────────────────────
-  void _iniciarGps() async {
-    try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        perm = await Geolocator.requestPermission();
+  Future<void> _iniciarGps() async {
+    final ok = await EntregadorGpsService.instance.ensurePermission(
+      requestAlways: true,
+    );
+    if (!ok) {
+      if (mounted) {
+        _mostrarErro('Ative a localização para rastrear a entrega.');
       }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        return;
-      }
+      return;
+    }
 
-      _posStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 10,
-        ),
-      ).listen((pos) {
-        if (!mounted) return;
-        setState(() => _posicaoAtual = pos);
-        _enviarLocalizacao(pos);
-      });
-    } catch (_) {}
+    EntregadorGpsService.instance.startDeliveryTracking((pos) {
+      if (!mounted) return;
+      setState(() => _posicaoAtual = pos);
+      _enviarLocalizacao(pos);
+    });
   }
 
   DateTime? _ultimoGpsEnviado;
@@ -346,12 +337,17 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     final response = await Supabase.instance.client.rpc(fn, params: params);
     final data = Map<String, dynamic>.from(response as Map);
     if (data['ok'] != true) {
-      throw Exception(data['erro'] ?? data['mensagem'] ?? 'Operacao recusada.');
+      final erro = data['erro'] ?? data['mensagem'] ?? 'Operacao recusada.';
+      final tentativas = data['tentativas_restantes'];
+      if (tentativas != null) {
+        throw Exception('$erro (tentativas restantes: $tentativas)');
+      }
+      throw Exception(erro);
     }
     return data;
   }
 
-  // ── Cronômetro ────────────────────────────────────────────────────────────
+  // â”€â”€ CronÃ´metro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _iniciarCronometro() {
     _inicioEntrega ??= DateTime.now();
     _cronoTimer?.cancel();
@@ -369,17 +365,17 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  // ── Avança status ─────────────────────────────────────────────────────────
+  // â”€â”€ AvanÃ§a status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _avancarStatus() async {
     if (_atualizando) return;
 
-    // Retirada no estabelecimento: exige código do balcão
+    // Retirada no estabelecimento: exige cÃ³digo do balcÃ£o
     if (_status == StatusEntrega.emColeta) {
       _mostrarDialogCodigoEstabelecimento();
       return;
     }
 
-    // Confirmação da entrega ao cliente
+    // ConfirmaÃ§Ã£o da entrega ao cliente
     if (_status == StatusEntrega.emEntrega) {
       _mostrarConfirmacaoEntrega();
       return;
@@ -417,7 +413,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     }
   }
 
-  // ── Código do balcão (estabelecimento → entregador) ───────────────────────
+  // â”€â”€ CÃ³digo do balcÃ£o (estabelecimento â†’ entregador) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _mostrarDialogCodigoEstabelecimento() {
     final ctrl = TextEditingController();
     String? erroMsg;
@@ -432,10 +428,10 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('🏪', style: TextStyle(fontSize: 28)),
+              const Text('ðŸª', style: TextStyle(fontSize: 28)),
               const SizedBox(height: 8),
               Text(
-                'Código de retirada',
+                'CÃ³digo de retirada',
                 style: GoogleFonts.outfit(
                     color: _text1, fontWeight: FontWeight.w800, fontSize: 18),
               ),
@@ -446,7 +442,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Solicite o código no balcão do estabelecimento e digite abaixo.',
+                'Solicite o cÃ³digo no balcÃ£o do estabelecimento e digite abaixo.',
                 style: GoogleFonts.dmSans(color: _text2, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -464,7 +460,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: _bg3,
-                  hintText: '• • • •',
+                  hintText: 'â€¢ â€¢ â€¢ â€¢',
                   hintStyle: GoogleFonts.outfit(
                       color: _text3, fontSize: 26, letterSpacing: 6),
                   border: OutlineInputBorder(
@@ -500,7 +496,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
               onPressed: () async {
                 final entrada = ctrl.text.trim().toUpperCase();
                 if (entrada.isEmpty) {
-                  setDlg(() => erroMsg = 'Digite o código.');
+                  setDlg(() => erroMsg = 'Digite o cÃ³digo.');
                   return;
                 }
                 try {
@@ -537,7 +533,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
     HapticFeedback.heavyImpact();
   }
 
-  // ── Confirmar entrega ─────────────────────────────────────────────────────
+  // â”€â”€ Confirmar entrega â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _mostrarConfirmacaoEntrega() {
     showModalBottomSheet(
       context: context,
@@ -603,10 +599,10 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('📦', style: TextStyle(fontSize: 28)),
+              const Text('ðŸ“¦', style: TextStyle(fontSize: 28)),
               const SizedBox(height: 8),
               Text(
-                'Código do cliente',
+                'CÃ³digo do cliente',
                 style: GoogleFonts.outfit(
                     color: _text1,
                     fontWeight: FontWeight.w800,
@@ -619,7 +615,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Solicite o código de confirmação ao cliente para finalizar a entrega.',
+                'Solicite o cÃ³digo de confirmaÃ§Ã£o ao cliente para finalizar a entrega.',
                 style: GoogleFonts.dmSans(color: _text2, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -638,7 +634,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
                   counterText: '',
                   filled: true,
                   fillColor: _bg3,
-                  hintText: '• • • •',
+                  hintText: 'â€¢ â€¢ â€¢ â€¢',
                   hintStyle: GoogleFonts.outfit(
                       color: _text3, fontSize: 28, letterSpacing: 6),
                   border: OutlineInputBorder(
@@ -675,7 +671,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
               onPressed: () async {
                 final entrada = ctrl.text.trim().toUpperCase();
                 if (entrada.isEmpty) {
-                  setDlg(() => erroMsg = 'Digite o código.');
+                  setDlg(() => erroMsg = 'Digite o cÃ³digo.');
                   return;
                 }
                 try {
@@ -719,13 +715,59 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
       _statusAnim.forward();
       HapticFeedback.heavyImpact();
 
-      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      await _mostrarResumoEntrega();
       if (mounted) context.go('/dashboard_entregador');
     } catch (e) {
       if (!mounted) return;
       setState(() => _atualizando = false);
-      _mostrarErro('Erro ao confirmar entrega.');
+      _mostrarErro(e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  Future<void> _mostrarResumoEntrega() async {
+    final valor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$')
+        .format(_taxaEntrega);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Entrega concluída!',
+          style: GoogleFonts.outfit(
+            color: _green,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Valor da entrega: $valor',
+                style: GoogleFonts.dmSans(color: _text1)),
+            if (_distanciaRotaTexto != null)
+              Text('Distância: $_distanciaRotaTexto',
+                  style: GoogleFonts.dmSans(color: _text2)),
+            Text('Tempo: $_tempoFormatado',
+                style: GoogleFonts.dmSans(color: _text2)),
+            const SizedBox(height: 8),
+            Text(
+              'Repasse Asaas será processado após validação.',
+              style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Continuar',
+                style: GoogleFonts.dmSans(color: _orange)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _mostrarErro(String msg) {
@@ -777,15 +819,15 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
 
   @override
   void dispose() {
-    _posStream?.cancel();
+    EntregadorGpsService.instance.stopDeliveryTracking();
     _cronoTimer?.cancel();
     _statusAnim.dispose();
     super.dispose();
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // BUILD
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -801,7 +843,7 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
       backgroundColor: _bg0,
       body: Column(
         children: [
-          // Mapa (visualização customizada)
+          // Mapa (visualizaÃ§Ã£o customizada)
           _GoogleMapArea(
             status: _status,
             origem: _estabelecimentoNome,
@@ -936,9 +978,9 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAP AREA — com rota dinâmica via MapService
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// MAP AREA â€” com rota dinÃ¢mica via MapService
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _GoogleMapArea extends StatefulWidget {
   final StatusEntrega status;
   final String origem, destino;
@@ -1198,7 +1240,9 @@ class _GoogleMapAreaState extends State<_GoogleMapArea> {
                 gm.Polyline(
                   polylineId: const gm.PolylineId('rota_entrega'),
                   points: _rota,
-                  color: _orange,
+                  color: _indoEstabelecimento
+                      ? const Color(0xFF3B82F6)
+                      : _green,
                   width: 5,
                 ),
             },
@@ -1273,6 +1317,44 @@ class _GoogleMapAreaState extends State<_GoogleMapArea> {
           ),
           Positioned(
             bottom: 12,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _bg0.withValues(alpha: .85),
+                border: Border.all(color: _border),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: _indoEstabelecimento
+                          ? const Color(0xFF3B82F6)
+                          : _green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _indoEstabelecimento
+                        ? 'Rota até estabelecimento'
+                        : 'Rota até cliente',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: _text2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
             right: 12,
             child: GestureDetector(
               onTap: widget.onNavegar,
@@ -1312,346 +1394,7 @@ class _GoogleMapAreaState extends State<_GoogleMapArea> {
   }
 }
 
-// ignore: unused_element
-class _MapArea extends StatefulWidget {
-  final StatusEntrega status;
-  final String origem, destino;
-  final Position? posAtual;
-  final double? estabelecimentoLat;
-  final double? estabelecimentoLng;
-  final double? clienteLat;
-  final double? clienteLng;
-  final VoidCallback onNavegar;
-
-  const _MapArea({
-    required this.status,
-    required this.origem,
-    required this.destino,
-    this.posAtual,
-    this.estabelecimentoLat,
-    this.estabelecimentoLng,
-    this.clienteLat,
-    this.clienteLng,
-    required this.onNavegar,
-  });
-
-  @override
-  State<_MapArea> createState() => _MapAreaState();
-}
-
-class _MapAreaState extends State<_MapArea> {
-  final _mapController = MapController();
-  List<ll.LatLng> _rota = [];
-  bool _carregandoRota = false;
-  // Guarda a chave da última rota para evitar re-fetch desnecessário
-  String? _ultimaOrigemKey;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _carregarRota());
-  }
-
-  @override
-  void didUpdateWidget(covariant _MapArea old) {
-    super.didUpdateWidget(old);
-    final statusMudou = old.status != widget.status;
-    final primeiroGps = old.posAtual == null && widget.posAtual != null;
-    if (statusMudou || primeiroGps) {
-      _carregarRota();
-    }
-  }
-
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
-  }
-
-  // ── Carrega rota via MapService (geocode-proxy Edge Function) ─────────────
-  Future<void> _carregarRota() async {
-    if (_carregandoRota) return;
-
-    // Define destino conforme etapa da entrega
-    final irEstab = widget.status == StatusEntrega.confirmado ||
-        widget.status == StatusEntrega.emColeta;
-
-    final double? destLat =
-        irEstab ? widget.estabelecimentoLat : widget.clienteLat;
-    final double? destLng =
-        irEstab ? widget.estabelecimentoLng : widget.clienteLng;
-
-    if (destLat == null || destLng == null) return;
-
-    // Origem: posição GPS atual; fallback para estabelecimento se ainda sem GPS
-    double origLat, origLng;
-    if (widget.posAtual != null) {
-      origLat = widget.posAtual!.latitude;
-      origLng = widget.posAtual!.longitude;
-    } else if (!irEstab &&
-        widget.estabelecimentoLat != null &&
-        widget.estabelecimentoLng != null) {
-      // Fase de entrega mas sem GPS: mostra rota do estabelecimento ao cliente
-      origLat = widget.estabelecimentoLat!;
-      origLng = widget.estabelecimentoLng!;
-    } else {
-      return; // Não há como calcular rota ainda
-    }
-
-    // Evita re-fetch se origem/destino/status não mudaram
-    final chaveRota = '${widget.status.name}|$origLat,$origLng|$destLat,$destLng';
-    if (chaveRota == _ultimaOrigemKey) return;
-
-    setState(() => _carregandoRota = true);
-    _ultimaOrigemKey = chaveRota;
-
-    try {
-      final pontos = await mapsvc.MapService.instance.buscarRota(
-        origem: mapsvc.LatLng(origLat, origLng),
-        destino: mapsvc.LatLng(destLat, destLng),
-      );
-
-      if (!mounted) return;
-
-      final llPontos =
-          pontos.map((p) => ll.LatLng(p.latitude, p.longitude)).toList();
-
-      setState(() {
-        _rota = llPontos;
-        _carregandoRota = false;
-      });
-
-      // Ajusta câmera para encaixar toda a rota
-      if (llPontos.length >= 2) {
-        _mapController.fitCamera(
-          CameraFit.coordinates(
-            coordinates: llPontos,
-            padding: const EdgeInsets.fromLTRB(48, 80, 48, 48),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) setState(() => _carregandoRota = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Centro inicial: GPS atual > estabelecimento > São Paulo
-    ll.LatLng center;
-    if (widget.posAtual != null) {
-      center = ll.LatLng(widget.posAtual!.latitude, widget.posAtual!.longitude);
-    } else if (widget.estabelecimentoLat != null &&
-        widget.estabelecimentoLng != null) {
-      center = ll.LatLng(widget.estabelecimentoLat!, widget.estabelecimentoLng!);
-    } else {
-      center = const ll.LatLng(-23.5505, -46.6333);
-    }
-
-    // Destino ativo (para destacar marcador)
-    final irEstab = widget.status == StatusEntrega.confirmado ||
-        widget.status == StatusEntrega.emColeta;
-
-    final List<Marker> markers = [];
-
-    // Marcador do entregador (posição atual)
-    if (widget.posAtual != null) {
-      markers.add(Marker(
-        point: ll.LatLng(widget.posAtual!.latitude, widget.posAtual!.longitude),
-        width: 40,
-        height: 40,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _orange,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2.5),
-            boxShadow: [BoxShadow(color: _orange.withValues(alpha: .5), blurRadius: 8)],
-          ),
-          child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
-        ),
-      ));
-    }
-
-    // Marcador do estabelecimento
-    if (widget.estabelecimentoLat != null && widget.estabelecimentoLng != null) {
-      markers.add(Marker(
-        point: ll.LatLng(widget.estabelecimentoLat!, widget.estabelecimentoLng!),
-        width: 44,
-        height: 44,
-        child: Container(
-          decoration: BoxDecoration(
-            color: irEstab ? _orange : _bg3,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: irEstab ? Colors.white : _orange.withValues(alpha: .5),
-              width: 2,
-            ),
-          ),
-          child: Icon(
-            Icons.storefront_rounded,
-            color: irEstab ? Colors.white : _text2,
-            size: 22,
-          ),
-        ),
-      ));
-    }
-
-    // Marcador do cliente (destino final)
-    if (widget.clienteLat != null && widget.clienteLng != null) {
-      markers.add(Marker(
-        point: ll.LatLng(widget.clienteLat!, widget.clienteLng!),
-        width: 44,
-        height: 44,
-        child: Container(
-          decoration: BoxDecoration(
-            color: !irEstab ? _red : _bg3,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: !irEstab ? Colors.white : _red.withValues(alpha: .5),
-              width: 2,
-            ),
-          ),
-          child: Icon(
-            Icons.location_on_rounded,
-            color: !irEstab ? Colors.white : _text2,
-            size: 22,
-          ),
-        ),
-      ));
-    }
-
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * .38,
-      child: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: 15,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.padocaexpress.app',
-                tileProvider: CancellableNetworkTileProvider(),
-              ),
-              // Rota traçada
-              if (_rota.length >= 2)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _rota,
-                      color: _orange,
-                      strokeWidth: 4.5,
-                      borderColor: _orange.withValues(alpha: .25),
-                      borderStrokeWidth: 8,
-                    ),
-                  ],
-                ),
-              if (markers.isNotEmpty) MarkerLayer(markers: markers),
-            ],
-          ),
-          // Back button overlay
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 16,
-            child: GestureDetector(
-              onTap: () => context.pop(),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: _bg0.withValues(alpha: .85),
-                  border: Border.all(color: _border),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Icon(Icons.arrow_back_ios_new_rounded, color: _text1, size: 16),
-                ),
-              ),
-            ),
-          ),
-          // Status label overlay
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _bg0.withValues(alpha: .85),
-                border: Border.all(color: _orange.withValues(alpha: .25)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_carregandoRota) ...[
-                    const SizedBox(
-                      width: 10,
-                      height: 10,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: _orange,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Text(
-                    widget.status.label,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: _orange,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // "Navigate with Google Maps" button overlay
-          Positioned(
-            bottom: 12,
-            right: 12,
-            child: GestureDetector(
-              onTap: widget.onNavegar,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: _orange,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .4), blurRadius: 10)],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Navegar',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // STATUS CARD
-// ═══════════════════════════════════════════════════════════════════════════
 class _StatusCard extends StatelessWidget {
   final StatusEntrega status;
   final String tempoFormatado;
@@ -1707,8 +1450,8 @@ class _StatusCard extends StatelessWidget {
                 ),
                 Text(
                   concluida
-                      ? 'Ganho creditado em breve 💰'
-                      : 'GPS ativo · Transmitindo localização',
+                      ? 'Ganho creditado em breve ðŸ’°'
+                      : 'GPS ativo Â· Transmitindo localizaÃ§Ã£o',
                   style: GoogleFonts.dmSans(fontSize: 11, color: cor.withValues(alpha: .7)),
                 ),
               ],
@@ -1734,9 +1477,9 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PROGRESSO STEPPER
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ProgressoStepper extends StatelessWidget {
   final StatusEntrega statusAtual;
   const _ProgressoStepper({required this.statusAtual});
@@ -1808,9 +1551,9 @@ class _ProgressoStepper extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // INFO CARD
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _InfoCard extends StatelessWidget {
   final String numeroPedido;
   final double taxaEntrega, distanciaKm;
@@ -1845,7 +1588,7 @@ class _InfoCard extends StatelessWidget {
           ),
           _InfoDivider(),
           _InfoItem(
-            label: 'DISTÂNCIA',
+            label: 'DISTÃ‚NCIA',
             valor: distanciaTexto ?? '${distanciaKm.toStringAsFixed(1)} km',
             cor: _orange,
           ),
@@ -1895,9 +1638,9 @@ class _InfoDivider extends StatelessWidget {
       Container(width: 1, height: 30, color: _border, margin: const EdgeInsets.symmetric(horizontal: 8));
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ROTA SIMPLES
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _RotaSimples extends StatelessWidget {
   final String origem, destino;
   const _RotaSimples({required this.origem, required this.destino});
@@ -1978,9 +1721,9 @@ class _RotaLinha extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CONTATO CARD
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ContatoCard extends StatelessWidget {
   final String nome, telefone;
   const _ContatoCard({required this.nome, required this.telefone});
@@ -2003,7 +1746,7 @@ class _ContatoCard extends StatelessWidget {
               color: _orange.withValues(alpha: .1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Center(child: Text('👤', style: TextStyle(fontSize: 16))),
+            child: const Center(child: Text('ðŸ‘¤', style: TextStyle(fontSize: 16))),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -2030,7 +1773,7 @@ class _ContatoCard extends StatelessWidget {
               border: Border.all(color: _green.withValues(alpha: .25)),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Center(child: Text('📞', style: TextStyle(fontSize: 16))),
+            child: const Center(child: Text('ðŸ“ž', style: TextStyle(fontSize: 16))),
           ),
         ],
       ),
@@ -2038,9 +1781,9 @@ class _ContatoCard extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SHEET CONFIRMAR ENTREGA
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ConfirmarEntregaSheet extends StatelessWidget {
   final VoidCallback onFoto, onCodigo;
   const _ConfirmarEntregaSheet({required this.onFoto, required this.onCodigo});
@@ -2064,7 +1807,7 @@ class _ConfirmarEntregaSheet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Escolha o método de confirmação com o cliente.',
+            'Escolha o mÃ©todo de confirmaÃ§Ã£o com o cliente.',
             style: GoogleFonts.dmSans(fontSize: 13, color: _text2),
           ),
           const SizedBox(height: 24),
@@ -2080,7 +1823,7 @@ class _ConfirmarEntregaSheet extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Text('📸', style: TextStyle(fontSize: 24)),
+                  const Text('ðŸ“¸', style: TextStyle(fontSize: 24)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -2119,14 +1862,14 @@ class _ConfirmarEntregaSheet extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Text('🔢', style: TextStyle(fontSize: 24)),
+                  const Text('ðŸ”¢', style: TextStyle(fontSize: 24)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Código de confirmação',
+                          'CÃ³digo de confirmaÃ§Ã£o',
                           style: GoogleFonts.outfit(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -2134,7 +1877,7 @@ class _ConfirmarEntregaSheet extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Cliente informa o código de 4 dígitos',
+                          'Cliente informa o cÃ³digo de 4 dÃ­gitos',
                           style: GoogleFonts.dmSans(fontSize: 12, color: _text3),
                         ),
                       ],

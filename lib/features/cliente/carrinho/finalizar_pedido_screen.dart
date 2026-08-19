@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +14,10 @@ import 'package:padoca_express/features/cliente/localizacao/endereco_model.dart'
 import 'package:padoca_express/features/cliente/localizacao/selecionar_endereco_modal.dart';
 import 'package:padoca_express/features/cliente/pagamento/controllers/pagamento_controller.dart';
 import 'package:padoca_express/features/cliente/pagamento/state/pagamento_state.dart';
+import 'package:padoca_express/core/utils/account_uniqueness_validator.dart';
+import 'package:padoca_express/core/utils/cliente_cpf_service.dart';
 import 'package:padoca_express/features/cliente/pagamento/presentation/cartao_pagamento_modal.dart';
+import 'package:padoca_express/features/cliente/pagamento/presentation/informar_cpf_checkout_modal.dart';
 import 'package:padoca_express/features/cliente/pagamento/models/dados_cartao_model.dart';
 import 'package:intl/intl.dart';
 
@@ -88,13 +93,44 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
 
   Future<void> _finalizarPedido() async {
     final metodo = _metodoPagamentoSelecionado!;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final cpfService = ref.read(clienteCpfServiceProvider);
+    var cpfPerfil = await cpfService.getCpfDigits(userId);
+
+    if (metodo == 'pix_site' && (cpfPerfil == null || cpfPerfil.isEmpty)) {
+      if (!mounted) return;
+      final informou = await InformarCpfCheckoutModal.show(context);
+      if (!informou || !mounted) return;
+      cpfPerfil = await cpfService.getCpfDigits(userId);
+      if (cpfPerfil == null || cpfPerfil.isEmpty) return;
+    }
 
     DadosCartaoModel? dadosCartao;
     if (metodo == 'cartao_site') {
-      // 1. Coleta dados do cartão
       if (!mounted) return;
-      dadosCartao = await CartaoPagamentoModal.show(context);
+      dadosCartao = await CartaoPagamentoModal.show(
+        context,
+        cpfInicial: cpfPerfil,
+      );
       if (dadosCartao == null || !mounted) return;
+
+      final digitsCartao = dadosCartao.cpfCnpj.replaceAll(RegExp(r'\D'), '');
+      if ((cpfPerfil == null || cpfPerfil.isEmpty) && digitsCartao.length == 11) {
+        try {
+          await cpfService.validateAndSave(digitsCartao, userId: userId);
+        } catch (e) {
+          if (!mounted) return;
+          final message = e is DuplicateAccountException
+              ? e.message
+              : e.toString().replaceFirst('Exception: ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
+          );
+          return;
+        }
+      }
     }
 
     // 2. Exibe modal de confirmação com endereço + método antes de processar
@@ -157,6 +193,7 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
 
       if (next.status == PagamentoStatus.aguardandoPix &&
           next.cobranca != null) {
+        unawaited(ref.read(carrinhoControllerProvider.notifier).limparCarrinho());
         context.go('/pagamento/pix', extra: {
           'pedidoId': next.pedidoCriadoId ?? '',
           'pixCopiaECola': next.cobranca!.pixCopiaECola ?? '',

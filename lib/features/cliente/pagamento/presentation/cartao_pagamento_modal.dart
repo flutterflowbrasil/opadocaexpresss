@@ -10,15 +10,20 @@ import 'package:padoca_express/features/cliente/pagamento/presentation/cartao_pa
 /// Retorna [DadosCartaoModel] ao caller via Navigator.pop.
 /// Não toca no Supabase — apenas valida localmente e retorna os dados.
 class CartaoPagamentoModal extends StatefulWidget {
-  const CartaoPagamentoModal({super.key});
+  const CartaoPagamentoModal({super.key, this.cpfInicial});
 
-  static Future<DadosCartaoModel?> show(BuildContext context) {
+  final String? cpfInicial;
+
+  static Future<DadosCartaoModel?> show(
+    BuildContext context, {
+    String? cpfInicial,
+  }) {
     return showModalBottomSheet<DadosCartaoModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) => const CartaoPagamentoModal(),
+      builder: (_) => CartaoPagamentoModal(cpfInicial: cpfInicial),
     );
   }
 
@@ -64,6 +69,16 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
     // Rebuild o preview ao vivo
     for (final ctrl in [_numeroCtrl, _nomeCtrl, _vencimentoCtrl]) {
       ctrl.addListener(() => setState(() {}));
+    }
+    final cpfInicial = widget.cpfInicial;
+    if (cpfInicial != null && cpfInicial.isNotEmpty) {
+      final digits = BrazilianDocumentValidator.onlyDigits(cpfInicial);
+      if (digits.length == 11) {
+        _cpfCtrl.value = _cpfMask.formatEditUpdate(
+          TextEditingValue.empty,
+          TextEditingValue(text: digits),
+        );
+      }
     }
   }
 

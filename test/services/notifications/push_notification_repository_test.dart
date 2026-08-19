@@ -68,6 +68,17 @@ void main() {
       );
     });
 
+    test('entregador com despacho_id abre o dashboard da oferta', () {
+      expect(
+        PushNotificationController.routeFor(
+          'entregador',
+          null,
+          despachoId: 'desp-1',
+        ),
+        '/dashboard_entregador',
+      );
+    });
+
     test('estabelecimento abre o kanban de pedidos', () {
       expect(
         PushNotificationController.routeFor('estabelecimento', 'qualquer'),

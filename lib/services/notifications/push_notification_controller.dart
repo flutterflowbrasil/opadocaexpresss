@@ -8,23 +8,30 @@ import 'package:padoca_express/services/notifications/push_notification_reposito
 class PushNotificationState {
   final bool isReady;
   final String? pendingRoute;
+  final String? pendingDespachoId;
   final String? error;
 
   const PushNotificationState({
     this.isReady = false,
     this.pendingRoute,
+    this.pendingDespachoId,
     this.error,
   });
 
   PushNotificationState copyWith({
     bool? isReady,
     String? pendingRoute,
+    String? pendingDespachoId,
     String? error,
     bool clearPendingRoute = false,
+    bool clearPendingDespacho = false,
   }) {
     return PushNotificationState(
       isReady: isReady ?? this.isReady,
       pendingRoute: clearPendingRoute ? null : (pendingRoute ?? this.pendingRoute),
+      pendingDespachoId: clearPendingDespacho
+          ? null
+          : (pendingDespachoId ?? this.pendingDespachoId),
       error: error,
     );
   }
@@ -49,7 +56,11 @@ class PushNotificationController extends StateNotifier<PushNotificationState> {
   }
 
   void clearPendingRoute() {
-    state = state.copyWith(clearPendingRoute: true);
+    state = state.copyWith(clearPendingRoute: true, clearPendingDespacho: true);
+  }
+
+  void clearPendingDespacho() {
+    state = state.copyWith(clearPendingDespacho: true);
   }
 
   void _bindClickListener() {
@@ -70,10 +81,15 @@ class PushNotificationController extends StateNotifier<PushNotificationState> {
       if (user == null) return;
       final tipo = await _authRepository.getUserType(user.id);
       final pedidoId = data['pedido_id']?.toString();
-      final despachoId = data['despacho_id']?.toString();
+      final despachoId = data['despacho_id']?.toString() ??
+          data['entidade_id']?.toString();
       final route = routeFor(tipo, pedidoId, despachoId: despachoId);
-      if (route == null) return;
-      state = state.copyWith(isReady: true, pendingRoute: route);
+      if (route == null && despachoId == null) return;
+      state = state.copyWith(
+        isReady: true,
+        pendingRoute: route,
+        pendingDespachoId: despachoId,
+      );
     } catch (e) {
       debugPrint('[PushNotificationController] click: $e');
     }
@@ -85,6 +101,9 @@ class PushNotificationController extends StateNotifier<PushNotificationState> {
       case 'entregador':
         if (pedidoId != null && pedidoId.isNotEmpty) {
           return '/dashboard_entregador/entrega/$pedidoId';
+        }
+        if (despachoId != null && despachoId.isNotEmpty) {
+          return '/dashboard_entregador';
         }
         return '/dashboard_entregador';
       case 'estabelecimento':

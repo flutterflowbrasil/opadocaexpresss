@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
 import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
+import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/editar_informacoes.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/meus_enderecos.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
@@ -92,6 +93,18 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        (profileState.cpf != null &&
+                                profileState.cpf!.trim().isNotEmpty)
+                            ? 'CPF ${BrazilianDocumentValidator.formatCpf(profileState.cpf!)}'
+                            : 'CPF não informado',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
                     ],

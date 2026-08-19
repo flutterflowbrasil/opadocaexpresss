@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:padoca_express/core/utils/account_uniqueness_validator.dart';
 import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/core/utils/supabase_error_handler.dart';
-import 'dart:typed_data';
 
 class EditarInformacoesModal extends ConsumerStatefulWidget {
   const EditarInformacoesModal({super.key});
@@ -30,10 +31,14 @@ class _EditarInformacoesModalState
   final TextEditingController _cpfController = TextEditingController();
   final TextEditingController _telefoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final _cpfFormatter = MaskTextInputFormatter(
+    mask: '###.###.###-##',
+    filter: {'#': RegExp(r'[0-9]')},
+  );
 
   // Initial values for comparison
   String _initialNome = '';
-  String _initialCpf = '';
+  String _initialCpfDigits = '';
   String _initialDataNascimento = '';
   String _initialTelefone = '';
 
@@ -47,7 +52,10 @@ class _EditarInformacoesModalState
   bool get _hasChanges {
     if (_newImageBytes != null) return true;
     if (_nomeController.text.trim() != _initialNome) return true;
-    if (_cpfController.text.trim() != _initialCpf) return true;
+    if (BrazilianDocumentValidator.onlyDigits(_cpfController.text) !=
+        _initialCpfDigits) {
+      return true;
+    }
     if (_dataNascimentoController.text.trim() != _initialDataNascimento) {
       return true;
     }
@@ -91,13 +99,23 @@ class _EditarInformacoesModalState
           _emailController.text =
               usuarioData?['email'] ?? _supabase.auth.currentUser?.email ?? '';
 
-          _cpfController.text = clienteData?['cpf'] ?? '';
+          final cpfDigits = BrazilianDocumentValidator.onlyDigits(
+            clienteData?['cpf'] ?? '',
+          );
+          if (cpfDigits.isEmpty) {
+            _cpfController.text = '';
+          } else {
+            _cpfController.value = _cpfFormatter.formatEditUpdate(
+              TextEditingValue.empty,
+              TextEditingValue(text: cpfDigits),
+            );
+          }
           _dataNascimentoController.text =
               clienteData?['data_nascimento'] ?? '';
 
           _initialNome = _nomeController.text;
           _initialTelefone = _telefoneController.text;
-          _initialCpf = _cpfController.text;
+          _initialCpfDigits = cpfDigits;
           _initialDataNascimento = _dataNascimentoController.text;
 
           if (clienteData?['foto_perfil_url'] != null) {
@@ -464,7 +482,11 @@ class _EditarInformacoesModalState
                         const SizedBox(height: 16),
                         _buildInputField('CPF', _cpfController, isDark,
                             primaryColor, burgundyColor,
-                            placeholder: '000.000.000-00'),
+                            placeholder: '000.000.000-00',
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [_cpfFormatter],
+                            helperText:
+                                'Necessário para Pix e cartão. Usamos só para gerar o pagamento.'),
                         const SizedBox(height: 16),
                         _buildInputField('Telefone', _telefoneController,
                             isDark, primaryColor, burgundyColor,
@@ -731,11 +753,19 @@ class _EditarInformacoesModalState
 
   Widget _buildInputField(String label, TextEditingController controller,
       bool isDark, Color primaryColor, Color burgundyColor,
-      {String? placeholder, IconData? icon, bool enabled = true, VoidCallback? onTap}) {
+      {String? placeholder,
+      IconData? icon,
+      bool enabled = true,
+      VoidCallback? onTap,
+      TextInputType? keyboardType,
+      List<TextInputFormatter>? inputFormatters,
+      String? helperText}) {
     
     Widget textField = TextField(
           controller: controller,
           enabled: enabled,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             color: isDark ? Colors.white : burgundyColor,
@@ -797,6 +827,19 @@ class _EditarInformacoesModalState
           ),
         ),
         textField,
+        if (helperText != null) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              helperText,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: isDark ? Colors.white54 : burgundyColor.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

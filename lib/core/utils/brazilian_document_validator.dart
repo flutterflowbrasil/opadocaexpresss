@@ -38,6 +38,14 @@ class BrazilianDocumentValidator {
 
   static String onlyDigits(String value) => value.replaceAll(RegExp(r'\D'), '');
 
+  /// Formata 11 dígitos como `000.000.000-00`. Outros tamanhos voltam só os dígitos.
+  static String formatCpf(String value) {
+    final digits = onlyDigits(value);
+    if (digits.length != 11) return digits;
+    return '${digits.substring(0, 3)}.${digits.substring(3, 6)}.'
+        '${digits.substring(6, 9)}-${digits.substring(9)}';
+  }
+
   static bool isValidCpf(String value) {
     final digits = onlyDigits(value);
     if (digits.length != 11 || RegExp(r'^(\d)\1{10}$').hasMatch(digits)) {

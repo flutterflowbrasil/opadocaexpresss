@@ -56,6 +56,23 @@ serve(async (req) => {
       return json({ error: 'api_key da subconta nao encontrada. Recrie a subconta.' }, 422);
     }
 
+    const asaasRespStatus = await fetch(`${asaasBaseUrl}/myAccount/status`, {
+      headers: { access_token: subcontaApiKey },
+    });
+    let statusData = await asaasRespStatus.json().catch(() => ({}));
+
+    if (asaasBaseUrl.includes('sandbox') && text(statusData.general).toUpperCase() !== 'APPROVED') {
+      await fetch(`${asaasBaseUrl}/sandbox/myAccount/approve`, {
+        method: 'POST',
+        headers: { access_token: subcontaApiKey, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const refreshed = await fetch(`${asaasBaseUrl}/myAccount/status`, {
+        headers: { access_token: subcontaApiKey },
+      });
+      statusData = await refreshed.json().catch(() => statusData);
+    }
+
     const asaasResp = await fetch(`${asaasBaseUrl}/myAccount`, {
       headers: { access_token: subcontaApiKey },
     });

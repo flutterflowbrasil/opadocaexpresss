@@ -99,13 +99,29 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         throw Exception('Selecione um endereço de entrega salvo.');
       }
 
-      final pedidoId = await _repository.criarPedidoValidado(
-        estabelecimentoId: estabelecimento.id,
-        enderecoEntregaId: enderecoId,
-        pagamentoMetodo: metodoPagamento,
-        cupomCodigo: carrinho.cupomAplicado?.codigo,
-        observacaoGeral: carrinho.observacaoGeral,
-      );
+      String? pedidoId;
+      try {
+        pedidoId = await _repository.criarPedidoValidado(
+          estabelecimentoId: estabelecimento.id,
+          enderecoEntregaId: enderecoId,
+          pagamentoMetodo: metodoPagamento,
+          cupomCodigo: carrinho.cupomAplicado?.codigo,
+          observacaoGeral: carrinho.observacaoGeral,
+        );
+      } catch (e) {
+        final msg = e.toString();
+        if (msg.contains('Carrinho vazio')) {
+          pedidoId = await _repository.buscarPedidoPendenteSemCobranca(
+            clienteId: clienteId,
+            estabelecimentoId: estabelecimento.id,
+          );
+        }
+        if (pedidoId == null) rethrow;
+      }
+
+      if (pedidoId == null) {
+        throw Exception('Carrinho vazio.');
+      }
 
       // 2. Criar cobrança no Asaas via Edge Function
       final cobranca = await _repository.criarCobrancaAsaas(

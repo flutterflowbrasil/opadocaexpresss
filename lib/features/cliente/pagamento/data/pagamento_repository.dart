@@ -83,7 +83,29 @@ class PagamentoRepository {
     }
   }
 
-  // ── Buscar PIX pendente do cliente ────────────────────────────────────────
+  /// Pedido pendente ainda sem cobrança Asaas (carrinho já tinha sido apagado).
+  Future<String?> buscarPedidoPendenteSemCobranca({
+    required String clienteId,
+    required String estabelecimentoId,
+  }) async {
+    try {
+      final response = await _supabase
+          .from('pedidos')
+          .select('id')
+          .eq('cliente_id', clienteId)
+          .eq('estabelecimento_id', estabelecimentoId)
+          .eq('status', 'pendente')
+          .inFilter('pagamento_status', ['pendente', 'aguardando_pagamento'])
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return response?['id'] as String?;
+    } catch (e) {
+      debugPrint('[PagamentoRepository] buscarPedidoPendenteSemCobranca erro: $e');
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> buscarPedidoPixPendente(
       String clienteId) async {
     try {

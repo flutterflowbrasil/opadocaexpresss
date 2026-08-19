@@ -8,6 +8,17 @@ void main() {
       expect(BrazilianDocumentValidator.isValidCpf('52998224725'), isTrue);
     });
 
+    test('formats CPF as 000.000.000-00', () {
+      expect(
+        BrazilianDocumentValidator.formatCpf('52998224725'),
+        '529.982.247-25',
+      );
+      expect(
+        BrazilianDocumentValidator.formatCpf('529.982.247-25'),
+        '529.982.247-25',
+      );
+    });
+
     test('rejects invalid CPFs', () {
       expect(BrazilianDocumentValidator.isValidCpf('123'), isFalse);
       expect(BrazilianDocumentValidator.isValidCpf('111.111.111-11'), isFalse);

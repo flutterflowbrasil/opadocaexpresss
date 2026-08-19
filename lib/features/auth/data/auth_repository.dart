@@ -712,19 +712,23 @@ class AuthRepository {
 
       final response = await _supabase
           .from('usuarios')
-          .select('nome_completo_fantasia, clientes(foto_perfil_url)')
+          .select('nome_completo_fantasia, clientes(foto_perfil_url, cpf)')
           .eq('id', userId)
           .maybeSingle();
 
       String? fotoPerfilUrl;
+      String? cpf;
       if (response != null && response['clientes'] != null) {
         // Handle array or single object representation of the join
         final clientesData = response['clientes'];
+        Map<String, dynamic>? clienteMap;
         if (clientesData is List && clientesData.isNotEmpty) {
-          fotoPerfilUrl = clientesData.first['foto_perfil_url'];
+          clienteMap = Map<String, dynamic>.from(clientesData.first as Map);
         } else if (clientesData is Map) {
-          fotoPerfilUrl = clientesData['foto_perfil_url'];
+          clienteMap = Map<String, dynamic>.from(clientesData);
         }
+        fotoPerfilUrl = clienteMap?['foto_perfil_url'] as String?;
+        cpf = clienteMap?['cpf'] as String?;
       }
 
       return {
@@ -732,6 +736,7 @@ class AuthRepository {
         'email': user.email,
         'id': userId,
         'foto_perfil_url': fotoPerfilUrl,
+        'cpf': cpf,
       };
     } catch (e) {
       return null;
