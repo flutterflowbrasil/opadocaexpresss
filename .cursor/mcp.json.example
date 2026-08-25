@@ -8,6 +8,14 @@
     },
     "onesignal": {
       "url": "https://api.onesignal.com/mcp/oauth"
+    },
+    "google-maps": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-google-maps"
+      ],
+      "envFile": "${workspaceFolder}/.env"
     }
   }
 }

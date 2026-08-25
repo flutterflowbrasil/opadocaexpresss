@@ -58,3 +58,6 @@ ios/Flutter/Maps.xcconfig
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Cursor MCP local (copie de .cursor/mcp.json.example; chaves ficam no .env)
+.cursor/mcp.json
