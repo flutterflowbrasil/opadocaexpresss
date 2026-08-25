@@ -18,12 +18,28 @@ class DespachoRespostaException implements Exception {
   String toString() => mensagem;
 }
 
+Map<String, dynamic>? embedRelacao(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  if (value is List && value.isNotEmpty && value.first is Map) {
+    return Map<String, dynamic>.from(value.first as Map);
+  }
+  return null;
+}
+
 class DashboardRepository {
   final SupabaseClient _supabase;
 
   DashboardRepository(this._supabase);
 
   Future<Map<String, dynamic>> fetchDriverProfile() async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) {
+      throw StateError('Usuário não autenticado');
+    }
+
+    // RLS também deixa ver entregadores online de terceiros — filtrar o próprio.
     final data = await _supabase.from('entregadores').select('''
       id,
       tipo_veiculo,
@@ -37,11 +53,51 @@ class DashboardRepository {
       status_despacho,
       pedido_atual_id,
       usuarios!entregadores_usuario_id_fkey(nome_completo_fantasia),
-      entregador_saldos(saldo_disponivel, saldo_bloqueado, total_ganho),
       entregador_kyc(status)
-    ''').single();
+    ''').eq('usuario_id', uid).maybeSingle();
 
-    return data;
+    if (data == null) {
+      throw StateError('Perfil de entregador não encontrado');
+    }
+
+    final saldos = await _saldosDeSplits(data['id'] as String);
+
+    return {
+      ...data,
+      'usuarios': embedRelacao(data['usuarios']),
+      'entregador_saldos': saldos,
+
+      'entregador_kyc': embedRelacao(data['entregador_kyc']),
+    };
+  }
+
+  Future<Map<String, double>> _saldosDeSplits(String entregadorId) async {
+    final rows = await _supabase
+        .from('splits_pagamento')
+        .select(
+          'entregador_valor_total, entregador_taxa_entrega_valor, repasse_entregador_processado',
+        )
+        .eq('entregador_id', entregadorId);
+    var disponivel = 0.0;
+    var bloqueado = 0.0;
+    var ganho = 0.0;
+    for (final raw in rows as List) {
+      final r = Map<String, dynamic>.from(raw as Map);
+      final v = (r['entregador_valor_total'] as num?)?.toDouble() ??
+          (r['entregador_taxa_entrega_valor'] as num?)?.toDouble() ??
+          0;
+      ganho += v;
+      if (r['repasse_entregador_processado'] == true) {
+        disponivel += v;
+      } else {
+        bloqueado += v;
+      }
+    }
+    return {
+      'saldo_disponivel': disponivel,
+      'saldo_bloqueado': bloqueado,
+      'total_ganho': ganho,
+    };
   }
 
   /// Valida se o entregador pode ficar online.
@@ -129,6 +185,23 @@ class DashboardRepository {
         .limit(5);
 
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNotificacoes() async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return [];
+    try {
+      final data = await _supabase
+          .from('notificacoes_historico')
+          .select('id, evento, titulo, corpo, status, created_at')
+          .eq('usuario_id', uid)
+          .order('created_at', ascending: false)
+          .limit(20);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('[DashboardRepository] fetchNotificacoes error: $e');
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>?> fetchActivePedido(String pedidoId) async {
@@ -245,7 +318,8 @@ class DashboardRepository {
     }
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 8),
       ),
     );
 

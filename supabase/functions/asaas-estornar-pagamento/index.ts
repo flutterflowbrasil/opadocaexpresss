@@ -1,31 +1,32 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-worker-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import {
+  asaasHeaders,
+  errorToResponse,
+  HttpError,
+  jsonResponse,
+  loadAsaasCredentials,
+  requiredEnv,
+} from '../_shared/asaas_client.ts';
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405);
+  if (req.method === 'OPTIONS') return jsonResponse({ ok: true });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Metodo nao permitido.' }, 405);
 
   try {
     authorizeWorker(req);
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
       auth: { persistSession: false },
     });
-    const asaasApiKey = requiredEnv('ASAAS_API_KEY');
-    const asaasBaseUrl = (Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3').replace(/\/$/, '');
+    const { baseUrl: asaasBaseUrl, apiKey: asaasApiKey } = loadAsaasCredentials();
 
     const body = await req.json().catch(() => ({}));
     const pedidoId = String(body.pedido_id ?? '').trim();
-    if (!pedidoId) return json({ error: 'pedido_id obrigatorio.' }, 400);
+    if (!pedidoId) return jsonResponse({ error: 'pedido_id obrigatorio.' }, 400);
 
     const { data: cfg } = await supabase.rpc('fn_get_config_financeira');
     if (cfg?.estorno_automatico_ativo === false) {
-      return json({ ok: true, skipped: true, reason: 'estorno_desligado' });
+      return jsonResponse({ ok: true, skipped: true, reason: 'estorno_desligado' });
     }
 
     const { data: pedido, error: pedidoError } = await supabase
@@ -36,10 +37,10 @@ serve(async (req) => {
     if (pedidoError || !pedido) throw new HttpError('Pedido nao encontrado.', 404);
     if (!pedido.asaas_payment_id) throw new HttpError('Pedido sem cobranca Asaas.', 409);
     if (!String(pedido.status ?? '').startsWith('cancelado')) {
-      return json({ ok: false, error: 'Pedido nao esta cancelado.' }, 409);
+      return jsonResponse({ ok: false, error: 'Pedido nao esta cancelado.' }, 409);
     }
     if (['estornado', 'cancelado', 'chargeback'].includes(pedido.pagamento_status)) {
-      return json({ ok: true, duplicate: true });
+      return jsonResponse({ ok: true, duplicate: true });
     }
 
     const eventId = `ESTORNO:${pedidoId}`;
@@ -55,7 +56,7 @@ serve(async (req) => {
       .select('id, processado')
       .single();
     if (claimError) {
-      if (claimError.code === '23505') return json({ ok: true, duplicate: true });
+      if (claimError.code === '23505') return jsonResponse({ ok: true, duplicate: true });
       throw claimError;
     }
 
@@ -77,17 +78,15 @@ serve(async (req) => {
       status_novo: 'estornado',
     }).eq('id', claimed.id);
 
-    return json({ ok: true, asaas: asaasResult });
+    return jsonResponse({ ok: true, asaas: asaasResult });
   } catch (error) {
-    console.error('[asaas-estornar-pagamento]', error);
-    const status = error instanceof HttpError ? error.status : 500;
-    return json({ error: error instanceof Error ? error.message : 'Erro inesperado.' }, status);
+    return errorToResponse(error, '[asaas-estornar-pagamento]');
   }
 });
 
 async function refundOrDelete(baseUrl: string, apiKey: string, paymentId: string) {
   const getRes = await fetch(`${baseUrl}/payments/${paymentId}`, {
-    headers: { access_token: apiKey },
+    headers: asaasHeaders(apiKey, false),
   });
   const payment = await getRes.json().catch(() => ({}));
   const status = String(payment.status ?? '').toUpperCase();
@@ -95,7 +94,7 @@ async function refundOrDelete(baseUrl: string, apiKey: string, paymentId: string
   if (['PENDING', 'OVERDUE'].includes(status)) {
     const del = await fetch(`${baseUrl}/payments/${paymentId}`, {
       method: 'DELETE',
-      headers: { access_token: apiKey },
+      headers: asaasHeaders(apiKey, false),
     });
     const data = await del.json().catch(() => ({}));
     if (!del.ok) throw new HttpError(`Asaas recusou cancelamento: ${JSON.stringify(data)}`, 502);
@@ -104,7 +103,7 @@ async function refundOrDelete(baseUrl: string, apiKey: string, paymentId: string
 
   const refund = await fetch(`${baseUrl}/payments/${paymentId}/refund`, {
     method: 'POST',
-    headers: { access_token: apiKey, 'Content-Type': 'application/json' },
+    headers: asaasHeaders(apiKey),
     body: JSON.stringify({}),
   });
   const data = await refund.json().catch(() => ({}));
@@ -123,21 +122,3 @@ function authorizeWorker(req: Request) {
   if (header !== secret) throw new HttpError('Nao autorizado.', 401);
 }
 
-function requiredEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`Secret ${name} nao configurado.`);
-  return value;
-}
-
-class HttpError extends Error {
-  constructor(message: string, public status = 400) {
-    super(message);
-  }
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}

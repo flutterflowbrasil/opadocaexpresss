@@ -34,7 +34,9 @@ class AuthRepository {
     return flag == 'true' || flag == '1';
   }
 
-  GoogleSignIn get _googleSignIn => GoogleSignIn(
+  static GoogleSignIn? _googleSignInInstance;
+
+  GoogleSignIn get _googleSignIn => _googleSignInInstance ??= GoogleSignIn(
         clientId: _googleWebClientId,
         scopes: const ['email', 'profile'],
       );
@@ -644,6 +646,7 @@ class AuthRepository {
     );
 
     final event = await _supabase.auth.onAuthStateChange
+        .handleError((_) {})
         .where((e) => e.event == AuthChangeEvent.signedIn)
         .first
         .timeout(
@@ -696,8 +699,16 @@ class AuthRepository {
 
   Future<void> signOut() async {
     await PushDeviceRegistrar.logout();
-    await _googleSignIn.signOut();
-    await _supabase.auth.signOut();
+    // No web o login Google é OAuth do Supabase; instanciar GoogleSignIn()
+    // aqui chama google.accounts.id.initialize() de novo e dispara o GSI.
+    if (!kIsWeb || _nativeGoogleSignInOnWeb) {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+    }
+    if (_supabase.auth.currentSession != null) {
+      await _supabase.auth.signOut();
+    }
     // M1: Limpar todos os dados locais criptografados ao fazer logout
     const storage = FlutterSecureStorage(
       aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -955,12 +966,15 @@ class AuthRepository {
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
   final sub = supabase.auth.onAuthStateChange.listen((data) {
-    if (data.session == null) return;
+    if (data.session == null || data.session!.isExpired) return;
     PushDeviceRegistrar.sync();
     MapsLoader.load();
+  }, onError: (Object e, StackTrace _) {
+    debugPrint('[Auth] onAuthStateChange: $e');
   });
   ref.onDispose(sub.cancel);
-  if (supabase.auth.currentSession != null) {
+  final session = supabase.auth.currentSession;
+  if (session != null && !session.isExpired) {
     PushDeviceRegistrar.sync();
     MapsLoader.load();
   }

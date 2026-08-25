@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/pagamento/controllers/pagamento_controller.dart';
 import 'package:padoca_express/features/cliente/pagamento/presentation/pix_pagamento_widgets.dart';
 import 'package:padoca_express/features/cliente/pagamento/state/pagamento_state.dart';
@@ -37,7 +38,7 @@ class _PixPagamentoScreenState extends ConsumerState<PixPagamentoScreen> {
   void initState() {
     super.initState();
     _segundosRestantes =
-        widget.segundosIniciaisRestantes ?? 300; // 5 min padrão
+        widget.segundosIniciaisRestantes ?? 86400;
     _iniciarTimer();
   }
 
@@ -74,6 +75,7 @@ class _PixPagamentoScreenState extends ConsumerState<PixPagamentoScreen> {
       if (!mounted) return;
       if (next.status == PagamentoStatus.confirmado) {
         _timer?.cancel();
+        unawaited(ref.read(carrinhoControllerProvider.notifier).limparCarrinho());
         context.go('/pagamento/sucesso',
             extra: {'pedidoId': widget.pedidoId});
       } else if (next.status == PagamentoStatus.expirado) {

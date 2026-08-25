@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import '../../../../shared/widgets/responsive_layout.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -53,10 +55,10 @@ class _SplashScreenState extends State<SplashScreen>
     _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(logoCurve);
     _logoScale = Tween<double>(begin: 0.8, end: 1.0).animate(logoCurve);
     _logoSlideX = Tween<double>(begin: -70.0, end: 0.0).animate(logoCurve);
-    // -2 turns → +2 turns em radianos (4 rotações completas, decelerada pelo Ease Out)
+    // -15° → 0 (não 4 voltas — isso trava Impeller/OpenGL no emulador)
     _logoRotate = Tween<double>(
-      begin: -2.0 * 2.0 * math.pi,
-      end: 2.0 * 2.0 * math.pi,
+      begin: -15.0 * math.pi / 180,
+      end: 0.0,
     ).animate(logoCurve);
 
     // Texto animations
@@ -208,16 +210,25 @@ class _SplashScreenState extends State<SplashScreen>
 
         const Spacer(),
 
-        const Padding(
-          padding: EdgeInsets.only(bottom: 48),
-          child: Text(
-            'Ôpadoca Express',
-            style: TextStyle(
-              color: Color(0xCCFFFFFF),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 2.0,
-            ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 48),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final nome = ref
+                      .watch(plataformaRuntimeConfigProvider)
+                      .valueOrNull
+                      ?.plataformaNome ??
+                  'Ôpadoca Express';
+              return Text(
+                nome,
+                style: const TextStyle(
+                  color: Color(0xCCFFFFFF),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 2.0,
+                ),
+              );
+            },
           ),
         ),
       ],

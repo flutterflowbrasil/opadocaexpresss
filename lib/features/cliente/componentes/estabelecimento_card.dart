@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 
 // ─── Card do estabelecimento ──────────────────────────────────────────────────
-class EstabelecimentoCard extends StatelessWidget {
+class EstabelecimentoCard extends ConsumerWidget {
   final EstabelecimentoModel estabelecimento;
   final bool isDark;
   final Color cardColor;
@@ -21,7 +23,9 @@ class EstabelecimentoCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull;
+    final taxaLabel = estabelecimento.taxaEntregaFormatada(cfg);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -187,17 +191,13 @@ class EstabelecimentoCard extends StatelessWidget {
                               const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
-                                  estabelecimento.taxaEntregaFormatada,
+                                  taxaLabel,
                                   style: GoogleFonts.outfit(
                                     fontSize: 12,
-                                    color:
-                                        estabelecimento.taxaEntregaFormatada ==
-                                                'Grátis'
+                                    color: taxaLabel == 'Grátis'
                                             ? Colors.green[600]
                                             : Colors.grey[500],
-                                    fontWeight:
-                                        estabelecimento.taxaEntregaFormatada ==
-                                                'Grátis'
+                                    fontWeight: taxaLabel == 'Grátis'
                                             ? FontWeight.bold
                                             : FontWeight.normal,
                                   ),

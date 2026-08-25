@@ -22,12 +22,13 @@ class ConfigTabCupons extends ConsumerWidget {
     return Column(
       children: [
         ConfigSection(
-          titulo: 'Tipos Permitidos',
-          subtitulo: 'Quais categorias de cupom podem ser criadas',
+          titulo: 'Sistema',
+          subtitulo: 'Liga ou desliga cupons em toda a plataforma',
           rows: [
             ConfigRow(
               label: 'Sistema de cupons ativo',
-              descricao: 'Habilita ou desabilita cupons em toda a plataforma',
+              descricao:
+                  'Desativa cupons no checkout do cliente, oculta o campo de cupom no carrinho e oculta a aba Cupons & Ofertas no painel do estabelecimento',
               editavel: editable('cupons_ativos'),
               control: ConfigToggle(
                 value: val('cupons_ativos') == 'true',
@@ -36,6 +37,48 @@ class ConfigTabCupons extends ConsumerWidget {
                     : null,
               ),
             ),
+          ],
+        ),
+        ConfigSection(
+          titulo: 'Onde isso aparece',
+          subtitulo: 'Efeito imediato ao desligar o sistema de cupons',
+          rows: [
+            ConfigRow(
+              label: 'Painel do estabelecimento',
+              descricao: 'Aba Cupons & Ofertas some do menu lateral',
+              editavel: false,
+              control: const Icon(
+                Icons.storefront_outlined,
+                size: 18,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+            ConfigRow(
+              label: 'App do cliente',
+              descricao: 'Campo de cupom some do carrinho e do checkout',
+              editavel: false,
+              control: const Icon(
+                Icons.shopping_bag_outlined,
+                size: 18,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+            ConfigRow(
+              label: 'Pedido',
+              descricao: 'O servidor recusa cupom mesmo se enviado pela API',
+              editavel: false,
+              control: const Icon(
+                Icons.verified_outlined,
+                size: 18,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+          ],
+        ),
+        ConfigSection(
+          titulo: 'Tipos Permitidos',
+          subtitulo: 'Quais categorias de cupom podem ser criadas',
+          rows: [
             ConfigRow(
               label: 'Permite entrega grátis',
               descricao: 'Cupons que zerem a taxa de entrega',

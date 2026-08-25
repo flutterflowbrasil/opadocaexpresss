@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:padoca_express/core/onesignal/onesignal_config.dart';
 import 'package:padoca_express/services/notifications/onesignal_service.dart';
@@ -11,6 +13,7 @@ class PushDeviceRegistrar {
 
   static bool _syncing = false;
   static String? _usuarioId;
+  static String? _lastLoginId;
 
   static PushNotificationRepository get _repository =>
       PushNotificationRepository(Supabase.instance.client);
@@ -37,8 +40,12 @@ class PushDeviceRegistrar {
         if (usuarioId == null) return;
         _upsert(usuarioId, id);
       });
-      await bridge.login(user.id);
-      await bridge.requestPermission();
+      if (_lastLoginId != user.id) {
+        await bridge.login(user.id);
+        _lastLoginId = user.id;
+      }
+      // Não espera o diálogo de push — trava o dashboard e o ANR watchdog.
+      unawaited(bridge.requestPermission());
       await _persistSubscription(user.id);
     } catch (e) {
       debugPrint('[PushDeviceRegistrar] OneSignal indisponivel: $e');
@@ -61,6 +68,7 @@ class PushDeviceRegistrar {
       debugPrint('[PushDeviceRegistrar] logout OneSignal: $e');
     } finally {
       _usuarioId = null;
+      _lastLoginId = null;
     }
   }
 

@@ -21,18 +21,33 @@ class DashboardController extends StateNotifier<DashboardState> {
   final DashboardRepository _repository;
   final SupabaseClient _supabase;
   RealtimeChannel? _despachoChannel;
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  AudioPlayer? _audioPlayer;
 
   DashboardController(this._repository, this._supabase)
       : super(const DashboardState()) {
+    EntregadorGpsService.instance.onForcedOffline = _onGpsForcedOffline;
     loadDashboard();
+  }
+
+  AudioPlayer get _player => _audioPlayer ??= AudioPlayer();
+
+  void _onGpsForcedOffline() {
+    if (!mounted) return;
+    state = state.copyWith(
+      isOnline: false,
+      error: 'Ative a localização para continuar online.',
+    );
   }
 
   @override
   void dispose() {
+    if (identical(
+        EntregadorGpsService.instance.onForcedOffline, _onGpsForcedOffline)) {
+      EntregadorGpsService.instance.onForcedOffline = null;
+    }
     _cancelarRealtime();
     EntregadorGpsService.instance.stop();
-    _audioPlayer.dispose();
+    _audioPlayer?.dispose();
     super.dispose();
   }
 
@@ -67,8 +82,8 @@ class DashboardController extends StateNotifier<DashboardState> {
             profile['status_despacho'] as String? ?? 'livre',
         pedidoAtualId: profile['pedido_atual_id'] as String?,
         rating: ((profile['avaliacao_media'] as num?) ?? 5.0).toDouble(),
-        totalRatings: (profile['total_avaliacoes'] as int?) ?? 0,
-        totalEntregas: (profile['total_entregas'] as int?) ?? 0,
+        totalRatings: ((profile['total_avaliacoes'] as num?) ?? 0).toInt(),
+        totalEntregas: ((profile['total_entregas'] as num?) ?? 0).toInt(),
         saldoDisponivel:
             ((saldoData?['saldo_disponivel'] as num?) ?? 0.0).toDouble(),
         saldoBloqueado:
@@ -79,6 +94,7 @@ class DashboardController extends StateNotifier<DashboardState> {
       await Future.wait([
         _loadEarnings(),
         _loadRecentDeliveries(driverId),
+        _loadNotificacoes(),
       ]);
 
       // Se há pedido ativo, carrega os detalhes
@@ -92,7 +108,7 @@ class DashboardController extends StateNotifier<DashboardState> {
         await _loadPendingDespacho(driverId);
         _iniciarRealtimeDespacho(driverId);
         if (profile['status_despacho'] != 'em_pedido') {
-          EntregadorGpsService.instance.startOnlineTracking(driverId);
+          unawaited(_iniciarGpsOnline(driverId));
         }
       }
 
@@ -103,6 +119,17 @@ class DashboardController extends StateNotifier<DashboardState> {
           isLoading: false,
           error: 'Erro ao carregar dados. Tente novamente.');
     }
+  }
+
+  Future<void> _iniciarGpsOnline(String driverId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    final gpsReason = await EntregadorGpsService.instance
+        .startOnlineTracking(driverId, prompt: false);
+    if (gpsReason == null || !mounted) return;
+    await _repository.updateOnlineStatus(false);
+    if (!mounted) return;
+    state = state.copyWith(isOnline: false, error: gpsReason);
   }
 
   // ── Ganhos ───────────────────────────────────────────────────────────────
@@ -157,6 +184,23 @@ class DashboardController extends StateNotifier<DashboardState> {
       debugPrint('[DashboardController] _loadRecentDeliveries error: $e');
       state = state.copyWith(isLoadingDeliveries: false);
     }
+  }
+
+  Future<void> _loadNotificacoes() async {
+    try {
+      final raw = await _repository.fetchNotificacoes();
+      state = state.copyWith(
+        notificacoes:
+            raw.map(EntregadorNotificacaoItem.fromJson).toList(),
+      );
+    } catch (e) {
+      debugPrint('[DashboardController] _loadNotificacoes error: $e');
+    }
+  }
+
+  void marcarInboxVista() {
+    if (!mounted) return;
+    state = state.copyWith(inboxVista: true);
   }
 
   // ── Pedido ativo ─────────────────────────────────────────────────────────
@@ -226,6 +270,11 @@ class DashboardController extends StateNotifier<DashboardState> {
           state = state.copyWith(isTogglingStatus: false, error: blockReason);
           return;
         }
+        final gpsReason = await EntregadorGpsService.instance.gpsBlockReason();
+        if (gpsReason != null) {
+          state = state.copyWith(isTogglingStatus: false, error: gpsReason);
+          return;
+        }
       }
 
       await _repository.updateOnlineStatus(novoStatus);
@@ -233,10 +282,23 @@ class DashboardController extends StateNotifier<DashboardState> {
       if (novoStatus) {
         try {
           await _repository.updateLocation(state.driverId);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[DashboardController] updateLocation: $e');
+        }
         await _loadPendingDespacho(state.driverId);
         _iniciarRealtimeDespacho(state.driverId);
-        EntregadorGpsService.instance.startOnlineTracking(state.driverId);
+        final gpsReason = await EntregadorGpsService.instance
+            .startOnlineTracking(state.driverId);
+        if (gpsReason != null) {
+          await _repository.updateOnlineStatus(false);
+          _cancelarRealtime();
+          state = state.copyWith(
+            isOnline: false,
+            isTogglingStatus: false,
+            error: gpsReason,
+          );
+          return;
+        }
       } else {
         _cancelarRealtime();
         EntregadorGpsService.instance.stop();
@@ -420,8 +482,8 @@ class DashboardController extends StateNotifier<DashboardState> {
 
             // Alerta sonoro ao receber novo pedido
             try {
-              await _audioPlayer.stop();
-              await _audioPlayer.play(
+              await _player.stop();
+              await _player.play(
                 AssetSource('sons/notificacoes_entregador.wav'),
               );
             } catch (e) {

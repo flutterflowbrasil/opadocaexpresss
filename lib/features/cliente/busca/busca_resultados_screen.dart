@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/features/cliente/busca/busca_repository.dart';
 import 'package:padoca_express/features/cliente/busca/models/resultado_busca_model.dart';
 import 'package:padoca_express/features/cliente/componentes/estabelecimento_logo.dart';
@@ -257,7 +258,7 @@ class _ResultadosBusca extends ConsumerWidget {
 }
 
 // ─── Card de resultado ────────────────────────────────────────────────────────
-class _ResultadoCard extends StatelessWidget {
+class _ResultadoCard extends ConsumerWidget {
   final ResultadoBuscaModel item;
   final bool isDark;
   final Color cardColor;
@@ -272,7 +273,9 @@ class _ResultadoCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull;
+    final taxaLabel = item.taxaEntregaFormatada(cfg);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -416,21 +419,20 @@ class _ResultadoCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           // Taxa
-                          if (item.taxaEntregaFormatada.isNotEmpty) ...[
+                          if (taxaLabel.isNotEmpty) ...[
                             const Icon(Icons.delivery_dining_rounded,
                                 size: 13, color: Colors.grey),
                             const SizedBox(width: 2),
                             Text(
-                              item.taxaEntregaFormatada,
+                              taxaLabel,
                               style: GoogleFonts.outfit(
                                 fontSize: 12,
-                                color: item.taxaEntregaFormatada == 'Grátis'
+                                color: taxaLabel == 'Grátis'
                                     ? Colors.green[600]
                                     : Colors.grey[500],
-                                fontWeight:
-                                    item.taxaEntregaFormatada == 'Grátis'
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
+                                fontWeight: taxaLabel == 'Grátis'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           ],

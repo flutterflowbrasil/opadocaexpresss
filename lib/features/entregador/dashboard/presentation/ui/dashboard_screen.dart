@@ -9,6 +9,7 @@ import 'widgets/dashboard_widgets.dart';
 
 import 'package:padoca_express/features/entregador/avaliacoes/presentation/ui/avaliacoes_screen.dart';
 import 'package:padoca_express/features/entregador/perfil/presentation/ui/perfil_screen.dart';
+import 'package:padoca_express/services/entregador/entregador_gps_service.dart';
 import 'package:padoca_express/services/notifications/push_notification_controller.dart';
 
 // ─── Cores locais (mesmas do widgets file) ────────────────────────────────────
@@ -58,11 +59,22 @@ class _EntregadorDashboardScreenState
     ref.listen<DashboardState>(dashboardControllerProvider, (previous, next) {
       // Erros
       if (next.error != null && previous?.error != next.error) {
+        final gps = next.error!.toLowerCase().contains('localiza') ||
+            next.error!.toLowerCase().contains('gps');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.error!),
             backgroundColor: redColor,
             behavior: SnackBarBehavior.floating,
+            duration: gps ? const Duration(seconds: 6) : const Duration(seconds: 4),
+            action: gps
+                ? SnackBarAction(
+                    label: 'Ajustes',
+                    textColor: Colors.white,
+                    onPressed: () =>
+                        EntregadorGpsService.instance.openSettings(),
+                  )
+                : null,
           ),
         );
       }
@@ -190,6 +202,26 @@ class _DashboardHome extends ConsumerWidget {
                         online: state.isOnline,
                         fotoPerfilUrl: state.fotoPerfilUrl,
                         statusDespacho: state.statusDespacho,
+                        temNotificacao: state.temNotificacao,
+                        onNotificacoes: () {
+                          ref
+                              .read(dashboardControllerProvider.notifier)
+                              .marcarInboxVista();
+                          showModalBottomSheet<void>(
+                            context: context,
+                            backgroundColor: bg2,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
+                            ),
+                            builder: (_) => EntregadorNotificacoesSheet(
+                              notificacoes: state.notificacoes,
+                              despachoPendente: state.despachoRecebido,
+                            ),
+                          );
+                        },
                       ),
                     ),
 

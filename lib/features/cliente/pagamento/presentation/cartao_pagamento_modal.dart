@@ -41,7 +41,10 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
   final _apelidoCtrl = TextEditingController();
   final _cpfCtrl = TextEditingController();
 
-  bool _isCredito = true;
+  final _cnpjMask = MaskTextInputFormatter(
+    mask: '##.###.###/####-##',
+    filter: {'#': RegExp('[0-9]')},
+  );
 
   static const _primaryColor = Color(0xFFFF7034);
   static const _secondaryColor = Color(0xFF7D2D35);
@@ -56,10 +59,6 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
   );
   final _cpfMask = MaskTextInputFormatter(
     mask: '###.###.###-##',
-    filter: {'#': RegExp('[0-9]')},
-  );
-  final _cnpjMask = MaskTextInputFormatter(
-    mask: '##.###.###/####-##',
     filter: {'#': RegExp('[0-9]')},
   );
 
@@ -138,7 +137,7 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
       cvv: _cvvCtrl.text.trim(),
       apelido: _apelidoCtrl.text.trim(),
       cpfCnpj: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-      isCredito: _isCredito,
+      isCredito: true,
     );
     Navigator.of(context).pop(dados);
   }
@@ -213,33 +212,11 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Toggle Crédito / Débito
-                          Row(
-                            children: [
-                              _TipoCartaoChip(
-                                label: 'Crédito',
-                                selected: _isCredito,
-                                onTap: () =>
-                                    setState(() => _isCredito = true),
-                                isDark: isDark,
-                              ),
-                              const SizedBox(width: 12),
-                              _TipoCartaoChip(
-                                label: 'Débito',
-                                selected: !_isCredito,
-                                onTap: () =>
-                                    setState(() => _isCredito = false),
-                                isDark: isDark,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          // Preview do cartão
                           CartaoPreviewWidget(
                             numero: _numeroCtrl.text,
                             nome: _nomeCtrl.text,
                             vencimento: _vencimentoCtrl.text,
-                            isCredito: _isCredito,
+                            isCredito: true,
                           ),
                           const SizedBox(height: 24),
                           // Campos
@@ -372,63 +349,6 @@ class _CartaoPagamentoModalState extends State<CartaoPagamentoModal> {
           ),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chip de seleção Crédito / Débito
-// ─────────────────────────────────────────────────────────────────────────────
-class _TipoCartaoChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final bool isDark;
-
-  static const _primaryColor = Color(0xFFFF7034);
-
-  const _TipoCartaoChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? _primaryColor
-              : (isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.grey.withValues(alpha: 0.1)),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: selected
-                ? _primaryColor
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.grey.withValues(alpha: 0.3)),
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight:
-                selected ? FontWeight.bold : FontWeight.normal,
-            color: selected
-                ? Colors.white
-                : (isDark ? Colors.white70 : Colors.black54),
-          ),
-        ),
-      ),
     );
   }
 }

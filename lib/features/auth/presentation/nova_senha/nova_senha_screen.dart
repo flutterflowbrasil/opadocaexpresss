@@ -57,11 +57,14 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
   @override
   void initState() {
     super.initState();
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (data.session != null && mounted) {
-        setState(() => _processandoLink = false);
-      }
-    });
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        if (data.session != null && mounted) {
+          setState(() => _processandoLink = false);
+        }
+      },
+      onError: (Object _, StackTrace __) {},
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _processarSessaoInicial();

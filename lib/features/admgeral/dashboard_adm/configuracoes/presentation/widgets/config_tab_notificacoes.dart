@@ -85,7 +85,8 @@ class ConfigTabNotificacoes extends ConsumerWidget {
           rows: [
             ConfigRow(
               label: 'Canal Android padrão',
-              descricao: 'Canal Android OneSignal',
+              descricao:
+                  'Fallback da aba. O canal efetivo vem do template OneSignal de cada evento.',
               editavel: editable('canal_android'),
               control: ConfigSel(
                 value: val('canal_android'),
@@ -101,15 +102,15 @@ class ConfigTabNotificacoes extends ConsumerWidget {
             ),
             ConfigRow(
               label: 'Countdown de notificação',
-              descricao: 'Segundos de timeout antes de expirar a notificação',
-              editavel: editable('notif_countdown_seg'),
+              descricao:
+                  'Espelho do tempo de resposta da aba Despacho (tempo_resposta_seg). O push de oferta usa esse valor.',
+              editavel: false,
               control: ConfigNumInput(
-                value: val('notif_countdown_seg'),
+                value: val('tempo_resposta_seg').isEmpty
+                    ? val('notif_countdown_seg')
+                    : val('tempo_resposta_seg'),
                 suffix: 's',
                 decimal: false,
-                onChanged: editable('notif_countdown_seg')
-                    ? (v) => set('notif_countdown_seg', v)
-                    : null,
               ),
             ),
             ConfigRow(

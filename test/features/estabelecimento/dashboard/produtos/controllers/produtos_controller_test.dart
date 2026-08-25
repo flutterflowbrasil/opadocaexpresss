@@ -13,11 +13,23 @@ void main() {
   late ProdutosController controller;
   late MockProdutosRepository mockRepository;
 
+  setUpAll(() {
+    registerFallbackValue(CategoriaCardapioModel(
+      id: '',
+      estabelecimentoId: '',
+      nome: '',
+      ordemExibicao: 0,
+      ativa: true,
+    ));
+  });
+
   setUp(() {
     mockRepository = MockProdutosRepository();
     controller = ProdutosController(mockRepository);
     when(() => mockRepository.fetchCategoriasPrincipais())
         .thenAnswer((_) async => []);
+    when(() => mockRepository.podeGerenciarCategoriasCardapio(any()))
+        .thenAnswer((_) async => false);
   });
 
   final dummyEstId = 'estab-123';
@@ -202,6 +214,24 @@ void main() {
       expect(controller.state.produtos.length, 1);
       expect(controller.state.produtos.first.id, 'p2');
       verify(() => mockRepository.deleteProduto('p1')).called(1);
+    });
+
+    test('10. salvarCategoria falha não preenche state.error global', () async {
+      when(() => mockRepository.fetchProdutos(dummyEstId))
+          .thenAnswer((_) async => [prod1]);
+      when(() => mockRepository.fetchCategorias(dummyEstId))
+          .thenAnswer((_) async => [catPao]);
+      when(() => mockRepository.saveCategoria(any()))
+          .thenThrow(Exception('RLS blocked'));
+
+      await controller.loadDados(dummyEstId);
+      expect(controller.state.error, isNull);
+
+      await expectLater(
+        controller.salvarCategoria(catDoce),
+        throwsA(isA<Exception>()),
+      );
+      expect(controller.state.error, isNull);
     });
   });
 }

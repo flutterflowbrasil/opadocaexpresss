@@ -6,7 +6,7 @@ import '../models/admin_notificacao_model.dart';
 
 class AdminNotificacoesPanel extends ConsumerWidget {
   final VoidCallback onClose;
-  final void Function(String rota) onNavigate;
+  final void Function(String rota, {String? entidadeId}) onNavigate;
 
   const AdminNotificacoesPanel({
     super.key,
@@ -178,7 +178,7 @@ class AdminNotificacoesPanel extends ConsumerWidget {
       );
     }
 
-    if (state.alertas.isEmpty) {
+    if (state.alertasVisiveis.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -189,17 +189,17 @@ class AdminNotificacoesPanel extends ConsumerWidget {
         children: [
           if (state.urgentes.isNotEmpty) ...[
             _buildSectionHeader('🔴  Urgente', const Color(0xFFEF4444)),
-            ...state.urgentes.map((a) => _buildCard(a)),
+            ...state.urgentes.map((a) => _buildCard(a, ref)),
             const SizedBox(height: 8),
           ],
           if (state.atencao.isNotEmpty) ...[
             _buildSectionHeader('🟡  Atenção', const Color(0xFFF59E0B)),
-            ...state.atencao.map((a) => _buildCard(a)),
+            ...state.atencao.map((a) => _buildCard(a, ref)),
             const SizedBox(height: 8),
           ],
           if (state.info.isNotEmpty) ...[
             _buildSectionHeader('🟢  Informativo', const Color(0xFF10B981)),
-            ...state.info.map((a) => _buildCard(a)),
+            ...state.info.map((a) => _buildCard(a, ref)),
           ],
         ],
       ),
@@ -221,7 +221,7 @@ class AdminNotificacoesPanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildCard(AdminNotificacaoModel alerta) {
+  Widget _buildCard(AdminNotificacaoModel alerta, WidgetRef ref) {
     final borderColor = switch (alerta.prioridade) {
       AdminNotificacaoPrioridade.urgente => const Color(0xFFFCA5A5),
       AdminNotificacaoPrioridade.atencao => const Color(0xFFFDE68A),
@@ -236,12 +236,15 @@ class AdminNotificacoesPanel extends ConsumerWidget {
     final canNavigate = alerta.rota != null;
 
     return GestureDetector(
-      onTap: canNavigate
-          ? () {
-              onClose();
-              onNavigate(alerta.rota!);
-            }
-          : null,
+      onTap: () {
+        ref
+            .read(adminNotificacoesControllerProvider.notifier)
+            .dismissAlerta(alerta.id);
+        if (canNavigate) {
+          onClose();
+          onNavigate(alerta.rota!, entidadeId: alerta.entidadeId);
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),

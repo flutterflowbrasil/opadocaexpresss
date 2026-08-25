@@ -77,6 +77,8 @@ class EstabelecimentoFinanceiro {
   final double faturamentoTotal;
   final int totalPedidos;
   final Map<String, dynamic>? dadosBancarios;
+  final String? asaasStatus;
+  final bool asaasHomologada;
 
   EstabelecimentoFinanceiro({
     required this.id,
@@ -84,6 +86,8 @@ class EstabelecimentoFinanceiro {
     required this.faturamentoTotal,
     required this.totalPedidos,
     this.dadosBancarios,
+    this.asaasStatus,
+    this.asaasHomologada = false,
   });
 
   factory EstabelecimentoFinanceiro.fromJson(Map<String, dynamic> json) {
@@ -93,6 +97,8 @@ class EstabelecimentoFinanceiro {
       faturamentoTotal: (json['faturamento_total'] as num?)?.toDouble() ?? 0.0,
       totalPedidos: (json['total_pedidos'] as num?)?.toInt() ?? 0,
       dadosBancarios: json['dados_bancarios'] as Map<String, dynamic>?,
+      asaasStatus: json['asaas_status'] as String?,
+      asaasHomologada: json['asaas_homologada'] == true,
     );
   }
 }

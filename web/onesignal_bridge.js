@@ -20,6 +20,7 @@ window.__opadocaPush = {
       };
 
       setTimeout(function () {
+        if (settled) return;
         if (!self._os) {
           console.warn('[OneSignal] init timeout — o app segue sem push');
         }

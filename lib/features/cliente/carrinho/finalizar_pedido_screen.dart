@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
+import 'package:padoca_express/features/cliente/carrinho/controllers/checkout_distancia_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/resumo_pedido_card.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/metodo_pagamento_card.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/endereco_entrega_card.dart';
@@ -70,6 +72,7 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
             setState(() {
               _enderecoSelecionado = EnderecoCliente.fromJson(enderecosData);
             });
+            _syncDistancia();
           }
         }
       }
@@ -88,7 +91,27 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
     final selecionado = await SelecionarEnderecoModal.show(context);
     if (selecionado != null && mounted) {
       setState(() => _enderecoSelecionado = selecionado);
+      _syncDistancia();
     }
+  }
+
+  void _syncDistancia() {
+    if (!mounted) return;
+    final estab = ref.read(carrinhoControllerProvider).estabelecimento;
+    final end = _enderecoSelecionado;
+    final notifier = ref.read(checkoutDistanciaControllerProvider.notifier);
+    if (end == null ||
+        estab?.latitude == null ||
+        estab?.longitude == null) {
+      notifier.limpar();
+      return;
+    }
+    notifier.solicitar(
+      origLat: estab!.latitude!,
+      origLng: estab.longitude!,
+      destLat: end.latitude,
+      destLng: end.longitude,
+    );
   }
 
   Future<void> _finalizarPedido() async {
@@ -140,27 +163,46 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
     // 3. Processa pagamento
     final carrinho = ref.read(carrinhoControllerProvider);
     final endereco = _enderecoSelecionado!;
+    final distanciaKm =
+        ref.read(checkoutDistanciaControllerProvider).distanciaKm;
 
     if (metodo == 'pix_site') {
       await ref.read(pagamentoControllerProvider.notifier).finalizarPedido(
             carrinho: carrinho,
             endereco: endereco,
             metodoPagamento: 'pix',
+            distanciaRotaKm: distanciaKm,
           );
     } else {
       await ref.read(pagamentoControllerProvider.notifier).finalizarPedido(
             carrinho: carrinho,
             endereco: endereco,
-            metodoPagamento:
-                dadosCartao!.isCredito ? 'cartao_credito' : 'cartao_debito',
+            metodoPagamento: 'cartao_credito',
             dadosCartao: dadosCartao,
+            distanciaRotaKm: distanciaKm,
           );
     }
+  }
+
+  double _totalComTaxaPlataforma(
+    CarrinhoState carrinho,
+    PlataformaRuntimeConfig cfg, {
+    double distanciaKm = 0,
+  }) {
+    return carrinho.valorTotalCom(cfg, distanciaKm: distanciaKm);
   }
 
   Future<bool> _mostrarConfirmacaoPedido(
       {DadosCartaoModel? dadosCartao}) async {
     final carrinho = ref.read(carrinhoControllerProvider);
+    final cfg = ref.read(plataformaRuntimeConfigProvider).valueOrNull ??
+        const PlataformaRuntimeConfig();
+    final distanciaKm =
+        ref.read(checkoutDistanciaControllerProvider).distanciaKm;
+    final taxa = cfg.taxaEntrega(
+      distanciaKm: distanciaKm,
+      subtotal: carrinho.valorTotalProdutos,
+    );
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -171,8 +213,12 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
         metodo: _metodoPagamentoSelecionado!,
         dadosCartao: dadosCartao,
         subtotal: carrinho.valorTotalProdutos,
-        taxaEntrega: carrinho.estabelecimento?.taxaEntregaValor ?? 0,
-        total: carrinho.valorTotal,
+        taxaEntrega: taxa,
+        total: _totalComTaxaPlataforma(
+          carrinho,
+          cfg,
+          distanciaKm: distanciaKm,
+        ),
       ),
     );
     return result == true;
@@ -182,6 +228,7 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
   Widget build(BuildContext context) {
     final estadoCarrinho = ref.watch(carrinhoControllerProvider);
     final pagamentoState = ref.watch(pagamentoControllerProvider);
+    final distState = ref.watch(checkoutDistanciaControllerProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF1C1917) : const Color(0xFFF9F5F0);
     final bgSecColor =
@@ -193,14 +240,14 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
 
       if (next.status == PagamentoStatus.aguardandoPix &&
           next.cobranca != null) {
-        unawaited(ref.read(carrinhoControllerProvider.notifier).limparCarrinho());
         context.go('/pagamento/pix', extra: {
           'pedidoId': next.pedidoCriadoId ?? '',
           'pixCopiaECola': next.cobranca!.pixCopiaECola ?? '',
           'pixQrCode': next.cobranca!.pixQrCode,
-          'segundosRestantes': next.segundosRestantes ?? 300,
+          'segundosRestantes': next.segundosRestantes ?? 86400,
         });
       } else if (next.status == PagamentoStatus.confirmado) {
+        unawaited(ref.read(carrinhoControllerProvider.notifier).limparCarrinho());
         final pid = next.pedidoCriadoId ?? '';
         if (pid.isNotEmpty) {
           context.go('/cliente/pedido/$pid');
@@ -220,6 +267,10 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
       }
     });
 
+    ref.listen(carrinhoControllerProvider, (_, __) {
+      _syncDistancia();
+    });
+
     final estabelecimento = estadoCarrinho.estabelecimento;
 
     if (estabelecimento == null || estadoCarrinho.itens.isEmpty) {
@@ -231,12 +282,33 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
       );
     }
 
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull ??
+        const PlataformaRuntimeConfig();
+    final distanciaKm = distState.distanciaKm;
+    final end = _enderecoSelecionado;
     final subtotal = estadoCarrinho.valorTotalProdutos;
-    final taxaEntrega = estabelecimento.taxaEntregaValor;
-    final total = estadoCarrinho.valorTotal;
-    final isValid =
-        _enderecoSelecionado != null && _metodoPagamentoSelecionado != null;
-    final isSubmitting = pagamentoState.isSubmitting;
+    final taxaEntrega =
+        cfg.taxaEntrega(distanciaKm: distanciaKm, subtotal: subtotal);
+    final total = _totalComTaxaPlataforma(
+      estadoCarrinho,
+      cfg,
+      distanciaKm: distanciaKm,
+    );
+    final rotaAcimaRaio = cfg.raioMaximoKm > 0 &&
+        distanciaKm > cfg.raioMaximoKm &&
+        end != null &&
+        !distState.carregando;
+    final abaixoMinimo = cfg.pedidoMinimo > 0 && subtotal < cfg.pedidoMinimo;
+    final isValid = _enderecoSelecionado != null &&
+        _metodoPagamentoSelecionado != null &&
+        !abaixoMinimo;
+    final isSubmitting = pagamentoState.isSubmitting ||
+        pagamentoState.status == PagamentoStatus.aguardandoConfirmacao;
+    final distanciaLabel = distanciaKm <= 0
+        ? null
+        : distState.isRota
+            ? '${distanciaKm.toStringAsFixed(1).replaceAll('.', ',')} km (rota estimada)'
+            : '${distanciaKm.toStringAsFixed(1).replaceAll('.', ',')} km (estimada)';
 
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
@@ -277,7 +349,15 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
                   flex: 6,
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: _buildLeftColumn(isDark, bgSecColor),
+                    child: _buildLeftColumn(
+                      isDark,
+                      bgSecColor,
+                      rotaAcimaRaio: rotaAcimaRaio,
+                      abaixoMinimo: abaixoMinimo,
+                      pedidoMinimo: cfg.pedidoMinimo,
+                      raioMaximoKm: cfg.raioMaximoKm,
+                      distanciaKm: distanciaKm,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -291,6 +371,12 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
                       subtotal: subtotal,
                       taxaEntrega: taxaEntrega,
                       total: total,
+                      desconto: estadoCarrinho.descontoCom(
+                        cfg,
+                        distanciaKm: distanciaKm,
+                      ),
+                      distanciaLabel: distanciaLabel,
+                      taxaCarregando: distState.carregando,
                     ),
                   ),
                 ),
@@ -304,7 +390,15 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: _buildLeftColumn(isDark, bgSecColor),
+                  child: _buildLeftColumn(
+                    isDark,
+                    bgSecColor,
+                    rotaAcimaRaio: rotaAcimaRaio,
+                    abaixoMinimo: abaixoMinimo,
+                    pedidoMinimo: cfg.pedidoMinimo,
+                    raioMaximoKm: cfg.raioMaximoKm,
+                    distanciaKm: distanciaKm,
+                  ),
                 ),
                 ResumoPedidoCard(
                   estadoCarrinho: estadoCarrinho,
@@ -312,6 +406,12 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
                   subtotal: subtotal,
                   taxaEntrega: taxaEntrega,
                   total: total,
+                  desconto: estadoCarrinho.descontoCom(
+                    cfg,
+                    distanciaKm: distanciaKm,
+                  ),
+                  distanciaLabel: distanciaLabel,
+                  taxaCarregando: distState.carregando,
                 ),
               ],
             ),
@@ -319,14 +419,68 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
         },
       ),
       bottomSheet:
-          _buildBottomConfirmBar(isDark, total, isValid, isSubmitting),
+          _buildBottomConfirmBar(
+            isDark,
+            total,
+            isValid,
+            isSubmitting,
+            pagamentoState.status == PagamentoStatus.aguardandoConfirmacao
+                ? 'Confirmando pagamento...'
+                : 'Processando...',
+          ),
     );
   }
 
-  Widget _buildLeftColumn(bool isDark, Color bgSecColor) {
+  Widget _buildLeftColumn(
+    bool isDark,
+    Color bgSecColor, {
+    required bool rotaAcimaRaio,
+    required bool abaixoMinimo,
+    required double pedidoMinimo,
+    required double raioMaximoKm,
+    required double distanciaKm,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (abaixoMinimo) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Text(
+              'Pedido mínimo da plataforma: R\$ ${pedidoMinimo.toStringAsFixed(2).replaceAll('.', ',')}.',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: const Color(0xFF991B1B),
+              ),
+            ),
+          ),
+        ],
+        if (rotaAcimaRaio) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFCD34D)),
+            ),
+            child: Text(
+              'Rota estimada de ${distanciaKm.toStringAsFixed(1).replaceAll('.', ',')} km — acima da área usual de ${raioMaximoKm.toStringAsFixed(0)} km. A entrega será repassada ao fluxo de despacho.',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: const Color(0xFF92400E),
+              ),
+            ),
+          ),
+        ],
         _buildSectionTitle('ENDEREÇO DE ENTREGA', isDark),
         const SizedBox(height: 12),
         if (_carregandoEndereco)
@@ -392,7 +546,8 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
   }
 
   Widget _buildBottomConfirmBar(
-      bool isDark, double total, bool isValid, bool isSubmitting) {
+      bool isDark, double total, bool isValid, bool isSubmitting,
+      [String submittingLabel = 'Processando...']) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
@@ -415,11 +570,25 @@ class _FinalizarPedidoScreenState extends ConsumerState<FinalizarPedidoScreen> {
             shadowColor: _primaryColor.withValues(alpha: 0.4),
           ),
           child: isSubmitting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      submittingLabel,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,

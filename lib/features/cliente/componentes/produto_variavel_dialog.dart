@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_opcao_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
+import 'package:padoca_express/features/cliente/carrinho/opcoes_selecionadas_codec.dart';
 
 class ProdutoVariavelDialog extends StatefulWidget {
   final ProdutoModel produto;
@@ -100,24 +101,11 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
   }
 
   List<Map<String, dynamic>> _buildOpcoesSelecionadas() {
-    final result = <Map<String, dynamic>>[];
-    for (final grupo in widget.produto.opcoes) {
-      final itensSelecionados = _selecoes[_grupoKey(grupo)] ?? [];
-      if (itensSelecionados.isEmpty) continue;
-      result.add({
-        'grupo_id': grupo.id ?? grupo.nome,
-        'grupo_nome': grupo.nome,
-        'tipo': grupo.tipo,
-        'itens': itensSelecionados
-            .map((item) => {
-                  'item_id': item.id ?? item.nome,
-                  'nome': item.nome,
-                  'preco': item.precoAdicional ?? 0,
-                })
-            .toList(),
-      });
-    }
-    return result;
+    return OpcoesSelecionadasCodec.fromSelecoes(
+      grupos: widget.produto.opcoes,
+      selecoes: _selecoes,
+      grupoKey: _grupoKey,
+    );
   }
 
   @override

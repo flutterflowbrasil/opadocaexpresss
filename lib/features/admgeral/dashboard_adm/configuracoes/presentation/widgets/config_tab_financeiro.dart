@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../controllers/config_adm_controller.dart';
 import 'config_adm_shared.dart';
 
@@ -24,6 +25,30 @@ class ConfigTabFinanceiro extends ConsumerWidget {
         const ConfigInfoBanner(
           mensagem:
               'Alterações nesta aba afetam checkout Asaas, comissão e repasse. Confirme antes de salvar.',
+        ),
+        ConfigSection(
+          titulo: 'Pagamentos online',
+          subtitulo: 'Bloqueio no servidor. A chave Asaas nunca fica no app.',
+          rows: [
+            ConfigRow(
+              label: 'Pix e cartão ativos',
+              descricao:
+                  'Desligue se a conta Asaas estiver em manutenção. Pedido em dinheiro continua.',
+              editavel: editable('pagamentos_online_ativos'),
+              control: ConfigToggle(
+                value: val('pagamentos_online_ativos') != 'false',
+                onChanged: editable('pagamentos_online_ativos')
+                    ? (v) => set('pagamentos_online_ativos', v.toString())
+                    : null,
+              ),
+            ),
+            ConfigRow(
+              label: 'Conexão Asaas',
+              descricao: 'Testa a chave do secret (admin). Não expõe a chave.',
+              editavel: true,
+              control: const _AsaasHealthButton(),
+            ),
+          ],
         ),
         ConfigSection(
           titulo: 'Modelo de repasse Asaas',
@@ -60,7 +85,8 @@ class ConfigTabFinanceiro extends ConsumerWidget {
             ),
             ConfigRow(
               label: 'Exigir subconta homologada',
-              descricao: 'Bloqueia checkout se o estabelecimento não tiver KYC Asaas',
+              descricao:
+                  'Bloqueia Pix/cartão se o estabelecimento ainda não passou no KYC Asaas.',
               editavel: editable('exigir_subconta_homologada'),
               control: ConfigToggle(
                 value: val('exigir_subconta_homologada') != 'false',
@@ -149,43 +175,18 @@ class ConfigTabFinanceiro extends ConsumerWidget {
           ],
         ),
         ConfigSection(
-          titulo: 'Taxa de entrega — entregador',
-          subtitulo: 'Usada no cálculo da corrida e no repasse pós-entrega',
+          titulo: 'Repasse da corrida',
+          subtitulo: 'Percentuais liberados no Transfer após a entrega',
           rows: [
             ConfigRow(
-              label: 'Km incluídos na taxa base',
-              descricao: 'Distância coberta pelo valor base',
-              editavel: editable('entrega_base_km'),
+              label: 'Estabelecimento recebe no repasse',
+              descricao: 'Percentual do valor do estabelecimento liberado no Transfer Asaas',
+              editavel: editable('repasse_estabelecimento_pct'),
               control: ConfigNumInput(
-                value: val('entrega_base_km'),
-                suffix: 'km',
-                onChanged: editable('entrega_base_km')
-                    ? (v) => set('entrega_base_km', v)
-                    : null,
-              ),
-            ),
-            ConfigRow(
-              label: 'Valor base da corrida',
-              descricao: 'Taxa até a quilometragem base',
-              editavel: editable('entrega_base_valor'),
-              control: ConfigNumInput(
-                value: val('entrega_base_valor'),
-                prefix: 'R\$ ',
-                onChanged: editable('entrega_base_valor')
-                    ? (v) => set('entrega_base_valor', v)
-                    : null,
-              ),
-            ),
-            ConfigRow(
-              label: 'Valor por km extra',
-              descricao: 'Cobrado acima da quilometragem base',
-              editavel: editable('entrega_valor_km_excedente'),
-              control: ConfigNumInput(
-                value: val('entrega_valor_km_excedente'),
-                prefix: 'R\$ ',
-                suffix: '/km',
-                onChanged: editable('entrega_valor_km_excedente')
-                    ? (v) => set('entrega_valor_km_excedente', v)
+                value: val('repasse_estabelecimento_pct'),
+                suffix: '%',
+                onChanged: editable('repasse_estabelecimento_pct')
+                    ? (v) => set('repasse_estabelecimento_pct', v)
                     : null,
               ),
             ),
@@ -205,7 +206,8 @@ class ConfigTabFinanceiro extends ConsumerWidget {
         ),
         ConfigSection(
           titulo: 'Retenção',
-          subtitulo: 'Segura o Transfer Asaas após a entrega confirmada',
+          subtitulo:
+              'Se ativo, o repasse espera N horas após a entrega e o job fn_processar_repasses_pendentes libera depois.',
           rows: [
             ConfigRow(
               label: 'Retenção temporária',
@@ -258,6 +260,63 @@ class ConfigTabFinanceiro extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _AsaasHealthButton extends ConsumerStatefulWidget {
+  const _AsaasHealthButton();
+
+  @override
+  ConsumerState<_AsaasHealthButton> createState() => _AsaasHealthButtonState();
+}
+
+class _AsaasHealthButtonState extends ConsumerState<_AsaasHealthButton> {
+  bool _loading = false;
+
+  Future<void> _testar() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final resp = await Supabase.instance.client.functions.invoke('asaas-health');
+      final data = (resp.data as Map?) ?? {};
+      final ok = resp.status == 200 && data['ok'] == true;
+      final ambiente = data['ambiente']?.toString() ?? '';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Asaas conectado ($ambiente).'
+                : 'Pagamentos temporariamente indisponíveis.',
+          ),
+          backgroundColor: ok ? const Color(0xFF16A34A) : const Color(0xFFEF4444),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pagamentos temporariamente indisponíveis.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: _loading ? null : _testar,
+      child: _loading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Testar conexão'),
     );
   }
 }

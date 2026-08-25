@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { loadAsaasCredentials, requiredEnv } from '../_shared/asaas_client.ts';
 
 type EntityType = 'estabelecimento' | 'entregador';
 
@@ -17,8 +18,7 @@ serve(async (req) => {
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
       auth: { persistSession: false },
     });
-    const asaasBaseUrl = (Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3').replace(/\/$/, '');
-    const asaasApiKey = requiredEnv('ASAAS_API_KEY');
+    const { baseUrl: asaasBaseUrl, apiKey: asaasApiKey } = loadAsaasCredentials();
 
     const user = await authenticatedUser(req, supabase);
     const body = await req.json().catch(() => ({}));
@@ -124,12 +124,6 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-}
-
-function requiredEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`Secret ${name} nao configurado.`);
-  return value;
 }
 
 async function authenticatedUser(req: Request, supabase: ReturnType<typeof createClient>) {

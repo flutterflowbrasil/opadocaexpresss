@@ -31,6 +31,16 @@ class PerfilScreen extends StatefulWidget {
   State<PerfilScreen> createState() => _PerfilScreenState();
 }
 
+Map<String, dynamic>? _embedOne(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  if (value is List && value.isNotEmpty && value.last is Map) {
+    return Map<String, dynamic>.from(value.last as Map);
+  }
+  return null;
+}
+
 class _PerfilScreenState extends State<PerfilScreen> {
   bool _loading = true;
   Map<String, dynamic> _perfil = {};
@@ -53,16 +63,37 @@ class _PerfilScreenState extends State<PerfilScreen> {
       final ent = await Supabase.instance.client
           .from('entregadores')
           .select('''
-            id, nome_completo, tipo_veiculo, veiculo_modelo, veiculo_placa, veiculo_cor,
+            id, tipo_veiculo, veiculo_modelo, veiculo_placa, veiculo_cor,
             foto_perfil_url, status_cadastro, avaliacao_media, total_entregas, total_avaliacoes,
             cpf, data_nascimento, cnh_numero, cnh_validade, dados_bancarios, asaas_account_id,
-            entregador_saldos ( saldo_disponivel, total_ganho, total_sacado ),
+            usuarios!entregadores_usuario_id_fkey ( nome_completo_fantasia ),
             entregador_kyc ( status )
           ''')
           .eq('usuario_id', uid)
           .maybeSingle();
 
-      _entregadorId = ent?['id'];
+      _entregadorId = ent?['id'] as String?;
+
+      Map<String, dynamic> saldo = {};
+      if (_entregadorId != null) {
+        final splits = await Supabase.instance.client
+            .from('splits_pagamento')
+            .select(
+              'entregador_valor_total, entregador_taxa_entrega_valor, repasse_entregador_processado',
+            )
+            .eq('entregador_id', _entregadorId!);
+        var ganho = 0.0;
+        var disponivel = 0.0;
+        for (final raw in splits as List) {
+          final r = Map<String, dynamic>.from(raw as Map);
+          final v = (r['entregador_valor_total'] as num?)?.toDouble() ??
+              (r['entregador_taxa_entrega_valor'] as num?)?.toDouble() ??
+              0;
+          ganho += v;
+          if (r['repasse_entregador_processado'] == true) disponivel += v;
+        }
+        saldo = {'total_ganho': ganho, 'saldo_disponivel': disponivel};
+      }
 
       final docs = _entregadorId != null
           ? await Supabase.instance.client
@@ -74,11 +105,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
       if (!mounted) return;
       setState(() {
         _perfil = Map<String, dynamic>.from(ent ?? {});
-        _saldo = Map<String, dynamic>.from((ent?['entregador_saldos'] as Map?) ?? {});
+        _saldo = saldo;
         _docs = List<Map<String, dynamic>>.from(docs);
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PerfilEntregador] erro ao carregar: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -122,6 +154,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   String _labelStatus(String s) =>
       const {
         'pendente': 'Pendente',
+        'aprovado': 'Aprovado',
         'ativo': 'Ativo',
         'reprovado': 'Reprovado',
         'suspenso': 'Suspenso',
@@ -131,6 +164,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Color _corStatus(String s) =>
       const {
         'pendente': _yellow,
+        'aprovado': _green,
         'ativo': _green,
         'reprovado': _red,
         'suspenso': _red,
@@ -139,12 +173,27 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   String _labelVeiculo(String? t) =>
       const {
-        'moto': '🛵 Moto',
-        'carro': '🚗 Carro',
-        'bicicleta': '🚲 Bicicleta',
-        'van': '🚐 Van',
+        'moto': 'Moto',
+        'carro': 'Carro',
+        'bicicleta': 'Bicicleta',
+        'van': 'Van',
       }[t] ??
-      '🚗 Veículo';
+      'Veículo';
+
+  IconData _iconVeiculo(String? t) => switch (t) {
+        'carro' => Icons.directions_car_rounded,
+        'bicicleta' => Icons.pedal_bike_rounded,
+        'van' => Icons.airport_shuttle_rounded,
+        _ => Icons.two_wheeler_rounded,
+      };
+
+  IconData _iconDoc(String t) => switch (t) {
+        'cnh_frente' || 'cnh_verso' => Icons.badge_outlined,
+        'veiculo' => Icons.two_wheeler_rounded,
+        'residencia' => Icons.home_outlined,
+        'selfie' => Icons.face_retouching_natural_rounded,
+        _ => Icons.description_outlined,
+      };
 
   String _labelDoc(String t) =>
       const {
@@ -157,21 +206,65 @@ class _PerfilScreenState extends State<PerfilScreen> {
       t;
 
   Color _corDocStatus(String s) =>
-      s == 'aprovado' ? _green : s == 'reprovado' ? _red : _yellow;
+      (s == 'aprovado' || s == 'approved' || s == 'ativo')
+          ? _green
+          : s == 'reprovado'
+              ? _red
+              : _yellow;
+
+  String _labelKyc(String s) => switch (s) {
+        'aprovado' || 'approved' => 'Aprovado',
+        'reprovado' => 'Reprovado',
+        'pendente' => 'Pendente',
+        _ => s,
+      };
 
   String _fmtCpf(String? cpf) {
-    if (cpf == null || cpf.length < 11) return cpf ?? '';
-    return '${cpf.substring(0, 3)}.${cpf.substring(3, 6)}.${cpf.substring(6, 9)}-${cpf.substring(9)}';
+    final digits = (cpf ?? '').replaceAll(RegExp(r'\D'), '');
+    if (digits.length != 11) {
+      return (cpf == null || cpf.trim().isEmpty) ? 'Não informado' : cpf;
+    }
+    return '${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}';
+  }
+
+  String get _nomeExibicao {
+    final n = (_embedOne(_perfil['usuarios'])?['nome_completo_fantasia']
+            as String?)
+        ?.trim();
+    if (n != null && n.isNotEmpty) return n;
+    return 'Entregador';
+  }
+
+  String _statusKyc(dynamic raw, String statusCadastro) {
+    final rows = <String>[];
+    if (raw is Map) {
+      final s = raw['status'] as String?;
+      if (s != null && s.isNotEmpty) rows.add(s);
+    } else if (raw is List) {
+      for (final item in raw) {
+        if (item is Map) {
+          final s = item['status'] as String?;
+          if (s != null && s.isNotEmpty) rows.add(s);
+        }
+      }
+    }
+    if (rows.any((s) => s == 'aprovado' || s == 'approved')) return 'aprovado';
+    if (rows.isNotEmpty) return rows.last;
+    // Quem já entrou no dashboard passou no gate de KYC.
+    if (statusCadastro == 'aprovado' || statusCadastro == 'ativo') {
+      return 'aprovado';
+    }
+    return 'pendente';
   }
 
   @override
   Widget build(BuildContext context) {
-    final statusCadastro = _perfil['status_cadastro'] ?? 'pendente';
-    final pixChave = (_perfil['dados_bancarios'] as Map?)?['pix_chave'];
-    final kycStatus =
-        (_perfil['entregador_kyc'] as List?)?.isNotEmpty == true
-            ? (_perfil['entregador_kyc'] as List).last['status']
-            : 'pendente';
+    final statusCadastro = (_perfil['status_cadastro'] as String?) ?? 'pendente';
+    final dadosBancarios = _embedOne(_perfil['dados_bancarios']);
+    final pixChave = (dadosBancarios?['pix_chave'] as String?)?.trim();
+    final kycStatus = _statusKyc(_perfil['entregador_kyc'], statusCadastro);
+    final inicial =
+        _nomeExibicao.isNotEmpty ? _nomeExibicao[0].toUpperCase() : '?';
 
     return Scaffold(
       backgroundColor: _bg0,
@@ -189,26 +282,28 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                       child: Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => context.pop(),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: _bg2,
-                                border: Border.all(color: _border),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  color: _text1,
-                                  size: 16,
+                          if (context.canPop()) ...[
+                            GestureDetector(
+                              onTap: () => context.pop(),
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: _bg2,
+                                  border: Border.all(color: _border),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.arrow_back_ios_new_rounded,
+                                    color: _text1,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
+                            const SizedBox(width: 14),
+                          ],
                           Text(
                             'Meu Perfil',
                             style: GoogleFonts.outfit(
@@ -275,7 +370,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                         )
                                       : Center(
                                           child: Text(
-                                            (_perfil['nome_completo'] ?? '?')[0].toUpperCase(),
+                                            inicial,
                                             style: GoogleFonts.outfit(
                                               fontSize: 36,
                                               fontWeight: FontWeight.w900,
@@ -309,7 +404,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _perfil['nome_completo'] ?? 'Entregador',
+                            _nomeExibicao,
                             style: GoogleFonts.outfit(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
@@ -345,18 +440,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       child: Row(
                         children: [
                           _StatItem(
-                            icon: '🛵',
+                            icon: Icons.two_wheeler_rounded,
                             valor: '${_perfil['total_entregas'] ?? 0}',
                             label: 'Entregas',
                           ),
                           _StatItem(
-                            icon: '⭐',
+                            icon: Icons.star_rounded,
                             valor:
                                 '${(_perfil['avaliacao_media'] as num?)?.toStringAsFixed(1) ?? '5.0'}',
                             label: 'Avaliação',
                           ),
                           _StatItem(
-                            icon: '💰',
+                            icon: Icons.payments_rounded,
                             valor:
                                 'R\$${((_saldo['total_ganho'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
                             label: 'Ganhos',
@@ -370,20 +465,28 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       titulo: 'DADOS PESSOAIS',
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       children: [
-                        _InfoRow(label: 'CPF', valor: _fmtCpf(_perfil['cpf'])),
                         _InfoRow(
+                          icon: Icons.badge_outlined,
+                          label: 'CPF',
+                          valor: _fmtCpf(_perfil['cpf']),
+                        ),
+                        _InfoRow(
+                          icon: Icons.credit_card_rounded,
                           label: 'CNH',
                           valor: _perfil['cnh_numero'] ?? 'Não informado',
                         ),
                         _InfoRow(
+                          icon: _iconVeiculo(_perfil['tipo_veiculo'] as String?),
                           label: 'Veículo',
-                          valor: _labelVeiculo(_perfil['tipo_veiculo']),
+                          valor: _labelVeiculo(_perfil['tipo_veiculo'] as String?),
                         ),
                         _InfoRow(
+                          icon: Icons.two_wheeler_outlined,
                           label: 'Modelo',
                           valor: _perfil['veiculo_modelo'] ?? 'Não informado',
                         ),
                         _InfoRow(
+                          icon: Icons.pin_outlined,
                           label: 'Placa',
                           valor: _perfil['veiculo_placa'] ?? 'Não informado',
                         ),
@@ -395,10 +498,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       titulo: 'DADOS FINANCEIROS',
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       children: [
-                        _InfoRow(label: 'Chave PIX', valor: pixChave ?? 'Não cadastrada'),
                         _InfoRow(
+                          icon: Icons.pix,
+                          label: 'Chave PIX',
+                          valor: (pixChave == null || pixChave.isEmpty)
+                              ? 'Não cadastrada'
+                              : pixChave,
+                        ),
+                        _InfoRow(
+                          icon: Icons.account_balance_rounded,
                           label: 'Conta Asaas',
-                          valor: _perfil['asaas_account_id'] != null ? 'Ativa ✅' : 'Não criada',
+                          valor: _perfil['asaas_account_id'] != null
+                              ? 'Ativa'
+                              : 'Não criada',
+                          valorColor: _perfil['asaas_account_id'] != null
+                              ? _green
+                              : _text2,
                         ),
                       ],
                     ),
@@ -410,41 +525,38 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         children: _docs
                             .map(
-                              (d) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
+                              (d) {
+                                final status =
+                                    (d['status_validacao'] as String?) ??
+                                        'pendente';
+                                return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(
                                   children: [
+                                    _IconBox(
+                                      icon: _iconDoc(d['tipo'] ?? ''),
+                                      size: 32,
+                                      iconSize: 16,
+                                    ),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
                                         _labelDoc(d['tipo'] ?? ''),
-                                        style: GoogleFonts.dmSans(fontSize: 13, color: _text2),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _corDocStatus(
-                                          d['status_validacao'] ?? 'pendente',
-                                        ).withValues(alpha: .1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        d['status_validacao'] ?? 'pendente',
                                         style: GoogleFonts.dmSans(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: _corDocStatus(
-                                            d['status_validacao'] ?? 'pendente',
-                                          ),
+                                          fontSize: 13,
+                                          color: _text2,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
+                                    _StatusBadge(
+                                      label: _labelKyc(status),
+                                      color: _corDocStatus(status),
+                                    ),
                                   ],
                                 ),
-                              ),
+                              );
+                              },
                             )
                             .toList(),
                       ),
@@ -462,7 +574,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Text('🔐', style: TextStyle(fontSize: 22)),
+                            _IconBox(
+                              icon: Icons.verified_user_rounded,
+                              color: _corDocStatus(kycStatus),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -477,26 +592,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Status: $kycStatus',
-                                    style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
+                                    'Status: ${_labelKyc(kycStatus)}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      color: _text3,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _corDocStatus(kycStatus).withValues(alpha: .1),
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                              child: Text(
-                                kycStatus,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: _corDocStatus(kycStatus),
-                                ),
-                              ),
+                            _StatusBadge(
+                              label: _labelKyc(kycStatus),
+                              color: _corDocStatus(kycStatus),
                             ),
                           ],
                         ),
@@ -509,18 +616,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       child: Column(
                         children: [
                           _AcaoItem(
-                            icon: '⚙️',
+                            icon: Icons.settings_outlined,
                             label: 'Configurações',
                             onTap: () =>
                                 context.push('/dashboard_entregador/configuracoes'),
                           ),
                           _AcaoItem(
-                            icon: '💬',
+                            icon: Icons.support_agent_rounded,
                             label: 'Suporte',
                             onTap: () => context.push('/dashboard_entregador/suporte'),
                           ),
                           _AcaoItem(
-                            icon: '🚪',
+                            icon: Icons.logout_rounded,
                             label: 'Sair da conta',
                             cor: _red,
                             onTap: () async {
@@ -541,8 +648,63 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
 // ─── Widgets auxiliares ──────────────────────────────────────────────────────
 
+class _IconBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+  final double iconSize;
+
+  const _IconBox({
+    required this.icon,
+    this.color = _orange,
+    this.size = 38,
+    this.iconSize = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: iconSize, color: color),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .1),
+        border: Border.all(color: color.withValues(alpha: .3)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.dmSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 class _StatItem extends StatelessWidget {
-  final String icon, valor, label;
+  final IconData icon;
+  final String valor, label;
   const _StatItem({required this.icon, required this.valor, required this.label});
 
   @override
@@ -557,7 +719,7 @@ class _StatItem extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           child: Column(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
+              Icon(icon, size: 18, color: _orange),
               const SizedBox(height: 4),
               Text(
                 valor,
@@ -619,22 +781,35 @@ class _Secao extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
+  final IconData icon;
   final String label, valor;
-  const _InfoRow({required this.label, required this.valor});
+  final Color? valorColor;
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.valor,
+    this.valorColor,
+  });
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
+            Icon(icon, size: 16, color: _text3),
+            const SizedBox(width: 8),
             Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: _text3)),
             const Spacer(),
-            Text(
-              valor,
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: _text2,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                valor,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: valorColor ?? _text2,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -643,18 +818,24 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _AcaoItem extends StatelessWidget {
-  final String icon, label;
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final Color? cor;
 
-  const _AcaoItem({required this.icon, required this.label, required this.onTap, this.cor});
+  const _AcaoItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.cor,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: _card,
             border: Border.all(color: _border),
@@ -662,7 +843,7 @@ class _AcaoItem extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
+              _IconBox(icon: icon, color: cor ?? _orange),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

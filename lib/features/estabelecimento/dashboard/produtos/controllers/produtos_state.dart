@@ -7,6 +7,7 @@ class ProdutosState {
   final List<ProdutoModel> produtosFiltrados;
   final List<CategoriaCardapioModel> categorias;
   final List<CategoriaEstabelecimentoModel> categoriasPrincipais;
+  final bool podeGerenciarCategoriasCardapio;
   final bool isLoading;
   final String? error;
 
@@ -21,6 +22,7 @@ class ProdutosState {
     this.produtosFiltrados = const [],
     this.categorias = const [],
     this.categoriasPrincipais = const [],
+    this.podeGerenciarCategoriasCardapio = false,
     this.isLoading = false,
     this.error,
     this.filterMode = 'grid',
@@ -34,6 +36,7 @@ class ProdutosState {
     List<ProdutoModel>? produtosFiltrados,
     List<CategoriaCardapioModel>? categorias,
     List<CategoriaEstabelecimentoModel>? categoriasPrincipais,
+    bool? podeGerenciarCategoriasCardapio,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -47,6 +50,8 @@ class ProdutosState {
       produtosFiltrados: produtosFiltrados ?? this.produtosFiltrados,
       categorias: categorias ?? this.categorias,
       categoriasPrincipais: categoriasPrincipais ?? this.categoriasPrincipais,
+      podeGerenciarCategoriasCardapio: podeGerenciarCategoriasCardapio ??
+          this.podeGerenciarCategoriasCardapio,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       filterMode: filterMode ?? this.filterMode,
@@ -79,6 +84,8 @@ class ProdutosState {
         other.produtosFiltrados == produtosFiltrados &&
         other.categorias == categorias &&
         other.categoriasPrincipais == categoriasPrincipais &&
+        other.podeGerenciarCategoriasCardapio ==
+            podeGerenciarCategoriasCardapio &&
         other.isLoading == isLoading &&
         other.error == error &&
         other.filterMode == filterMode &&
@@ -93,6 +100,7 @@ class ProdutosState {
         produtosFiltrados.hashCode ^
         categorias.hashCode ^
         categoriasPrincipais.hashCode ^
+        podeGerenciarCategoriasCardapio.hashCode ^
         isLoading.hashCode ^
         error.hashCode ^
         filterMode.hashCode ^

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/item_carrinho_model.dart';
+import 'package:padoca_express/features/cliente/carrinho/opcoes_selecionadas_codec.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
 
 class ItemCarrinhoCard extends ConsumerWidget {
@@ -331,7 +332,7 @@ class _OpcoesSelecionadasResumo extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(
-            '${grupo['grupo_nome'] ?? 'Opcoes'}: $itens',
+            '${OpcoesSelecionadasCodec.nomeGrupo(Map<String, dynamic>.from(grupo))}: $itens',
             style: GoogleFonts.outfit(
               fontSize: 12,
               color: mutedTextColor,

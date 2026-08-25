@@ -1,3 +1,5 @@
+import 'categorias_cardapio_padrao.dart';
+
 class CategoriaCardapioModel {
   final String id;
   final String estabelecimentoId;
@@ -24,6 +26,8 @@ class CategoriaCardapioModel {
   });
 
   bool get isSubcategoria => categoriaPaiId != null;
+
+  bool get isCategoriaPadrao => CategoriasCardapioPadrao.isPadrao(nome);
 
   factory CategoriaCardapioModel.fromJson(Map<String, dynamic> json) {
     return CategoriaCardapioModel(

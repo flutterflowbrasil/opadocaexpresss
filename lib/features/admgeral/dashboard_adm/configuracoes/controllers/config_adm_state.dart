@@ -13,6 +13,7 @@ const _kChavesSensiveis = {
   'retencao_temporaria_ativa',
   'compensacao_antes_coleta',
   'compensacao_apos_coleta_pct',
+  'pagamentos_online_ativos',
   'plataforma_ativa',
   'modo_manutencao',
   'logs_avancados',

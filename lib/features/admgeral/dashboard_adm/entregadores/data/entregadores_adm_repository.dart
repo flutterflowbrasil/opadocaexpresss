@@ -26,6 +26,7 @@ class EntregadoresAdmRepository {
           'created_at, data_nascimento, motivo_rejeicao, '
           'cpf, cnh_numero, cnh_categoria, cnh_validade, '
           'usuario_id, endereco, '
+          'entregador_enderecos(id, cep, logradouro, numero, complemento, bairro, cidade, estado), '
           'usuarios!entregadores_usuario_id_fkey(nome_completo_fantasia, email, telefone), '
           'entregador_documentos(tipo, status_validacao, url, motivo_rejeicao, revisado_em), '
           'entregador_kyc(status, foto_selfie_url, observacao_admin, revisado_em, provider)',
@@ -53,12 +54,22 @@ class EntregadoresAdmRepository {
     }
     if (novoStatus == 'aprovado') {
       await _validarDocumentacaoAprovada(id);
-      await _validarEnderecoAsaas(id);
+      final atual = await _client
+          .from('entregadores')
+          .select('asaas_wallet_id')
+          .eq('id', id)
+          .single();
+      final temWallet =
+          (atual['asaas_wallet_id'] as String?)?.trim().isNotEmpty == true;
+      // Carteira já criada: não bloqueia aprovação por endereço local vazio.
+      if (!temWallet) {
+        await _validarEnderecoAsaas(id);
+        await _asaasOnboarding.ensureSubaccount(
+          entityType: AsaasEntityType.entregador,
+          entityId: id,
+        );
+      }
       body['motivo_rejeicao'] = null;
-      await _asaasOnboarding.ensureSubaccount(
-        entityType: AsaasEntityType.entregador,
-        entityId: id,
-      );
     }
     await _client.from('entregadores').update(body).eq('id', id);
   }
@@ -96,6 +107,46 @@ class EntregadoresAdmRepository {
         .update({'endereco': enderecoSalvo.toJson()}).eq('id', entregadorId);
 
     return enderecoSalvo;
+  }
+
+  Future<EntregadorEnderecoInfo?> recuperarEnderecoDoAsaas(
+    String entregadorId,
+  ) async {
+    final resp = await _client.functions.invoke(
+      'asaas-sincronizar-subconta',
+      body: {
+        'entidade_tipo': 'entregador',
+        'entidade_id': entregadorId,
+      },
+    );
+    if (resp.status >= 400) {
+      final data = resp.data;
+      final msg = data is Map ? (data['error'] ?? data['mensagem']) : null;
+      throw Exception(
+        msg?.toString() ??
+            'Nao foi possivel buscar o endereco no Asaas. Preencha manualmente.',
+      );
+    }
+
+    final data = resp.data is Map
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : <String, dynamic>{};
+    final fromFn = EntregadorEnderecoInfo.tryParse(
+      data['endereco'] is Map
+          ? Map<String, dynamic>.from(data['endereco'] as Map)
+          : null,
+    );
+    if (fromFn != null) return fromFn;
+
+    final row = await _client
+        .from('entregador_enderecos')
+        .select(
+            'id, cep, logradouro, numero, complemento, bairro, cidade, estado')
+        .eq('entregador_id', entregadorId)
+        .maybeSingle();
+    return EntregadorEnderecoInfo.tryParse(
+      row == null ? null : Map<String, dynamic>.from(row),
+    );
   }
 
   Future<void> revisarDocumento(

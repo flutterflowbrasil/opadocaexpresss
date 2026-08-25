@@ -31,6 +31,7 @@ class PagamentoRepository {
     required String pagamentoMetodo,
     String? cupomCodigo,
     String? observacaoGeral,
+    double? distanciaRotaKm,
   }) async {
     try {
       final response = await _supabase.rpc('criar_pedido_validado', params: {
@@ -39,6 +40,8 @@ class PagamentoRepository {
         'p_pagamento_metodo': pagamentoMetodo,
         'p_cupom_codigo': cupomCodigo,
         'p_observacao_geral': observacaoGeral,
+        if (distanciaRotaKm != null && distanciaRotaKm > 0)
+          'p_distancia_rota_km': distanciaRotaKm,
       });
       final data = Map<String, dynamic>.from(response as Map);
       if (data['ok'] != true) {
@@ -70,6 +73,12 @@ class PagamentoRepository {
 
       if (resp.status != 200) {
         final data = resp.data as Map<String, dynamic>?;
+        final code = data?['code']?.toString();
+        if (resp.status == 503 ||
+            code == 'ASAAS_KEY_INVALID' ||
+            code == 'PAGAMENTOS_OFFLINE') {
+          throw Exception('Pagamentos temporariamente indisponíveis.');
+        }
         throw Exception(data?['error'] ?? 'Erro ao processar pagamento');
       }
 

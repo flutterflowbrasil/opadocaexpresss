@@ -30,6 +30,15 @@ serve(async (req) => {
     const jobs = (claimed ?? []) as Array<Record<string, unknown>>;
     if (jobs.length === 0) return json({ ok: true, processed: 0 });
 
+    let maxPush = 3;
+    const { data: maxCfg } = await supabase
+      .from('plataforma_configuracoes')
+      .select('valor')
+      .eq('chave', 'max_tentativas_push')
+      .maybeSingle();
+    const parsedMax = Number(maxCfg?.valor);
+    if (Number.isFinite(parsedMax) && parsedMax > 0) maxPush = parsedMax;
+
     let sent = 0;
     let failed = 0;
     for (const job of jobs) {
@@ -39,7 +48,7 @@ serve(async (req) => {
       } catch (error) {
         failed += 1;
         console.error('[processar-notificacoes-fila] job', job.id, error);
-        await markRetryOrFail(supabase, job, error instanceof Error ? error.message : 'erro_envio');
+        await markRetryOrFail(supabase, job, error instanceof Error ? error.message : 'erro_envio', maxPush);
       }
     }
 
@@ -252,9 +261,10 @@ async function markRetryOrFail(
   supabase: ReturnType<typeof createClient>,
   job: Record<string, unknown>,
   erro: string,
+  maxPushFallback = 3,
 ) {
   const tentativas = Number(job.tentativas ?? 1);
-  const max = Number(job.max_tentativas ?? 3);
+  const max = Number(job.max_tentativas ?? maxPushFallback) || maxPushFallback;
   if (tentativas >= max) {
     await archiveJob(supabase, job, 'falhou', { erro });
     return;

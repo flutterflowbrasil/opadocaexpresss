@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padoca_express/features/auth/data/auth_repository.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
+import 'package:padoca_express/features/auth/presentation/manutencao_screen.dart';
 import 'package:padoca_express/features/auth/presentation/splash_screen.dart';
 import 'package:padoca_express/features/auth/presentation/login_screen.dart';
 import 'package:padoca_express/features/auth/presentation/politica_privacidade.dart';
@@ -70,6 +72,53 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/baixar_app_entregador';
       }
 
+      PlataformaRuntimeConfig cfg = const PlataformaRuntimeConfig();
+      if (loc != '/') {
+        try {
+          cfg = await ref
+              .read(plataformaRuntimeConfigProvider.future)
+              .timeout(const Duration(seconds: 4));
+        } catch (_) {}
+      }
+
+      if (cfg.appAbaixoDaMinima() &&
+          loc != '/' &&
+          loc != '/atualizar-app' &&
+          !loc.startsWith('/admin')) {
+        return '/atualizar-app';
+      }
+
+      const gateExempt = [
+        '/',
+        '/login',
+        '/manutencao',
+        '/atualizar-app',
+        '/privacy',
+        '/esqueceu-senha',
+        '/reset-password',
+      ];
+      if (cfg.emManutencao && !gateExempt.contains(loc)) {
+        var isAdmin = loc.startsWith('/admin');
+        if (!isAdmin && authRepository.currentUser != null) {
+          final route = await ref.read(sessionRouteProvider.future);
+          isAdmin = route.startsWith('/admin');
+        }
+        if (!isAdmin) return '/manutencao';
+      }
+
+      if (loc.startsWith('/cadastro-estabelecimento') &&
+          !cfg.permiteCadastroEstab) {
+        return '/pre_cadastro';
+      }
+      if ((loc == '/cadastro_entregador' ||
+              loc.startsWith('/cadastro_entregador')) &&
+          !cfg.permiteCadastroEntregador) {
+        return '/pre_cadastro';
+      }
+      if (loc == '/dashboard_estabelecimento/cupons' && !cfg.cuponsAtivos) {
+        return '/dashboard_estabelecimento';
+      }
+
       // Rotas públicas: acessíveis sem autenticação
       const publicRoutes = [
         '/',
@@ -81,6 +130,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/cadastro_cliente',
         '/baixar_app_entregador',
         '/cadastro-estabelecimento',
+        '/manutencao',
+        '/atualizar-app',
       ];
 
       final isPublic = publicRoutes.any((r) => loc == r || loc.startsWith('$r/'));
@@ -123,6 +174,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(
+        path: '/manutencao',
+        builder: (context, state) {
+          final cfg = ref.read(plataformaRuntimeConfigProvider).valueOrNull;
+          return ManutencaoScreen(config: cfg);
+        },
+      ),
+      GoRoute(
+        path: '/atualizar-app',
+        builder: (context, state) {
+          final cfg = ref.read(plataformaRuntimeConfigProvider).valueOrNull;
+          return AtualizarAppScreen(config: cfg);
+        },
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/esqueceu-senha',

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { approveSandboxAccount, asaasHeaders, loadAsaasCredentials } from '../_shared/asaas_client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,7 @@ serve(async (req) => {
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
       auth: { persistSession: false },
     });
-    const asaasBaseUrl = (Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3').replace(/\/$/, '');
+    const { baseUrl: asaasBaseUrl, isSandbox } = loadAsaasCredentials();
 
     const user = await authenticatedUser(req, supabase);
 
@@ -57,24 +58,20 @@ serve(async (req) => {
     }
 
     const asaasRespStatus = await fetch(`${asaasBaseUrl}/myAccount/status`, {
-      headers: { access_token: subcontaApiKey },
+      headers: asaasHeaders(subcontaApiKey, false),
     });
     let statusData = await asaasRespStatus.json().catch(() => ({}));
 
-    if (asaasBaseUrl.includes('sandbox') && text(statusData.general).toUpperCase() !== 'APPROVED') {
-      await fetch(`${asaasBaseUrl}/sandbox/myAccount/approve`, {
-        method: 'POST',
-        headers: { access_token: subcontaApiKey, 'Content-Type': 'application/json' },
-        body: '{}',
-      });
+    if (isSandbox && text(statusData.general).toUpperCase() !== 'APPROVED') {
+      await approveSandboxAccount(asaasBaseUrl, subcontaApiKey);
       const refreshed = await fetch(`${asaasBaseUrl}/myAccount/status`, {
-        headers: { access_token: subcontaApiKey },
+        headers: asaasHeaders(subcontaApiKey, false),
       });
       statusData = await refreshed.json().catch(() => statusData);
     }
 
     const asaasResp = await fetch(`${asaasBaseUrl}/myAccount`, {
-      headers: { access_token: subcontaApiKey },
+      headers: asaasHeaders(subcontaApiKey, false),
     });
     const accountData = await asaasResp.json().catch(() => ({}));
 
@@ -125,6 +122,15 @@ serve(async (req) => {
 
     await supabase.from(entityTable).update(entityUpdate).eq('id', subconta.entidade_id);
 
+    let enderecoPersistido: Record<string, string> | null = null;
+    if (subconta.entidade_tipo === 'entregador') {
+      enderecoPersistido = await persistirEnderecoEntregador(
+        supabase,
+        subconta.entidade_id,
+        accountData,
+      );
+    }
+
     return json({
       status: statusInterno,
       kyc_status: kycStatus,
@@ -132,6 +138,7 @@ serve(async (req) => {
       homologada: update.homologada,
       asaas_account_id: subconta.asaas_account_id,
       asaas_wallet_id: entityUpdate.asaas_wallet_id,
+      endereco: enderecoPersistido,
       mensagem: statusMessage(statusInterno),
     });
   } catch (error) {
@@ -201,6 +208,75 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+async function persistirEnderecoEntregador(
+  supabase: ReturnType<typeof createClient>,
+  entregadorId: string,
+  account: Record<string, unknown>,
+): Promise<Record<string, string> | null> {
+  const cep = onlyDigits(text(account.postalCode));
+  const logradouro = text(account.address);
+  const numero = text(account.addressNumber);
+  const complemento = text(account.complement);
+  const bairro = text(account.province);
+  const estado = text(account.state).toUpperCase().slice(0, 2);
+  if (cep.length !== 8 || !logradouro || !numero || !bairro || estado.length !== 2) {
+    return null;
+  }
+
+  let cidade = '';
+  try {
+    const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'OpadocaExpress/1.0',
+      },
+    });
+    if (cepRes.ok) {
+      const cepData = await cepRes.json().catch(() => ({}));
+      cidade = text(cepData.city);
+    }
+  } catch (error) {
+    console.error('[asaas-sincronizar-subconta] cep lookup', error);
+  }
+  if (!cidade) return {
+    cep, logradouro, numero, complemento, bairro, estado, cidade: '',
+  };
+
+  const endereco = {
+    cep,
+    logradouro,
+    numero,
+    complemento: complemento || null,
+    bairro,
+    cidade,
+    estado,
+  };
+
+  await supabase.from('entregador_enderecos').upsert({
+    entregador_id: entregadorId,
+    ...endereco,
+    is_principal: true,
+  }, { onConflict: 'entregador_id' });
+
+  await supabase.from('entregadores').update({
+    endereco: {
+      cep,
+      logradouro,
+      numero,
+      ...(complemento ? { complemento } : {}),
+      bairro,
+      cidade,
+      estado,
+    },
+  }).eq('id', entregadorId);
+
+  return { cep, logradouro, numero, complemento, bairro, cidade, estado };
 }
 
 function requiredEnv(name: string): string {

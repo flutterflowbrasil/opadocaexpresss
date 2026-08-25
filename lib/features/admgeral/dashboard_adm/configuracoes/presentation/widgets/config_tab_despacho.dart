@@ -28,7 +28,7 @@ class ConfigTabDespacho extends ConsumerWidget {
             ConfigRow(
               label: 'Modo de despacho padrão',
               descricao:
-                  'automatico: sistema atribui | manual: admin atribui',
+                  'automatico: sistema oferta | manual: sem oferta automática (fila do estabelecimento)',
               editavel: editable('modo_despacho_padrao'),
               control: ConfigSel(
                 value: val('modo_despacho_padrao'),
@@ -43,7 +43,8 @@ class ConfigTabDespacho extends ConsumerWidget {
             ),
             ConfigRow(
               label: 'Critério de prioridade',
-              descricao: 'Como o sistema escolhe o entregador',
+              descricao:
+                  'Em uso: híbrido 40% distância / 30% avaliação / 30% fila. Esta opção é informativa nesta fase.',
               editavel: editable('prioridade_criterio'),
               control: ConfigSel(
                 value: val('prioridade_criterio'),

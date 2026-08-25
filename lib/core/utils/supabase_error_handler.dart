@@ -50,6 +50,9 @@ class SupabaseErrorHandler {
       case '23505':
         return _parseUniqueViolation(error);
       case '42501':
+        if (error.message.contains('categorias_cardapio')) {
+          return 'Esta categoria é gerenciada pela plataforma ou você não tem permissão para alterá-la.';
+        }
         return 'Erro de permissao no banco de dados. Contate o suporte.';
       case '23503':
         return 'Erro de referencia: dados relacionados nao encontrados.';

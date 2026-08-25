@@ -25,7 +25,8 @@ class MapsLoader {
   /// Idempotente — segunda chamada retorna imediatamente.
   static Future<void> load() async {
     if (_loaded || !kIsWeb) return;
-    if (Supabase.instance.client.auth.currentSession == null) return;
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null || session.isExpired) return;
 
     try {
       final res = await Supabase.instance.client.functions
@@ -43,6 +44,13 @@ class MapsLoader {
       await loadMapsApi(key);
       _loaded = true;
     } catch (e) {
+      final text = e.toString().toLowerCase();
+      if (text.contains('401') ||
+          text.contains('sessao invalida') ||
+          text.contains('refresh_token')) {
+        _log('Maps API adiada (sessão inválida).');
+        return;
+      }
       _log('Erro ao carregar Maps API: $e');
     }
   }

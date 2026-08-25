@@ -641,7 +641,64 @@ class _PedidoAcompanharScreenState extends State<PedidoAcompanharScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          if (const {
+            'pendente',
+            'confirmado',
+            'preparando',
+            'pronto',
+          }.contains(_status))
+            TextButton(
+              onPressed: _cancelarPedido,
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFDC2626),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
       );
+
+  Future<void> _cancelarPedido() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar pedido?'),
+        content: const Text('Essa ação não pode ser desfeita.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Voltar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Cancelar pedido')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final res = await Supabase.instance.client.rpc(
+        'fn_cancelar_pedido_cliente',
+        params: {'p_pedido_id': widget.pedidoId},
+      );
+      final map = res is Map ? res : <String, dynamic>{};
+      if (map['ok'] != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${map['erro'] ?? 'Não foi possível cancelar.'}')),
+        );
+        return;
+      }
+      if (mounted) setState(() => _status = 'cancelado_cliente');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Falha ao cancelar: $e')),
+      );
+    }
+  }
 
   Widget _buildStepper(_Passo stepAtual, bool isDark) {
     final passos = _Passo.values;

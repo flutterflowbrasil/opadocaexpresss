@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/data/carrinho_repository.dart';
 import 'package:padoca_express/features/cliente/carrinho/data/cupom_repository.dart';
 import 'package:padoca_express/features/cliente/carrinho/models/cupom_model.dart';
@@ -71,6 +72,26 @@ class CarrinhoState {
       if (observacaoGeral != null && observacaoGeral!.isNotEmpty)
         'observacao_geral': observacaoGeral,
     };
+  }
+
+  /// Taxa e desconto usam a config da plataforma (`entrega_base_*`), não `config_entrega`.
+  double descontoCom(PlataformaRuntimeConfig cfg, {double distanciaKm = 0}) {
+    if (!cfg.cuponsAtivos || cupomAplicado == null) return 0;
+    final taxa = cfg.taxaEntrega(
+        distanciaKm: distanciaKm, subtotal: valorTotalProdutos);
+    return cupomAplicado!
+        .calcularDesconto(valorTotalProdutos, taxaEntrega: taxa);
+  }
+
+  /// Total do checkout com faixa + km excedente da plataforma.
+  double valorTotalCom(PlataformaRuntimeConfig cfg, {double distanciaKm = 0}) {
+    final taxa = cfg.taxaEntrega(
+        distanciaKm: distanciaKm, subtotal: valorTotalProdutos);
+    return (valorTotalProdutos +
+            taxa -
+            descontoCom(cfg, distanciaKm: distanciaKm))
+        .clamp(0, double.infinity)
+        .toDouble();
   }
 
   int get quantidadeTotal =>
@@ -389,12 +410,31 @@ class CarrinhoController extends StateNotifier<CarrinhoState> {
     if (estabelecimento == null) return;
     final repo = _carrinhoRepo;
     if (repo == null) return;
-    unawaited(repo.trySync(
-      () => repo.salvarItem(
+    unawaited(repo.trySync(() async {
+      final salvo = await repo.salvarItem(
         estabelecimentoId: estabelecimento.id,
         item: item,
-      ),
-    ));
+      );
+      if (salvo == null) return;
+      final idx = state.itens.indexWhere((atual) {
+        if (salvo.id != null && atual.id == salvo.id) return true;
+        return atual.id == item.id &&
+            _sameCartEntry(
+              atual,
+              item.produto,
+              item.observacao,
+              item.opcoesSelecionadas,
+              item.tamanhoProdutoId,
+            );
+      });
+      if (idx < 0) return;
+      final novaLista = List<ItemCarrinhoModel>.from(state.itens);
+      novaLista[idx] = novaLista[idx].copyWith(
+        id: salvo.id,
+        precoUnitario: salvo.precoUnitario,
+      );
+      await _updateState(state.copyWith(itens: novaLista));
+    }));
   }
 }
 

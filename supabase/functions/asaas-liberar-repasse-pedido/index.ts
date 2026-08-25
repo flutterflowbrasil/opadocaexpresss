@@ -1,53 +1,72 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-worker-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import {
+  asaasHeaders,
+  errorToResponse,
+  HttpError,
+  jsonResponse,
+  loadAsaasCredentials,
+  requiredEnv,
+} from '../_shared/asaas_client.ts';
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405);
+  if (req.method === 'OPTIONS') return jsonResponse({ ok: true });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Metodo nao permitido.' }, 405);
 
   try {
     authorizeWorker(req);
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
       auth: { persistSession: false },
     });
-    const asaasApiKey = requiredEnv('ASAAS_API_KEY');
-    const asaasBaseUrl = (Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3').replace(/\/$/, '');
+    const { baseUrl: asaasBaseUrl, apiKey: asaasApiKey } = loadAsaasCredentials();
 
     const body = await req.json().catch(() => ({}));
     const pedidoId = String(body.pedido_id ?? '').trim();
-    if (!pedidoId) return json({ error: 'pedido_id obrigatorio.' }, 400);
+    if (!pedidoId) return jsonResponse({ error: 'pedido_id obrigatorio.' }, 400);
 
     const { data: cfg } = await supabase.rpc('fn_get_config_financeira');
     const modo = String(cfg?.modo_repasse ?? 'pos_entrega');
     if (modo === 'checkout_imediato') {
-      return json({ ok: true, skipped: true, reason: 'checkout_imediato' });
-    }
-    if (cfg?.retencao_temporaria_ativa === true && Number(cfg?.retencao_temporaria_horas ?? 0) > 0) {
-      return json({ ok: true, skipped: true, reason: 'retencao_temporaria' });
+      return jsonResponse({ ok: true, skipped: true, reason: 'checkout_imediato' });
     }
 
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
-      .select('id, status, pagamento_status, asaas_payment_id, entregador_id, estabelecimento_id, repasse_processado')
+      .select('id, status, pagamento_status, asaas_payment_id, entregador_id, estabelecimento_id, repasse_processado, repasse_liberar_em')
       .eq('id', pedidoId)
       .single();
     if (pedidoError || !pedido) throw new HttpError('Pedido nao encontrado.', 404);
 
-    if (pedido.repasse_processado) return json({ ok: true, duplicate: true });
+    if (pedido.repasse_processado) return jsonResponse({ ok: true, duplicate: true });
     if (pedido.pagamento_status !== 'confirmado') {
-      return json({ ok: false, error: 'Pagamento ainda nao confirmado.' }, 409);
+      return jsonResponse({ ok: false, error: 'Pagamento ainda nao confirmado.' }, 409);
     }
     if (modo === 'pos_entrega' && pedido.status !== 'entregue') {
-      return json({ ok: false, error: 'Pedido ainda nao entregue.' }, 409);
+      return jsonResponse({ ok: false, error: 'Pedido ainda nao entregue.' }, 409);
     }
     if (modo === 'pos_coleta' && !['coletado', 'a_caminho_cliente', 'em_entrega', 'entregue'].includes(pedido.status)) {
-      return json({ ok: false, error: 'Pedido ainda nao coletado.' }, 409);
+      return jsonResponse({ ok: false, error: 'Pedido ainda nao coletado.' }, 409);
+    }
+
+    const retencaoAtiva = cfg?.retencao_temporaria_ativa === true;
+    const horas = Number(cfg?.retencao_temporaria_horas ?? 0);
+    if (retencaoAtiva && horas > 0) {
+      const liberarEm = pedido.repasse_liberar_em
+        ? new Date(pedido.repasse_liberar_em)
+        : new Date(Date.now() + horas * 3600 * 1000);
+      if (!pedido.repasse_liberar_em) {
+        await supabase.from('pedidos').update({
+          repasse_liberar_em: liberarEm.toISOString(),
+        }).eq('id', pedidoId);
+      }
+      if (Date.now() < liberarEm.getTime()) {
+        return jsonResponse({
+          ok: true,
+          skipped: true,
+          reason: 'retencao_temporaria',
+          repasse_liberar_em: liberarEm.toISOString(),
+        });
+      }
     }
 
     const eventId = `REPASSE:${pedidoId}`;
@@ -63,7 +82,7 @@ serve(async (req) => {
       .select('id, processado')
       .single();
     if (claimError) {
-      if (claimError.code === '23505') return json({ ok: true, duplicate: true });
+      if (claimError.code === '23505') return jsonResponse({ ok: true, duplicate: true });
       throw claimError;
     }
 
@@ -153,11 +172,9 @@ serve(async (req) => {
       status_novo: estabOk ? 'repasse_liberado' : 'repasse_parcial',
     }).eq('id', claimed.id);
 
-    return json({ ok: true, estabOk, entOk, transferIds });
+    return jsonResponse({ ok: true, estabOk, entOk, transferIds });
   } catch (error) {
-    console.error('[asaas-liberar-repasse-pedido]', error);
-    const status = error instanceof HttpError ? error.status : 500;
-    return json({ error: error instanceof Error ? error.message : 'Erro inesperado.' }, status);
+    return errorToResponse(error, '[asaas-liberar-repasse-pedido]');
   }
 });
 
@@ -179,7 +196,7 @@ async function asaasTransfer(
 ) {
   const response = await fetch(`${baseUrl}/transfers`, {
     method: 'POST',
-    headers: { access_token: apiKey, 'Content-Type': 'application/json' },
+    headers: asaasHeaders(apiKey),
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
@@ -195,21 +212,3 @@ function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-function requiredEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`Secret ${name} nao configurado.`);
-  return value;
-}
-
-class HttpError extends Error {
-  constructor(message: string, public status = 400) {
-    super(message);
-  }
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}

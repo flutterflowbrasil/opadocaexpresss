@@ -203,8 +203,10 @@ class _EntregaAtivaBannerState extends State<EntregaAtivaBanner>
                   color: orangeColor.withValues(alpha: .15),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Center(
-                  child: Text('🛵', style: TextStyle(fontSize: 26)),
+                child: const Icon(
+                  Icons.delivery_dining_rounded,
+                  color: orangeColor,
+                  size: 26,
                 ),
               ),
               const SizedBox(width: 14),
@@ -264,6 +266,8 @@ class DashboardHeader extends StatelessWidget {
   final bool online;
   final String? fotoPerfilUrl;
   final String statusDespacho;
+  final bool temNotificacao;
+  final VoidCallback onNotificacoes;
 
   const DashboardHeader({
     super.key,
@@ -272,13 +276,14 @@ class DashboardHeader extends StatelessWidget {
     required this.online,
     this.fotoPerfilUrl,
     this.statusDespacho = 'livre',
+    this.temNotificacao = false,
+    required this.onNotificacoes,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Avatar
         Container(
           width: 44,
           height: 44,
@@ -291,17 +296,22 @@ class DashboardHeader extends StatelessWidget {
                   color: orangeColor.withValues(alpha: .3), blurRadius: 14)
             ],
           ),
+          clipBehavior: Clip.antiAlias,
           child: fotoPerfilUrl != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.network(fotoPerfilUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Center(
-                          child: Text('🧑',
-                              style: TextStyle(fontSize: 20)))),
+              ? Image.network(
+                  fotoPerfilUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.person_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 )
-              : const Center(
-                  child: Text('🧑', style: TextStyle(fontSize: 20))),
+              : const Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
         ),
         const SizedBox(width: 10),
 
@@ -353,33 +363,42 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
 
-        // Notificações
-        Stack(children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: bg2,
-              border: Border.all(color: borderColor),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-                child: Text('🔔', style: TextStyle(fontSize: 17))),
-          ),
-          Positioned(
-            top: 7,
-            right: 7,
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: orangeColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: bg0, width: 1.5),
+        GestureDetector(
+          onTap: onNotificacoes,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: bg2,
+                  border: Border.all(color: borderColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  color: text1,
+                  size: 18,
+                ),
               ),
-            ),
+              if (temNotificacao)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: redColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: bg0, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ]),
+        ),
       ],
     );
   }
@@ -621,9 +640,12 @@ class DashboardToggleCard extends StatelessWidget {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: orangeColor),
                             )
-                          : Text(
-                              online ? '🟢' : '😴',
-                              style: const TextStyle(fontSize: 13),
+                          : Icon(
+                              online
+                                  ? Icons.wifi_rounded
+                                  : Icons.wifi_off_rounded,
+                              size: 14,
+                              color: online ? greenColor : text3,
                             ),
                     ),
                   ),
@@ -660,7 +682,7 @@ class DashboardStatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _StatCard(
-            icon: '💰',
+            icon: Icons.payments_rounded,
             value: 'R\$${ganhoHoje.toStringAsFixed(0)}',
             label: 'Hoje',
             valueColor: orangeColor,
@@ -669,7 +691,7 @@ class DashboardStatsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _StatCard(
-            icon: '🛵',
+            icon: Icons.two_wheeler_rounded,
             value: '$entregasHoje',
             label: 'Hoje',
             sub: '$totalEntregas total',
@@ -679,7 +701,7 @@ class DashboardStatsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _StatCard(
-            icon: '⭐',
+            icon: Icons.star_rounded,
             value: avaliacao.toStringAsFixed(1),
             label: 'Avaliação',
             valueColor: yellowColor,
@@ -691,7 +713,7 @@ class DashboardStatsRow extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String value;
   final String label;
   final String? sub;
@@ -717,7 +739,7 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 16)),
+          Icon(icon, size: 16, color: orangeColor),
           const SizedBox(height: 5),
           Text(
             value,
@@ -974,7 +996,7 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  urgente ? '⚡ URGENTE' : '🔔 NOVO PEDIDO',
+                  urgente ? 'URGENTE' : 'NOVO PEDIDO',
                   style: GoogleFonts.dmSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -997,12 +1019,12 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
           Row(
             children: [
               _DespachoChip(
-                  icon: '📍',
+                  icon: Icons.place_outlined,
                   label:
                       '${widget.despacho.distanciaKm.toStringAsFixed(1)} km'),
               const SizedBox(width: 8),
               _DespachoChip(
-                  icon: '💵',
+                  icon: Icons.payments_outlined,
                   label:
                       'R\$ ${widget.despacho.valorEntrega.toStringAsFixed(2)}'),
             ],
@@ -1088,7 +1110,7 @@ class _DespachoRecebidoCardState extends State<DespachoRecebidoCard> {
 }
 
 class _DespachoChip extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   const _DespachoChip({required this.icon, required this.label});
 
@@ -1104,7 +1126,7 @@ class _DespachoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 12)),
+          Icon(icon, size: 13, color: greenColor),
           const SizedBox(width: 5),
           Text(label,
               style: GoogleFonts.dmSans(
@@ -1190,7 +1212,7 @@ class PedidoAtivoCard extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Text('📍', style: TextStyle(fontSize: 11)),
+              const Icon(Icons.place_outlined, size: 14, color: text3),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -1283,14 +1305,21 @@ class EntregaRecenteCard extends StatelessWidget {
             child: entrega.logoUrl != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(entrega.logoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Center(
-                            child:
-                                Text('🏪', style: TextStyle(fontSize: 18)))),
+                    child: Image.network(
+                      entrega.logoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.storefront_rounded,
+                        color: orangeColor,
+                        size: 18,
+                      ),
+                    ),
                   )
-                : const Center(
-                    child: Text('🏪', style: TextStyle(fontSize: 18))),
+                : const Icon(
+                    Icons.storefront_rounded,
+                    color: orangeColor,
+                    size: 18,
+                  ),
           ),
           const SizedBox(width: 10),
 
@@ -1361,7 +1390,7 @@ class DashboardEmptyDeliveries extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Center(child: Text('🛵', style: TextStyle(fontSize: 36))),
+          const Icon(Icons.two_wheeler_rounded, size: 36, color: text3),
           const SizedBox(height: 10),
           Text(
             'Nenhuma entrega ainda',
@@ -1418,6 +1447,213 @@ class DashboardSectionHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class EntregadorNotificacoesSheet extends StatelessWidget {
+  final List<EntregadorNotificacaoItem> notificacoes;
+  final DespachoRecebido? despachoPendente;
+
+  const EntregadorNotificacoesSheet({
+    super.key,
+    required this.notificacoes,
+    this.despachoPendente,
+  });
+
+  IconData _iconFor(String evento) {
+    if (evento.contains('despacho')) return Icons.delivery_dining_rounded;
+    if (evento.contains('saque') || evento.contains('pagamento')) {
+      return Icons.payments_rounded;
+    }
+    return Icons.notifications_outlined;
+  }
+
+  String _tempo(DateTime? d) {
+    if (d == null) return '';
+    final diff = DateTime.now().difference(d.toLocal());
+    if (diff.inMinutes < 1) return 'agora';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'há ${diff.inHours} h';
+    return 'há ${diff.inDays} d';
+  }
+
+  String _corpo(String raw) => raw
+      .replaceAll('{{tempo_resposta}}', '30')
+      .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true), '')
+      .trim();
+
+  @override
+  Widget build(BuildContext context) {
+    final vazio = notificacoes.isEmpty && despachoPendente == null;
+    final maxH = MediaQuery.of(context).size.height * 0.7;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: vazio ? MainAxisSize.min : MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: borderColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.notifications_outlined,
+                      color: orangeColor, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Notificações',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: text1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (vazio)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.notifications_off_outlined,
+                            size: 36, color: text3),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Nenhuma notificação recente',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: text2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      if (despachoPendente != null)
+                        _NotifRow(
+                          icon: Icons.delivery_dining_rounded,
+                          titulo: 'Nova entrega disponível',
+                          corpo:
+                              '${despachoPendente!.distanciaKm.toStringAsFixed(1)} km · R\$ ${despachoPendente!.valorEntrega.toStringAsFixed(2)}',
+                          tempo: 'agora',
+                          destaque: true,
+                        ),
+                      ...notificacoes.map(
+                        (n) => _NotifRow(
+                          icon: _iconFor(n.evento),
+                          titulo: n.tituloLimpo.isEmpty
+                              ? 'Notificação'
+                              : n.tituloLimpo,
+                          corpo: _corpo(n.corpo),
+                          tempo: _tempo(n.createdAt),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotifRow extends StatelessWidget {
+  final IconData icon;
+  final String titulo;
+  final String corpo;
+  final String tempo;
+  final bool destaque;
+
+  const _NotifRow({
+    required this.icon,
+    required this.titulo,
+    required this.corpo,
+    required this.tempo,
+    this.destaque = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: destaque ? orangeColor.withValues(alpha: .08) : cardColor,
+          border: Border.all(
+            color: destaque
+                ? orangeColor.withValues(alpha: .3)
+                : borderColor,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: orangeColor.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: orangeColor),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: text1,
+                    ),
+                  ),
+                  if (corpo.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      corpo,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(fontSize: 11, color: text3),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (tempo.isNotEmpty)
+              Text(
+                tempo,
+                style: GoogleFonts.dmSans(fontSize: 10, color: text3),
+              ),
+          ],
+        ),
       ),
     );
   }

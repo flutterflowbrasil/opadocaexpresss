@@ -8,6 +8,7 @@ import 'widgets/financeiro_visao_geral.dart';
 import 'widgets/financeiro_pedidos_tab.dart';
 import 'widgets/financeiro_splits_tab.dart';
 import 'widgets/financeiro_subcontas_tab.dart';
+import 'widgets/financeiro_conciliacao_tab.dart';
 
 class FinanceiroAdmScreen extends ConsumerWidget {
   const FinanceiroAdmScreen({super.key});
@@ -185,6 +186,7 @@ class _FinanceiroTabContent extends ConsumerWidget {
     return switch (aba) {
       'pedidos'    => const FinanceiroPedidosTab(),
       'splits'     => const FinanceiroSplitsTab(),
+      'conciliacao' => const FinanceiroConciliacaoTab(),
       'subcontas'  => const FinanceiroSubcontasTab(),
       _            => const FinanceiroVisaoGeral(),
     };

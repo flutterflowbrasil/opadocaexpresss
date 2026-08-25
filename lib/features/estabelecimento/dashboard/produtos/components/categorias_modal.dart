@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../controllers/produtos_controller.dart';
 import '../../../models/categoria_cardapio_model.dart';
+import 'package:padoca_express/core/utils/supabase_error_handler.dart';
 
 /// Abre o modal de gerenciamento de categorias.
 void showCategoriasModal(
@@ -73,6 +74,13 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   }
 
   void _iniciarEdicao(CategoriaCardapioModel cat) {
+    if (cat.isCategoriaPadrao) {
+      _mostrarSnack(
+        'Categorias padrão da plataforma não podem ser editadas.',
+        isError: true,
+      );
+      return;
+    }
     setState(() {
       _editando = cat;
       _criandoSubcategoriaDe = null;
@@ -85,6 +93,13 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
 
   /// Prepara o formulário para criar uma subcategoria de [pai].
   void _iniciarSubcategoria(CategoriaCardapioModel pai) {
+    if (pai.isCategoriaPadrao) {
+      _mostrarSnack(
+        'Não é possível criar subcategorias em categorias padrão da plataforma.',
+        isError: true,
+      );
+      return;
+    }
     setState(() {
       _editando = null;
       _criandoSubcategoriaDe = pai;
@@ -136,14 +151,27 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                 : 'Categoria criada! ✓')
             : 'Categoria atualizada! ✓');
       }
-    } catch (_) {
-      if (mounted) _mostrarSnack('Erro ao salvar categoria.', isError: true);
+    } catch (e) {
+      if (mounted) {
+        _mostrarSnack(
+          SupabaseErrorHandler.parseError(e),
+          isError: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
   }
 
   Future<void> _deletar(CategoriaCardapioModel cat) async {
+    if (cat.isCategoriaPadrao) {
+      _mostrarSnack(
+        'Categorias padrão da plataforma não podem ser removidas.',
+        isError: true,
+      );
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -181,8 +209,13 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
           .deletarCategoria(cat.id);
       if (mounted) _mostrarSnack('Categoria removida.');
       if (_editando?.id == cat.id) _cancelarEdicao();
-    } catch (_) {
-      if (mounted) _mostrarSnack('Erro ao remover categoria.', isError: true);
+    } catch (e) {
+      if (mounted) {
+        _mostrarSnack(
+          SupabaseErrorHandler.parseError(e),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -201,6 +234,9 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   Widget build(BuildContext context) {
     final categorias =
         ref.watch(produtosControllerProvider.select((s) => s.categorias));
+    final podeGerenciar = ref.watch(
+      produtosControllerProvider.select((s) => s.podeGerenciarCategoriasCardapio),
+    );
 
     // Organiza: categorias raiz (sem pai) + lista plana de sub para lookup
     final raizes = categorias.where((c) => c.categoriaPaiId == null).toList();
@@ -237,7 +273,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Cabeçalho ──
-              _buildHeader(context),
+              _buildHeader(context, podeGerenciar: podeGerenciar),
 
               // ── Lista de categorias ──
               Flexible(
@@ -246,18 +282,23 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (!podeGerenciar) ...[
+                        _buildBannerSomenteLeitura(),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Lista
                       if (raizes.isEmpty)
                         _buildEmptyState()
                       else
-                        _buildCategoriasList(raizes, subMap),
+                        _buildCategoriasList(raizes, subMap, podeGerenciar),
 
-                      const SizedBox(height: 20),
-                      const Divider(),
-                      const SizedBox(height: 16),
-
-                      // Formulário
-                      _buildFormulario(),
+                      if (podeGerenciar) ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _buildFormulario(),
+                      ],
                     ],
                   ),
                 ),
@@ -269,7 +310,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, {required bool podeGerenciar}) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
       decoration: BoxDecoration(
@@ -298,6 +339,12 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                 Text('Organize seus produtos por categorias',
                     style: GoogleFonts.publicSans(
                         fontSize: 12, color: Colors.grey.shade500)),
+                if (!podeGerenciar)
+                  Text('Modo visualização',
+                      style: GoogleFonts.publicSans(
+                          fontSize: 11,
+                          color: Colors.grey.shade400,
+                          fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -311,6 +358,39 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: const Icon(Icons.close, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBannerSomenteLeitura() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFec5b13).withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFec5b13).withValues(alpha: .25),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded,
+              size: 18, color: const Color(0xFFec5b13)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Categorias padrão do cardápio. Organize seus produtos escolhendo '
+              'uma categoria ao cadastrar. Categorias personalizadas exigem '
+              'permissão de administrador da loja.',
+              style: GoogleFonts.publicSans(
+                fontSize: 12,
+                color: const Color(0xFF9a3412),
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -343,6 +423,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
   Widget _buildCategoriasList(
     List<CategoriaCardapioModel> raizes,
     Map<String, List<CategoriaCardapioModel>> subMap,
+    bool podeGerenciar,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,9 +443,12 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
               _CategoriaItem(
                 cat: cat,
                 editando: _editando?.id == cat.id,
+                somenteLeitura: !podeGerenciar || cat.isCategoriaPadrao,
                 onEditar: () => _iniciarEdicao(cat),
                 onDeletar: () => _deletar(cat),
-                onAdicionarSubcategoria: () => _iniciarSubcategoria(cat),
+                onAdicionarSubcategoria: (!podeGerenciar || cat.isCategoriaPadrao)
+                    ? null
+                    : () => _iniciarSubcategoria(cat),
               ),
               // Subcategorias com indentação visual
               if (subs.isNotEmpty)
@@ -376,9 +460,10 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
                         .map((sub) => _CategoriaItem(
                               cat: sub,
                               editando: _editando?.id == sub.id,
+                              somenteLeitura:
+                                  !podeGerenciar || sub.isCategoriaPadrao,
                               onEditar: () => _iniciarEdicao(sub),
                               onDeletar: () => _deletar(sub),
-                              // Não permitimos subcategorias de subcategorias
                               onAdicionarSubcategoria: null,
                               isSubcategoria: true,
                             ))
@@ -605,6 +690,7 @@ class _CategoriasModalState extends ConsumerState<_CategoriasModal> {
 class _CategoriaItem extends StatelessWidget {
   final CategoriaCardapioModel cat;
   final bool editando;
+  final bool somenteLeitura;
   final VoidCallback onEditar;
   final VoidCallback onDeletar;
 
@@ -616,6 +702,7 @@ class _CategoriaItem extends StatelessWidget {
   const _CategoriaItem({
     required this.cat,
     required this.editando,
+    this.somenteLeitura = false,
     required this.onEditar,
     required this.onDeletar,
     required this.onAdicionarSubcategoria,
@@ -691,56 +778,77 @@ class _CategoriaItem extends StatelessWidget {
                 style: GoogleFonts.publicSans(
                     fontSize: 11, color: Colors.grey.shade500)),
           ),
+          if (cat.isCategoriaPadrao) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFec5b13).withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text('Padrão',
+                  style: GoogleFonts.publicSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFec5b13))),
+            ),
+          ],
           const SizedBox(width: 4),
 
-          // Botão "+ Subcategoria" — só exibido para categorias raiz
-          if (onAdicionarSubcategoria != null)
-            Tooltip(
-              message: 'Adicionar subcategoria',
-              child: InkWell(
-                onTap: onAdicionarSubcategoria,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.subdirectory_arrow_right_rounded,
-                          size: 14,
-                          color: const Color(0xFF6366F1).withValues(alpha: .8)),
-                      const SizedBox(width: 2),
-                      Text('Sub',
-                          style: GoogleFonts.publicSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF6366F1).withValues(alpha: .8))),
-                    ],
+          if (!somenteLeitura) ...[
+            // Botão "+ Subcategoria" — só exibido para categorias raiz
+            if (onAdicionarSubcategoria != null)
+              Tooltip(
+                message: 'Adicionar subcategoria',
+                child: InkWell(
+                  onTap: onAdicionarSubcategoria,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.subdirectory_arrow_right_rounded,
+                            size: 14,
+                            color:
+                                const Color(0xFF6366F1).withValues(alpha: .8)),
+                        const SizedBox(width: 2),
+                        Text('Sub',
+                            style: GoogleFonts.publicSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF6366F1)
+                                    .withValues(alpha: .8))),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-          // Editar
-          IconButton(
-            onPressed: onEditar,
-            icon: Icon(
-              Icons.edit_outlined,
-              size: 18,
-              color: editando
-                  ? const Color(0xFFec5b13)
-                  : Colors.grey.shade500,
+            // Editar
+            IconButton(
+              onPressed: onEditar,
+              icon: Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: editando
+                    ? const Color(0xFFec5b13)
+                    : Colors.grey.shade500,
+              ),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Editar',
             ),
-            visualDensity: VisualDensity.compact,
-            tooltip: 'Editar',
-          ),
-          // Deletar
-          IconButton(
-            onPressed: onDeletar,
-            icon:
-                Icon(Icons.delete_outline, size: 18, color: Colors.red.shade400),
-            visualDensity: VisualDensity.compact,
-            tooltip: 'Remover',
-          ),
+            // Deletar
+            IconButton(
+              onPressed: onDeletar,
+              icon: Icon(Icons.delete_outline,
+                  size: 18, color: Colors.red.shade400),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Remover',
+            ),
+          ],
         ],
       ),
     );

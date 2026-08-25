@@ -23,6 +23,8 @@ class EntregadorDetalhesModal extends StatefulWidget {
     EntregadorAdmModel e,
     EntregadorEnderecoInfo endereco,
   ) onSalvarEndereco;
+  final Future<EntregadorEnderecoInfo?> Function(EntregadorAdmModel e)?
+      onRecuperarEnderecoAsaas;
 
   const EntregadorDetalhesModal({
     super.key,
@@ -33,6 +35,7 @@ class EntregadorDetalhesModal extends StatefulWidget {
     required this.onAbrirSelfie,
     required this.onRevisarDocumento,
     required this.onSalvarEndereco,
+    this.onRecuperarEnderecoAsaas,
   });
 
   @override
@@ -51,6 +54,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
   final _estadoCtrl = TextEditingController();
   bool _buscandoCep = false;
   bool _salvandoEndereco = false;
+  bool _buscandoAsaas = false;
   String? _erroEndereco;
 
   static const _tabs = [
@@ -411,7 +415,8 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
   }
 
   Widget _tabEndereco() {
-    final disabled = widget.isSubmitting || _salvandoEndereco;
+    final disabled = widget.isSubmitting || _salvandoEndereco || _buscandoAsaas;
+    final temWallet = e.temCarteiraAsaas;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -423,7 +428,9 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Text(
-            'Endereço usado na criação da subconta Asaas do entregador.',
+            temWallet
+                ? 'Carteira Asaas já vinculada. Se o endereço estiver vazio, busque no Asaas ou preencha e salve para completar o cadastro.'
+                : 'Endereço usado na criação da subconta Asaas do entregador. Sem ele a aprovação cria a carteira.',
             style: GoogleFonts.dmSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -545,25 +552,47 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
           _warningBanner(_erroEndereco!),
         ],
         const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            onPressed: disabled ? null : _salvarEndereco,
-            icon: _salvandoEndereco
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined, size: 16),
-            label: Text(
-              _salvandoEndereco ? 'Salvando' : 'Salvar endereço',
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (temWallet && widget.onRecuperarEnderecoAsaas != null)
+              OutlinedButton.icon(
+                onPressed: disabled ? null : _recuperarEnderecoAsaas,
+                icon: _buscandoAsaas
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_download_outlined, size: 16),
+                label: Text(
+                  _buscandoAsaas ? 'Buscando' : 'Buscar no Asaas',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            FilledButton.icon(
+              onPressed: disabled ? null : _salvarEndereco,
+              icon: _salvandoEndereco
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined, size: 16),
+              label: Text(
+                _salvandoEndereco ? 'Salvando' : 'Salvar endereço',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ],
     );
@@ -578,6 +607,39 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
     _cidadeCtrl.text = endereco?.cidade ?? '';
     _estadoCtrl.text = endereco?.estado ?? '';
     _erroEndereco = null;
+  }
+
+  Future<void> _recuperarEnderecoAsaas() async {
+    final recuperar = widget.onRecuperarEnderecoAsaas;
+    if (recuperar == null) return;
+    setState(() {
+      _buscandoAsaas = true;
+      _erroEndereco = null;
+    });
+    try {
+      final endereco = await recuperar(e);
+      if (!mounted) return;
+      if (endereco == null) {
+        setState(() {
+          _erroEndereco =
+              'Asaas não devolveu endereço. Preencha CEP e use Buscar, depois Salvar.';
+        });
+        return;
+      }
+      _preencherEndereco(endereco);
+      if (_cepCtrl.text.replaceAll(RegExp(r'\D'), '').length == 8 &&
+          _cidadeCtrl.text.trim().isEmpty) {
+        await _buscarCep();
+      }
+      setState(() {});
+    } catch (err) {
+      if (!mounted) return;
+      setState(() {
+        _erroEndereco = err.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() => _buscandoAsaas = false);
+    }
   }
 
   EntregadorEnderecoInfo _enderecoFromForm() {
@@ -1370,16 +1432,27 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
     final veiculoOk = e.tipoVeiculo != null;
     final telefoneOk = e.telefone != null;
     final enderecoOk = e.endereco?.isComplete == true;
+    final temWallet = e.temCarteiraAsaas;
+    final enderecoOuWalletOk = enderecoOk || temWallet;
 
     final checklist = [
-      (selfieOk, 'Selfie aprovada pelo admin'),
+      (selfieOk, 'Selfie aprovada pelo admin', null),
       (
         docsOk,
-        'Todos os documentos aprovados (${e.docApprovedCount}/${e.docTotal})'
+        'Todos os documentos aprovados (${e.docApprovedCount}/${e.docTotal})',
+        null,
       ),
-      (veiculoOk, 'Tipo de veículo selecionado'),
-      (telefoneOk, 'Telefone cadastrado'),
-      (enderecoOk, 'EndereÃ§o completo para Asaas'),
+      (veiculoOk, 'Tipo de veículo selecionado', null),
+      (telefoneOk, 'Telefone cadastrado', null),
+      (
+        enderecoOuWalletOk,
+        enderecoOk
+            ? 'Endereço completo para Asaas'
+            : (temWallet
+                ? 'Carteira Asaas já vinculada'
+                : 'Endereço completo para Asaas'),
+        enderecoOk ? null : 'endereco',
+      ),
     ];
     final allOk = checklist.every((c) => c.$1);
 
@@ -1412,7 +1485,11 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
               const SizedBox(height: 10),
               ...checklist.map((item) => Padding(
                     padding: const EdgeInsets.only(bottom: 7),
-                    child: Row(
+                    child: InkWell(
+                      onTap: item.$1 || item.$3 == null
+                          ? null
+                          : () => setState(() => _tab = item.$3!),
+                      child: Row(
                       children: [
                         Container(
                           width: 18,
@@ -1450,6 +1527,7 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
                         ),
                       ],
                     ),
+                    ),
                   )),
             ],
           ),
@@ -1461,8 +1539,9 @@ class _EntregadorDetalhesModalState extends State<EntregadorDetalhesModal> {
           _acaoBtn(
             icon: '✅',
             title: 'Aprovar cadastro',
-            subtitle:
-                'Libera o entregador. Cria carteira Asaas automaticamente.',
+            subtitle: temWallet
+                ? 'Libera o entregador para usar o app.'
+                : 'Libera o entregador. Cria carteira Asaas automaticamente.',
             borderColor: const Color(0xFFA7F3D0),
             bgColor: const Color(0xFFECFDF5),
             textColor: const Color(0xFF065F46),

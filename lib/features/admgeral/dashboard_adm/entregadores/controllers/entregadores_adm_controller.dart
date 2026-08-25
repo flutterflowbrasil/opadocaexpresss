@@ -194,4 +194,26 @@ class EntregadoresAdmController extends StateNotifier<EntregadoresAdmState> {
       rethrow;
     }
   }
+
+  Future<EntregadorEnderecoInfo?> recuperarEnderecoAsaas(
+    String entregadorId,
+  ) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      final salvo = await _repo.recuperarEnderecoDoAsaas(entregadorId);
+      final updated = state.entregadores.map((e) {
+        if (e.id != entregadorId) return e;
+        return e.copyWith(endereco: salvo ?? e.endereco);
+      }).toList();
+      state = state.copyWith(isSubmitting: false, entregadores: updated);
+      return salvo;
+    } catch (e) {
+      debugPrint('[EntregadoresAdm] recuperarEnderecoAsaas error: $e');
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _friendlyError(e),
+      );
+      rethrow;
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import '../cupons_controller.dart';
 import '../models/cupom_model.dart';
 
@@ -49,6 +50,8 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
       _dataInicio = c.dataInicio;
       _dataFim = c.dataFim;
       _isAtivo = c.ativo;
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _aplicarDefaultsPlataforma());
     }
   }
 
@@ -61,6 +64,29 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
     _limiteUsosController.dispose();
     _limitePorClienteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _aplicarDefaultsPlataforma() async {
+    final cfg = await ref.read(plataformaRuntimeConfigProvider.future);
+    if (!mounted || widget.cupomExistente != null) return;
+    setState(() {
+      if (cfg.valorMinimoPadraoCupom > 0 &&
+          _valorMinimoController.text.isEmpty) {
+        _valorMinimoController.text = cfg.valorMinimoPadraoCupom.toString();
+      }
+      if (_limitePorClienteController.text == '1' &&
+          cfg.limitePorClienteCupom > 0) {
+        _limitePorClienteController.text = cfg.limitePorClienteCupom.toString();
+      }
+      if (cfg.limiteTotalCampanha > 0 && _limiteUsosController.text.isEmpty) {
+        _limiteUsosController.text = cfg.limiteTotalCampanha.toString();
+      }
+      if (!cfg.permitePercentual && _tipoCupom == 'percentual') {
+        _tipoCupom = cfg.permiteValorFixo
+            ? 'valor_fixo'
+            : (cfg.permiteEntregaGratis ? 'entrega_gratis' : 'percentual');
+      }
+    });
   }
 
   Future<void> _salvarCupom() async {
@@ -394,22 +420,31 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
                     children: [
                       // Tipo de Desconto
                       _buildLabel('TIPO DE DESCONTO'),
-                      Row(
+                      Builder(builder: (context) {
+                        final cfg = ref
+                            .watch(plataformaRuntimeConfigProvider)
+                            .valueOrNull;
+                        return Row(
                         children: [
+                          if (cfg == null || cfg.permitePercentual)
                           _buildTipoButton(
                               'percentual',
                               '% Percentual',
                               Icons.percent,
                               const Color(0xFF8B5CF6),
                               const Color(0xFFF5F3FF)),
+                          if (cfg == null || cfg.permitePercentual)
                           const SizedBox(width: 8),
+                          if (cfg == null || cfg.permiteValorFixo)
                           _buildTipoButton(
                               'valor_fixo',
                               'R\$ Valor fixo',
                               Icons.attach_money,
                               const Color(0xFF10B981),
                               const Color(0xFFECFDF5)),
+                          if (cfg == null || cfg.permiteValorFixo)
                           const SizedBox(width: 8),
+                          if (cfg == null || cfg.permiteEntregaGratis)
                           _buildTipoButton(
                               'entrega_gratis',
                               'Frete grátis',
@@ -417,7 +452,8 @@ class _FormCupomModalState extends ConsumerState<FormCupomModal> {
                               const Color(0xFFF97316),
                               const Color(0xFFFFF7ED)),
                         ],
-                      ),
+                      );
+                      }),
 
                       const SizedBox(height: 20),
 

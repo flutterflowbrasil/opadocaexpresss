@@ -75,7 +75,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ? AdminNotificacoesPanel(
                     key: const ValueKey('notif_panel'),
                     onClose: _toggleNotificacoes,
-                    onNavigate: (rota) => _navigate(rota),
+                    onNavigate: (rota, {entidadeId}) =>
+                        _navigate(rota, itemId: entidadeId),
                   )
                 : const SizedBox.shrink(key: ValueKey('notif_empty')),
           ),

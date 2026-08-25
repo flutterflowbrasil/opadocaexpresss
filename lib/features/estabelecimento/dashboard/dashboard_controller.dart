@@ -144,9 +144,11 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   Future<void> _init() async {
+    if (!mounted) return;
     state = state.copyWith(isLoading: true, error: null);
     try {
       final authEstab = await _repository.getEstabelecimentoLogado();
+      if (!mounted) return;
       if (authEstab == null) {
         state = state.copyWith(
             isLoading: false, error: 'Estabelecimento não logado.');
@@ -170,11 +172,13 @@ class DashboardController extends StateNotifier<DashboardState> {
 
       await _fetchMetricsForPeriod();
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   Future<void> _fetchMetricsForPeriod() async {
+    if (!mounted) return;
     if (state.estabelecimentoId == null) return;
 
     // Apenas ativa tela de loading completa se for a primeira carga ou se não houver dados.
@@ -211,8 +215,9 @@ class DashboardController extends StateNotifier<DashboardState> {
         }
       }
 
-      final result = await _repository.getDashboardMetrics(
-          state.estabelecimentoId!, inicio, fim);
+      final estabId = state.estabelecimentoId!;
+      final result = await _repository.getDashboardMetrics(estabId, inicio, fim);
+      if (!mounted) return;
 
       state = state.copyWith(
         isLoading: false,
@@ -240,11 +245,13 @@ class DashboardController extends StateNotifier<DashboardState> {
             0.0, // Avaliacao kept as mock for now, not currently captured historically.
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   void mudarPeriodo(DashboardPeriodo periodo, DateTime? date) {
+    if (!mounted) return;
     if (state.periodoAtual == periodo && state.dataCustomizada == date) return;
     state = DashboardState(
       estabelecimentoId: state.estabelecimentoId,
@@ -263,7 +270,7 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   Future<bool> toggleStoreStatus(bool isOpen, {String? motivo}) async {
-    if (state.estabelecimentoId == null) return false;
+    if (!mounted || state.estabelecimentoId == null) return false;
 
     final previousState = state.isLojaAberta;
     // Update optimistic
@@ -274,6 +281,7 @@ class DashboardController extends StateNotifier<DashboardState> {
       isOpen,
       motivoFechamento: motivo,
     );
+    if (!mounted) return success;
 
     if (!success) {
       // Rollback se falhar

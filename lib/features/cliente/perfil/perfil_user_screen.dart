@@ -9,6 +9,7 @@ import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/editar_informacoes.dart';
 import 'package:padoca_express/features/cliente/perfil/comp/meus_enderecos.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
+import 'package:padoca_express/features/cliente/perfil/comp/configuracoes_app_modal.dart';
 
 class PerfilUserScreen extends ConsumerStatefulWidget {
   const PerfilUserScreen({super.key});
@@ -245,6 +246,18 @@ class _PerfilUserScreenState extends ConsumerState<PerfilUserScreen> {
                   ),
                   child: Column(
                     children: [
+                      _buildMenuItem(
+                        icon: Icons.help_outline,
+                        title: 'Ajuda e suporte',
+                        isDark: isDark,
+                        primaryColor: primaryColor,
+                        secondaryColor: secondaryColor,
+                        onTap: () => ConfiguracoesAppModal.show(context),
+                      ),
+                      Divider(
+                        height: 1,
+                        color: isDark ? Colors.grey[800] : Colors.orange[50],
+                      ),
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(

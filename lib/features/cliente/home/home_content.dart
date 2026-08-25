@@ -7,6 +7,7 @@ import 'package:padoca_express/features/cliente/categorias/repositories/categori
 import 'package:padoca_express/features/cliente/componentes/bakery_card.dart';
 import 'package:padoca_express/features/cliente/componentes/category_item.dart';
 import 'package:padoca_express/features/cliente/componentes/promo_banner.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
 import 'package:padoca_express/core/services/localizacao_service.dart';
 import 'package:padoca_express/features/cliente/home/providers/estabelecimento_proximo_provider.dart';
@@ -332,7 +333,7 @@ class _BannerLocalizacaoState extends ConsumerState<_BannerLocalizacao> {
 }
 
 // ─── Card de estabelecimento construído a partir do EstabelecimentoModel ──────
-class _EstabelecimentoCardFromModel extends StatelessWidget {
+class _EstabelecimentoCardFromModel extends ConsumerWidget {
   final EstabelecimentoModel estabelecimento;
   final bool isDark;
   final Color cardColor;
@@ -346,16 +347,21 @@ class _EstabelecimentoCardFromModel extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     String feeLabel;
-    final taxa = estabelecimento.configEntrega?['taxa_entrega_fixa'];
-    if (taxa == null) {
-      feeLabel = 'Consultar';
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull;
+    if (cfg != null) {
+      feeLabel = cfg.taxaAPartirDeLabel;
     } else {
-      final valor = double.tryParse(taxa.toString()) ?? 0.0;
-      feeLabel = valor == 0
-          ? 'Grátis'
-          : 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
+      final taxa = estabelecimento.configEntrega?['taxa_entrega_fixa'];
+      if (taxa == null) {
+        feeLabel = 'Consultar';
+      } else {
+        final valor = double.tryParse(taxa.toString()) ?? 0.0;
+        feeLabel = valor == 0
+            ? 'Grátis'
+            : 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
+      }
     }
 
     return BakeryCard(

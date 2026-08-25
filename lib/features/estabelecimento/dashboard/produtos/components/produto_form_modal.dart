@@ -21,8 +21,7 @@ import '../controllers/produtos_controller.dart';
 import '../models/produto_model.dart';
 import '../models/produto_preco_tamanho_model.dart';
 import 'package:padoca_express/features/cliente/categorias/models/categoria_estabelecimento_model.dart';
-
-import 'categorias_modal.dart';
+import 'package:padoca_express/features/estabelecimento/models/categoria_cardapio_inferencia.dart';
 
 
 
@@ -126,8 +125,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
   List<String> _categoriaPrincipalIds = [];
 
-  String? _categoriaId;
-
   bool _ativo = true;
 
   bool _disponivel = true;
@@ -214,8 +211,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
       _tipoProduto = p.tipoProduto;
 
       _categoriaPrincipalIds = p.categoriaPrincipalIds;
-
-      _categoriaId = p.categoriaCardapioId;
 
       _ativo = p.ativo;
 
@@ -507,7 +502,11 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
     if (mostrarErro && mounted) {
 
-      _tabController.animateTo(3);
+      if (_categoriaPermiteAdicionais) {
+
+        _tabController.animateTo(_indiceAbaOpcoes);
+
+      }
 
       _mostrarToast(mensagem, isError: true);
 
@@ -516,6 +515,8 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
     return null;
 
   }
+
+  int get _indiceAbaOpcoes => 3;
 
 
 
@@ -583,7 +584,18 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
     }
 
-
+    if (_categoriaPermiteMultiplosPrecos) {
+      final tamanhosValidos =
+          _tamanhos.where((t) => t.ativo && t.preco > 0);
+      if (tamanhosValidos.isEmpty) {
+        _tabController.animateTo(1);
+        _mostrarToast(
+          'Cadastre pelo menos um tamanho com preço.',
+          isError: true,
+        );
+        return;
+      }
+    }
 
     final opcoesNormalizadas = _normalizarOpcoes();
 
@@ -601,7 +613,8 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
     });
 
-    final tipoProdutoFinal = temOpcoesAtivas ? 'variavel' : _tipoProduto;
+    final tipoProdutoFinal = temOpcoesAtivas ? 'variavel' : 'simples';
+    _tipoProduto = tipoProdutoFinal;
 
 
 
@@ -659,6 +672,9 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
 
 
+    final categoriaCardapioId = _inferirCategoriaCardapioId() ??
+        widget.produto?.categoriaCardapioId;
+
     final novoProduto = ProdutoModel(
 
       id: widget.produto?.id ?? '',
@@ -677,7 +693,7 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
       categoriaPrincipalIds: _categoriaPrincipalIds,
 
-      categoriaCardapioId: _categoriaId,
+      categoriaCardapioId: categoriaCardapioId,
 
       tipoProduto: tipoProdutoFinal,
 
@@ -885,6 +901,15 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
         n.trim() == 'café';
   }
 
+  String? _inferirCategoriaCardapioId() {
+    final stateSnap = ref.read(produtosControllerProvider);
+    return CategoriaCardapioInferencia.inferirId(
+      categoriaPrincipalIds: _categoriaPrincipalIds,
+      principais: stateSnap.categoriasPrincipais,
+      cardapio: stateSnap.categorias,
+    );
+  }
+
   /// Recria o TabController caso o número de abas mude (evita assertion error).
   void _atualizarTabController() {
     final novoCount = _tabCount;
@@ -905,21 +930,25 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
     final stateSnap = ref.read(produtosControllerProvider);
 
-    final catId =
+    var permiteAdicionais = false;
+    var permiteTamanhos = false;
+    var isBebidas = false;
 
-        _categoriaPrincipalIds.isNotEmpty ? _categoriaPrincipalIds.first : null;
+    for (final catId in _categoriaPrincipalIds) {
+      final cat = ctrl.getCategoriaById(catId);
+      if (cat == null) continue;
+      if (cat.permiteAdicionais) permiteAdicionais = true;
+      if (cat.permiteMultiplosPrecos) permiteTamanhos = true;
+      if (_ehCategoriaDeBebidas(cat)) isBebidas = true;
+    }
 
-    final cat = ctrl.getCategoriaById(catId);
+    if (_categoriaPrincipalIds.isEmpty) {
+      permiteAdicionais = true;
+      permiteTamanhos = false;
+    }
 
-    _categoriaPermiteAdicionais = cat?.permiteAdicionais ?? true;
-
-    _categoriaPermiteMultiplosPrecos = cat?.permiteMultiplosPrecos ?? false;
-
-
-
-    // 1. Verifica pela categoria principal global (Bebidas, Pães, Pizza…)
-
-    bool isBebidas = _ehCategoriaDeBebidas(cat);
+    _categoriaPermiteAdicionais = permiteAdicionais;
+    _categoriaPermiteMultiplosPrecos = permiteTamanhos;
 
 
 
@@ -927,25 +956,18 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
     //    estabelecimento — cobre produtos sem categoria principal definida.
 
-    if (!isBebidas && _categoriaId != null) {
-
-      try {
-
-        final catCardapio =
-
-            stateSnap.categorias.firstWhere((c) => c.id == _categoriaId);
-
-        isBebidas = _ehNomeDeBebidasCardapio(catCardapio.nome);
-
-      } catch (_) {
-
-        // categoria não encontrada — mantém false
-
+    if (!isBebidas) {
+      final cardapioId = _inferirCategoriaCardapioId();
+      if (cardapioId != null) {
+        try {
+          final catCardapio =
+              stateSnap.categorias.firstWhere((c) => c.id == cardapioId);
+          isBebidas = _ehNomeDeBebidasCardapio(catCardapio.nome);
+        } catch (_) {
+          // categoria não encontrada — mantém false
+        }
       }
-
     }
-
-
 
     _categoriaPermiteUltimaMordida = !isBebidas;
 
@@ -978,10 +1000,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
   @override
 
   Widget build(BuildContext context) {
-
-    final categorias =
-
-        ref.watch(produtosControllerProvider.select((s) => s.categorias));
 
     final categoriasPrincipais = ref.watch(
 
@@ -1122,10 +1140,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
                         categoriaPrincipalIds: _categoriaPrincipalIds,
 
-                        categorias: categorias,
-
-                        categoriaId: _categoriaId,
-
                         ativo: _ativo,
 
                         disponivel: _disponivel,
@@ -1146,10 +1160,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
                         onCategoriaPrincipalToggled: _onCategoriaPrincipalToggled,
 
-                        onCategoriaChanged: (v) =>
-
-                            setState(() => _categoriaId = v),
-
                         onAtivoChanged: (v) => setState(() => _ativo = v),
 
                         onDisponivelChanged: (v) =>
@@ -1161,18 +1171,6 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                         onObsChanged: (v) =>
 
                             setState(() => _permiteObservacao = v),
-
-                        onAddCategoria: () {
-
-                          final estId = widget.estabelecimentoId ??
-
-                              widget.produto?.estabelecimentoId ?? '';
-
-                          showCategoriasModal(context,
-
-                              estabelecimentoId: estId);
-
-                        },
 
                       ),
 
@@ -1200,13 +1198,21 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
                           }
                         }),
                         onEditarTamanho: (t) => setState(() {
-                          _tamanhos =
-                              _tamanhos.map((x) => x.id == t.id ? t : x).toList();
+                          _tamanhos = _tamanhos.map((x) {
+                            if (t.id.isNotEmpty) {
+                              return x.id == t.id ? t : x;
+                            }
+                            return x.nomeTamanho == t.nomeTamanho ? t : x;
+                          }).toList();
                         }),
                         onRemoverTamanho: (t) => setState(() {
                           _tamanhos = _tamanhos
-                              .map((x) =>
-                                  x.id == t.id ? x.copyWith(ativo: false) : x)
+                              .map((x) {
+                                final match = t.id.isNotEmpty
+                                    ? x.id == t.id
+                                    : x.nomeTamanho == t.nomeTamanho;
+                                return match ? x.copyWith(ativo: false) : x;
+                              })
                               .toList();
                         }),
                       ),
@@ -1233,9 +1239,16 @@ class _ProdutoFormModalState extends ConsumerState<_ProdutoFormModal>
 
                           opcoes: _opcoes,
 
-                          onChanged: (opcoes) =>
-
-                              setState(() => _opcoes = opcoes),
+                          onChanged: (opcoes) => setState(() {
+                            _opcoes = opcoes;
+                            final tem = opcoes.any((grupo) {
+                              if (grupo['ativo'] == false) return false;
+                              final itens = grupo['itens'] as List? ?? [];
+                              return itens.any(
+                                  (item) => item is Map && item['ativo'] != false);
+                            });
+                            _tipoProduto = tem ? 'variavel' : 'simples';
+                          }),
 
                         ),
 
@@ -1639,10 +1652,6 @@ class _TabBasico extends StatelessWidget {
 
   final List<String> categoriaPrincipalIds;
 
-  final List categorias;
-
-  final String? categoriaId;
-
   final bool ativo;
 
   final bool disponivel;
@@ -1663,8 +1672,6 @@ class _TabBasico extends StatelessWidget {
 
   final ValueChanged<String> onCategoriaPrincipalToggled;
 
-  final ValueChanged<String?> onCategoriaChanged;
-
   final ValueChanged<bool> onAtivoChanged;
 
   final ValueChanged<bool> onDisponivelChanged;
@@ -1672,10 +1679,6 @@ class _TabBasico extends StatelessWidget {
   final ValueChanged<bool> onDestaqueChanged;
 
   final ValueChanged<bool> onObsChanged;
-
-  final VoidCallback? onAddCategoria;
-
-
 
   const _TabBasico({
 
@@ -1690,10 +1693,6 @@ class _TabBasico extends StatelessWidget {
     required this.categoriasPrincipais,
 
     required this.categoriaPrincipalIds,
-
-    required this.categorias,
-
-    required this.categoriaId,
 
     required this.ativo,
 
@@ -1713,8 +1712,6 @@ class _TabBasico extends StatelessWidget {
 
     required this.onCategoriaPrincipalToggled,
 
-    required this.onCategoriaChanged,
-
     required this.onAtivoChanged,
 
     required this.onDisponivelChanged,
@@ -1722,8 +1719,6 @@ class _TabBasico extends StatelessWidget {
     required this.onDestaqueChanged,
 
     required this.onObsChanged,
-
-    this.onAddCategoria,
 
   });
 
@@ -1955,7 +1950,9 @@ class _TabBasico extends StatelessWidget {
 
 
 
-          _SectionLabel('Categoria Principal'),
+          _SectionLabel('Categoria Principal',
+              subtitle:
+                  'Define tamanhos/adicionais e a seção do menu do cliente'),
 
           const SizedBox(height: 8),
 
@@ -1971,207 +1968,44 @@ class _TabBasico extends StatelessWidget {
 
           const SizedBox(height: 16),
 
+          _SectionLabel('Tipo de Produto',
+              subtitle: 'Vira Variável automaticamente se houver adicionais'),
 
+          const SizedBox(height: 8),
 
-          // Categoria secundária + Tipo Produto
+          DropdownButtonFormField<String>(
 
-          Row(
+            // ignore: deprecated_member_use
 
-            crossAxisAlignment: CrossAxisAlignment.start,
+            value: tipoProduto,
 
-            children: [
+            style: GoogleFonts.publicSans(
 
-              Expanded(
+                fontSize: 14, color: Colors.black87),
 
-                child: Column(
+            decoration: _inputDecoration(null),
 
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            items: [
 
-                  children: [
+              DropdownMenuItem(
 
-                    Row(
+                  value: 'simples',
 
-                      children: [
+                  child: Text('Simples',
 
-                        _SectionLabel('Categoria Secundária'),
+                      style: GoogleFonts.publicSans(fontSize: 14))),
 
-                        const Spacer(),
+              DropdownMenuItem(
 
-                        if (onAddCategoria != null)
+                  value: 'variavel',
 
-                          Tooltip(
+                  child: Text('Variável',
 
-                            message: 'Criar nova categoria',
-
-                            child: InkWell(
-
-                              onTap: onAddCategoria,
-
-                              borderRadius: BorderRadius.circular(8),
-
-                              child: Container(
-
-                                padding: const EdgeInsets.symmetric(
-
-                                    horizontal: 8, vertical: 4),
-
-                                decoration: BoxDecoration(
-
-                                  color: const Color(0xFFec5b13).withValues(alpha: .08),
-
-                                  borderRadius: BorderRadius.circular(8),
-
-                                  border: Border.all(
-
-                                    color: const Color(0xFFec5b13).withValues(alpha: .25),
-
-                                  ),
-
-                                ),
-
-                                child: Row(
-
-                                  mainAxisSize: MainAxisSize.min,
-
-                                  children: [
-
-                                    const Icon(Icons.add_rounded,
-
-                                        size: 14, color: Color(0xFFec5b13)),
-
-                                    const SizedBox(width: 3),
-
-                                    Text('Nova',
-
-                                        style: GoogleFonts.publicSans(
-
-                                            fontSize: 11,
-
-                                            fontWeight: FontWeight.w700,
-
-                                            color: const Color(0xFFec5b13))),
-
-                                  ],
-
-                                ),
-
-                              ),
-
-                            ),
-
-                          ),
-
-                      ],
-
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    DropdownButtonFormField<String>(
-
-                      // ignore: deprecated_member_use
-
-                      value: categoriaId,
-
-                      style: GoogleFonts.publicSans(
-
-                          fontSize: 14, color: Colors.black87),
-
-                      decoration: _inputDecoration('Selecione'),
-
-                      items: [
-
-                        DropdownMenuItem(
-
-                          value: null,
-
-                          child: Text('Sem categoria',
-
-                              style: GoogleFonts.publicSans(fontSize: 14)),
-
-                        ),
-
-                        ...categorias.map((c) => DropdownMenuItem(
-
-                              value: c.id as String,
-
-                              child: Text(c.nome as String,
-
-                                  style: GoogleFonts.publicSans(fontSize: 14),
-
-                                  overflow: TextOverflow.ellipsis),
-
-                            )),
-
-                      ],
-
-                      onChanged: onCategoriaChanged,
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-
-                child: Column(
-
-                  crossAxisAlignment: CrossAxisAlignment.start,
-
-                  children: [
-
-                    _SectionLabel('Tipo de Produto'),
-
-                    const SizedBox(height: 8),
-
-                    DropdownButtonFormField<String>(
-
-                      // ignore: deprecated_member_use
-
-                      value: tipoProduto,
-
-                      style: GoogleFonts.publicSans(
-
-                          fontSize: 14, color: Colors.black87),
-
-                      decoration: _inputDecoration(null),
-
-                      items: [
-
-                        DropdownMenuItem(
-
-                            value: 'simples',
-
-                            child: Text('Simples',
-
-                                style: GoogleFonts.publicSans(fontSize: 14))),
-
-                        DropdownMenuItem(
-
-                            value: 'variavel',
-
-                            child: Text('Variável',
-
-                                style: GoogleFonts.publicSans(fontSize: 14))),
-
-                      ],
-
-                      onChanged: onTipoChanged,
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
+                      style: GoogleFonts.publicSans(fontSize: 14))),
 
             ],
+
+            onChanged: onTipoChanged,
 
           ),
 
@@ -2488,7 +2322,7 @@ class _TabPreco extends StatelessWidget {
 
         children: [
 
-          if (tamanhos.where((t) => t.ativo).isEmpty) ...[
+          if (!permiteMultiplosPrecos) ...[
             // Preço Normal
 
           _SectionLabel('Preço Normal (R\$) *'),
@@ -2729,7 +2563,7 @@ class _TabPreco extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Este produto possui variações de tamanho ativas. O preço normal e o preço base serão definidos e exibidos de acordo com o tamanho selecionado pelo cliente.',
+                      'Preço definido por tamanho. Cadastre pelo menos um tamanho (P, M, G…) com valor. O cliente vê “A partir de” o menor preço.',
                       style: GoogleFonts.publicSans(fontSize: 13, color: Colors.blue.shade800),
                     ),
                   ),
@@ -3521,134 +3355,6 @@ class _TabOpcoes extends StatelessWidget {
 }
 
 
-
-// ignore: unused_element
-
-class _TabOpcoesOld extends StatelessWidget {
-
-  const _TabOpcoesOld();
-
-
-
-  @override
-
-  Widget build(BuildContext context) {
-
-    return Padding(
-
-      padding: const EdgeInsets.all(24),
-
-      child: Column(
-
-        crossAxisAlignment: CrossAxisAlignment.start,
-
-        children: [
-
-          _SectionLabel('Grupos de Opções / Adicionais'),
-
-          const SizedBox(height: 12),
-
-          Container(
-
-            padding: const EdgeInsets.all(16),
-
-            decoration: BoxDecoration(
-
-              color: Colors.blue.shade50,
-
-              borderRadius: BorderRadius.circular(12),
-
-              border: Border.all(color: Colors.blue.shade100),
-
-            ),
-
-            child: Row(
-
-              crossAxisAlignment: CrossAxisAlignment.start,
-
-              children: [
-
-                Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-
-                  child: Text(
-
-                    'As opções são armazenadas como um array JSON no campo opcoes. Cada grupo pode ter tipo radio (escolha única) ou checkbox (múltipla escolha), com limites mín/máx.\n\nEsta funcionalidade estará disponível em breve.',
-
-                    style: GoogleFonts.publicSans(
-
-                        fontSize: 12, color: Colors.blue.shade700),
-
-                  ),
-
-                ),
-
-              ],
-
-            ),
-
-          ),
-
-          const SizedBox(height: 32),
-
-          Center(
-
-            child: Column(
-
-              children: [
-
-                Icon(Icons.tune, size: 52, color: Colors.grey.shade300),
-
-                const SizedBox(height: 12),
-
-                Text(
-
-                  'Opções em breve',
-
-                  style: GoogleFonts.publicSans(
-
-                      fontSize: 16,
-
-                      fontWeight: FontWeight.bold,
-
-                      color: Colors.grey.shade500),
-
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-
-                  'Configure tamanhos, adicionais e complementos',
-
-                  style: GoogleFonts.publicSans(
-
-                      fontSize: 12, color: Colors.grey.shade400),
-
-                ),
-
-              ],
-
-            ),
-
-          ),
-
-        ],
-
-      ),
-
-    );
-
-  }
-
-}
-
-
-
-// ═══════════════════════════════════════════
 
 // HELPERS
 

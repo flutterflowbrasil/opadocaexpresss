@@ -12,7 +12,7 @@ class MobileOneSignalBridge implements OneSignalBridge {
   Future<void> initialize(String appId) async {
     if (_initialized || appId.isEmpty) return;
     if (kDebugMode) {
-      OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+      OneSignal.Debug.setLogLevel(OSLogLevel.warn);
     }
     OneSignal.initialize(appId);
     _initialized = true;
@@ -30,7 +30,10 @@ class MobileOneSignalBridge implements OneSignalBridge {
 
   @override
   Future<bool> requestPermission() async {
-    return OneSignal.Notifications.requestPermission(true);
+    if (OneSignal.Notifications.permission) return true;
+    // false = não abre Ajustes sozinho (isso pausava a Activity e o watchdog
+    // reportava ANR de 30s+ com o app em background).
+    return OneSignal.Notifications.requestPermission(false);
   }
 
   @override

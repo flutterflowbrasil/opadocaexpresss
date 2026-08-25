@@ -29,11 +29,13 @@ class ProdutosController extends StateNotifier<ProdutosState> {
         _repository.fetchProdutos(estabelecimentoId),
         _repository.fetchCategorias(estabelecimentoId),
         _repository.fetchCategoriasPrincipais(),
+        _repository.podeGerenciarCategoriasCardapio(estabelecimentoId),
       ]);
 
       final produtos = results[0] as List<dynamic>;
       final categorias = results[1] as List<dynamic>;
       final categoriasPrincipais = results[2] as List<dynamic>;
+      final podeGerenciar = results[3] as bool;
 
       state = state.copyWith(
         isLoading: false,
@@ -41,6 +43,7 @@ class ProdutosController extends StateNotifier<ProdutosState> {
         produtosFiltrados: produtos.cast(),
         categorias: categorias.cast(),
         categoriasPrincipais: categoriasPrincipais.cast(),
+        podeGerenciarCategoriasCardapio: podeGerenciar,
       );
     } catch (e) {
       state = state.copyWith(
@@ -197,40 +200,28 @@ class ProdutosController extends StateNotifier<ProdutosState> {
   // ── Categorias ─────────────────────────────────────────────────────────────
 
   Future<void> salvarCategoria(CategoriaCardapioModel categoria) async {
-    try {
-      final saved = await _repository.saveCategoria(categoria);
-      final isNew = !state.categorias.any((c) => c.id == saved.id);
-      final updated = isNew
-          ? [...state.categorias, saved]
-          : state.categorias
-              .map((c) => c.id == saved.id ? saved : c)
-              .toList();
-      state = state.copyWith(categorias: updated);
-    } catch (e) {
-      state = state.copyWith(error: 'Erro ao salvar categoria: $e');
-      rethrow;
-    }
+    final saved = await _repository.saveCategoria(categoria);
+    final isNew = !state.categorias.any((c) => c.id == saved.id);
+    final updated = isNew
+        ? [...state.categorias, saved]
+        : state.categorias.map((c) => c.id == saved.id ? saved : c).toList();
+    state = state.copyWith(categorias: updated);
   }
 
   Future<void> deletarCategoria(String categoriaId) async {
-    try {
-      await _repository.deleteCategoria(categoriaId);
-      final updated =
-          state.categorias.where((c) => c.id != categoriaId).toList();
-      final newCatFilter = state.selectedCategoriaId == categoriaId
-          ? null
-          : state.selectedCategoriaId;
-      state = state.copyWith(categorias: updated);
-      aplicarFiltros(
-        query: state.searchQuery,
-        categoriaId: newCatFilter,
-        status: state.selectedStatusFilter,
-        setStatus: newCatFilter == null && state.selectedCategoriaId != null,
-      );
-    } catch (e) {
-      state = state.copyWith(error: 'Erro ao remover categoria: $e');
-      rethrow;
-    }
+    await _repository.deleteCategoria(categoriaId);
+    final updated =
+        state.categorias.where((c) => c.id != categoriaId).toList();
+    final newCatFilter = state.selectedCategoriaId == categoriaId
+        ? null
+        : state.selectedCategoriaId;
+    state = state.copyWith(categorias: updated);
+    aplicarFiltros(
+      query: state.searchQuery,
+      categoriaId: newCatFilter,
+      status: state.selectedStatusFilter,
+      setStatus: newCatFilter == null && state.selectedCategoriaId != null,
+    );
   }
 
   // ── Produtos ────────────────────────────────────────────────────────────────

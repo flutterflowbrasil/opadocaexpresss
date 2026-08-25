@@ -7,6 +7,8 @@ import 'package:padoca_express/features/estabelecimento/dashboard/dashboard_cont
 import 'package:padoca_express/features/estabelecimento/dashboard/pedidos/controllers/pedidos_kanban_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/perfil/profile_controller.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
+import 'estab_sidebar_visibility.dart';
 import 'dashboard_colors.dart';
 import 'store_status_modals.dart';
 
@@ -148,6 +150,25 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
   @override
   Widget build(BuildContext context) {
     final isCollapsed = ref.watch(sidebarCollapsedProvider);
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull ??
+        const PlataformaRuntimeConfig();
+    final visibleSections = _sections
+        .map((section) {
+          final items = EstabSidebarVisibility.filterItems(
+            section.items,
+            (item) => item.id,
+            cfg,
+          );
+          if (items.isEmpty) return null;
+          return _MenuSection(label: section.label, items: items);
+        })
+        .whereType<_MenuSection>()
+        .toList(growable: false);
+    final visibleBottomItems = EstabSidebarVisibility.filterItems(
+      _bottomItems,
+      (item) => item.id,
+      cfg,
+    );
 
     void toggleSidebar() {
       ref.read(sidebarCollapsedProvider.notifier).state = !isCollapsed;
@@ -174,7 +195,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
                 children: [
-                  for (final section in _sections)
+                  for (final section in visibleSections)
                     _buildSection(section, isCollapsed),
                 ],
               ),
@@ -182,7 +203,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
           ),
 
           // ── Itens inferiores (Settings, Help) ─────────────────
-          _buildBottomItems(isCollapsed),
+          _buildBottomItems(isCollapsed, visibleBottomItems),
 
           // ── Perfil / Logout ───────────────────────────────────
           _buildUserRow(isCollapsed),
@@ -435,7 +456,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
 
   // ── Itens do rodapé ───────────────────────────────────────────────────────
 
-  Widget _buildBottomItems(bool isCollapsed) {
+  Widget _buildBottomItems(bool isCollapsed, List<_MenuItem> items) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
       decoration: BoxDecoration(
@@ -445,7 +466,7 @@ class _SidebarMenuState extends ConsumerState<SidebarMenu> {
       ),
       child: Column(
         children: [
-          for (final item in _bottomItems)
+          for (final item in items)
             _NavItem(
               item: item,
               isActive: widget.activeId == item.id,

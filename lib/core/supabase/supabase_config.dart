@@ -1,6 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
   /// URL do Supabase
@@ -48,6 +51,42 @@ class SupabaseConfig {
     );
 
     await Supabase.initialize(url: url, anonKey: anonKey);
+    _bindAuthErrorRecovery();
+  }
+
+  /// Refresh token revogado/ausente no storage do browser (Chrome localStorage).
+  /// O GoTrue emite isso no stream e o BehaviorSubject reentrega o erro a
+  /// qualquer listen() posterior — sem onError o app cai no DDC.
+  static bool isUnrecoverableAuthError(Object error) {
+    if (error is AuthException) {
+      final code = error.code ?? '';
+      final msg = error.message.toLowerCase();
+      return code == 'refresh_token_not_found' ||
+          msg.contains('refresh token not found') ||
+          msg.contains('invalid refresh token');
+    }
+    final text = error.toString().toLowerCase();
+    return text.contains('refresh_token_not_found') ||
+        text.contains('invalid refresh token');
+  }
+
+  static void _bindAuthErrorRecovery() {
+    Supabase.instance.client.auth.onAuthStateChange.listen(
+      (_) {},
+      onError: (Object error, StackTrace _) {
+        debugPrint('[Auth] sessão inválida: $error');
+        if (isUnrecoverableAuthError(error)) {
+          unawaited(_discardLocalSession());
+        }
+      },
+    );
+  }
+
+  static Future<void> _discardLocalSession() async {
+    if (Supabase.instance.client.auth.currentSession == null) return;
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
   }
 }
 

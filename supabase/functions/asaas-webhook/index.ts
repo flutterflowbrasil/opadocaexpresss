@@ -96,11 +96,31 @@ serve(async (req) => {
       processado_em: new Date().toISOString(),
     }, { onConflict: 'asaas_event_id' });
 
-    await supabase.from('asaas_webhooks_log').update({
-      processado: true,
-      processado_em: new Date().toISOString(),
-      erro: null,
-    }).eq('asaas_event_id', asaasEventId);
+    if (['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(evento) && pedido) {
+      const { data: pedidoFull } = await supabase
+        .from('pedidos')
+        .select('cliente_id, estabelecimento_id')
+        .eq('id', pedido.id)
+        .maybeSingle();
+      if (pedidoFull?.cliente_id && pedidoFull?.estabelecimento_id) {
+        await supabase
+          .from('carrinhos')
+          .delete()
+          .eq('cliente_id', pedidoFull.cliente_id)
+          .eq('estabelecimento_id', pedidoFull.estabelecimento_id);
+      }
+    }
+
+    if (evento.startsWith('TRANSFER_')) {
+      const transfer = payload.transfer ?? payload;
+      const extRef = String(transfer.externalReference ?? '');
+      const pedidoIdFromRef = extRef.split(':')[0];
+      if (pedidoIdFromRef && transfer.id) {
+        await supabase.from('splits_pagamento').update({
+          asaas_transfer_ids: { last_webhook: String(transfer.id), status: transfer.status },
+        }).eq('pedido_id', pedidoIdFromRef);
+      }
+    }
 
     return json({ ok: true });
   } catch (error) {

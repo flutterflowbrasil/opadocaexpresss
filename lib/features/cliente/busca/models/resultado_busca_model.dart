@@ -1,3 +1,5 @@
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
+
 class ResultadoBuscaModel {
   final String id;
   final String nome;
@@ -51,7 +53,8 @@ class ResultadoBuscaModel {
     return (endereco!['cidade'] as String?) ?? '';
   }
 
-  String get taxaEntregaFormatada {
+  String taxaEntregaFormatada([PlataformaRuntimeConfig? cfg]) {
+    if (cfg != null) return cfg.taxaAPartirDeLabel;
     if (configEntrega == null) return '';
     final taxa = configEntrega!['taxa_entrega_fixa'];
     if (taxa == null) return '';

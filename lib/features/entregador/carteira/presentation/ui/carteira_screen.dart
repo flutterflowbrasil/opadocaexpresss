@@ -8,6 +8,8 @@
 // Saques e movimentacao real acontecem diretamente no Asaas.
 // ============================================================
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +67,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
   double _saqueMinimo = 10.0;
   double _saqueTarifa = 0.0;
   int _saqueLimiteDiario = 3;
+  bool _saquePixInstantaneo = true;
 
   List<_Movimentacao> _movimentacoes = [];
 
@@ -102,24 +105,46 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
 
       if (_entregadorId == null) return;
 
-      final saldo = await Supabase.instance.client
-          .from('entregador_saldos')
-          .select()
-          .eq('entregador_id', _entregadorId!)
-          .maybeSingle();
+      final splitsSaldo = await Supabase.instance.client
+          .from('splits_pagamento')
+          .select(
+            'entregador_valor_total, entregador_taxa_entrega_valor, repasse_entregador_processado',
+          )
+          .eq('entregador_id', _entregadorId!);
+
+      var disponivel = 0.0;
+      var bloqueado = 0.0;
+      var ganho = 0.0;
+      for (final raw in splitsSaldo as List) {
+        final r = Map<String, dynamic>.from(raw as Map);
+        final v = (r['entregador_valor_total'] as num?)?.toDouble() ??
+            (r['entregador_taxa_entrega_valor'] as num?)?.toDouble() ??
+            0;
+        ganho += v;
+        if (r['repasse_entregador_processado'] == true) {
+          disponivel += v;
+        } else {
+          bloqueado += v;
+        }
+      }
 
       if (!mounted) return;
       setState(() {
-        _saldoDisponivel = (saldo?['saldo_disponivel'] as num?)?.toDouble() ?? 0;
-        _saldoBloqueado = (saldo?['saldo_bloqueado'] as num?)?.toDouble() ?? 0;
-        _totalGanho = (saldo?['total_ganho'] as num?)?.toDouble() ?? 0;
-        _totalSacado = (saldo?['total_sacado'] as num?)?.toDouble() ?? 0;
+        _saldoDisponivel = disponivel;
+        _saldoBloqueado = bloqueado;
+        _totalGanho = ganho;
+        _totalSacado = 0;
       });
 
       final conf = await Supabase.instance.client
           .from('v_plataforma_config_publica')
           .select('chave, valor')
-          .inFilter('chave', ['saque_valor_minimo', 'saque_tarifa_fixa', 'saque_limite_diario']);
+          .inFilter('chave', [
+            'saque_valor_minimo',
+            'saque_tarifa_fixa',
+            'saque_limite_diario',
+            'saque_pix_instantaneo',
+          ]);
 
       if (mounted && conf.isNotEmpty) {
         final configMap = {for (var item in conf) item['chave']: item['valor']};
@@ -127,6 +152,8 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
           _saqueMinimo = double.tryParse(configMap['saque_valor_minimo']?.toString() ?? '10.0') ?? 10.0;
           _saqueTarifa = double.tryParse(configMap['saque_tarifa_fixa']?.toString() ?? '0.0') ?? 0.0;
           _saqueLimiteDiario = int.tryParse(configMap['saque_limite_diario']?.toString() ?? '3') ?? 3;
+          _saquePixInstantaneo = !const {'false', '0', 'nao', 'off'}
+              .contains((configMap['saque_pix_instantaneo']?.toString() ?? 'true').toLowerCase());
         });
       }
 
@@ -145,7 +172,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
     final splits = await Supabase.instance.client
         .from('splits_pagamento')
         .select(
-          'entregador_taxa_entrega_valor, entregador_valor_extra, created_at, pedidos(numero_pedido)',
+          'entregador_taxa_entrega_valor, entregador_valor_extra, entregador_valor_total, repasse_entregador_processado, created_at, pedidos(numero_pedido)',
         )
         .eq('entregador_id', _entregadorId!)
         .order('created_at', ascending: false)
@@ -163,15 +190,19 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
     final List<_Movimentacao> lista = [];
 
     for (final s in splits) {
-      final v = ((s['entregador_taxa_entrega_valor'] as num?)?.toDouble() ?? 0) +
-          ((s['entregador_valor_extra'] as num?)?.toDouble() ?? 0);
+      final v = ((s['entregador_valor_total'] as num?)?.toDouble() ?? 0) > 0
+          ? (s['entregador_valor_total'] as num).toDouble()
+          : ((s['entregador_taxa_entrega_valor'] as num?)?.toDouble() ?? 0) +
+              ((s['entregador_valor_extra'] as num?)?.toDouble() ?? 0);
       final num_ = s['pedidos']?['numero_pedido'];
       lista.add(_Movimentacao(
         tipo: 'credito',
         valor: v,
         descricao: 'Entrega #${num_ ?? '?'}',
         data: _fmtData(s['created_at']),
-        status: 'concluido',
+        status: s['repasse_entregador_processado'] == true
+            ? 'repassado'
+            : 'aguardando_repasse',
       ));
     }
 
@@ -196,7 +227,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
-          table: 'entregador_saldos',
+          table: 'splits_pagamento',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'entregador_id',
@@ -204,12 +235,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
           ),
           callback: (p) {
             if (!mounted) return;
-            setState(() {
-              _saldoDisponivel =
-                  (p.newRecord['saldo_disponivel'] as num?)?.toDouble() ?? _saldoDisponivel;
-              _saldoBloqueado =
-                  (p.newRecord['saldo_bloqueado'] as num?)?.toDouble() ?? _saldoBloqueado;
-            });
+            unawaited(_carregarMovimentacoes());
           },
         )
         .subscribe();
@@ -298,7 +324,13 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => context.pop(),
+                    onTap: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/dashboard_entregador');
+                      }
+                    },
                     child: Container(
                       width: 38,
                       height: 38,
@@ -370,6 +402,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
                           saldoDisponivel: _saldoDisponivel,
                           saldoBloqueado: _saldoBloqueado,
                           saqueMinimo: _saqueMinimo,
+                          pixInstantaneo: _saquePixInstantaneo,
                           onSacar: _abrirSaque,
                           asaasStatus: _asaasStatus,
                           asaasMensagem: _asaasMensagem,
@@ -462,6 +495,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> with SingleTickerProvid
 // ═══════════════════════════════════════════════════════════════════════════
 class _SaldoCard extends StatelessWidget {
   final double saldoDisponivel, saldoBloqueado, saqueMinimo;
+  final bool pixInstantaneo;
   final VoidCallback onSacar;
   final String asaasStatus;
   final String asaasMensagem;
@@ -470,6 +504,7 @@ class _SaldoCard extends StatelessWidget {
     required this.saldoDisponivel,
     required this.saldoBloqueado,
     required this.saqueMinimo,
+    this.pixInstantaneo = true,
     required this.onSacar,
     this.asaasStatus = 'pending',
     this.asaasMensagem = '',
@@ -573,7 +608,9 @@ class _SaldoCard extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Saques e movimentacao sao feitos diretamente no Asaas',
+              pixInstantaneo
+                  ? 'PIX instantâneo ativo · saques no Asaas'
+                  : 'PIX instantâneo desligado · saques podem ter prazo',
               style: GoogleFonts.dmSans(fontSize: 10, color: _text3),
             ),
           ),
@@ -808,6 +845,11 @@ class _ListaMovimentacoes extends StatelessWidget {
                       ),
                     ),
                     Text(m.data, style: GoogleFonts.dmSans(fontSize: 10, color: _text3)),
+                    if (m.status == 'aguardando_repasse' || m.status == 'repassado')
+                      Text(
+                        m.status == 'repassado' ? 'Repasse Asaas' : 'Aguardando repasse',
+                        style: GoogleFonts.dmSans(fontSize: 10, color: _text3),
+                      ),
                   ],
                 ),
               ),
@@ -1008,8 +1050,13 @@ class _AsaasAcessoSheet extends StatelessWidget {
 
   Future<void> _abrirLink(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint('[Carteira] falha ao abrir $url: $e');
     }
   }
 
@@ -1022,10 +1069,11 @@ class _AsaasAcessoSheet extends StatelessWidget {
         24,
         MediaQuery.of(context).viewInsets.bottom + 28,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Handle
           Center(
             child: Container(
@@ -1052,22 +1100,24 @@ class _AsaasAcessoSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Acessar sua conta Asaas',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: _text1,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Acessar sua conta Asaas',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: _text1,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Saques e movimentacoes sao feitos diretamente no Asaas',
-                    style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
-                  ),
-                ],
+                    Text(
+                      'Saques e movimentacoes sao feitos diretamente no Asaas',
+                      style: GoogleFonts.dmSans(fontSize: 11, color: _text3),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1152,6 +1202,7 @@ class _AsaasAcessoSheet extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

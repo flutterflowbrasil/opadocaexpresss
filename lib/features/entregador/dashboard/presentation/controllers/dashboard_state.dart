@@ -92,6 +92,42 @@ class DespachoRecebido {
   });
 }
 
+class EntregadorNotificacaoItem {
+  final String id;
+  final String evento;
+  final String titulo;
+  final String corpo;
+  final DateTime? createdAt;
+
+  const EntregadorNotificacaoItem({
+    required this.id,
+    required this.evento,
+    required this.titulo,
+    required this.corpo,
+    this.createdAt,
+  });
+
+  factory EntregadorNotificacaoItem.fromJson(Map<String, dynamic> json) {
+    return EntregadorNotificacaoItem(
+      id: json['id'] as String? ?? '',
+      evento: json['evento'] as String? ?? '',
+      titulo: json['titulo'] as String? ?? 'Notificação',
+      corpo: json['corpo'] as String? ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+    );
+  }
+
+  bool get recente {
+    if (createdAt == null) return false;
+    return DateTime.now().difference(createdAt!) < const Duration(hours: 24);
+  }
+
+  String get tituloLimpo =>
+      titulo.replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true), '').trim();
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 
 class DashboardState {
@@ -129,9 +165,17 @@ class DashboardState {
   // Incoming dispatch
   final DespachoRecebido? despachoRecebido;
 
+  // Inbox
+  final List<EntregadorNotificacaoItem> notificacoes;
+  final bool inboxVista;
+
   // Recent deliveries
   final List<EntregaRecente> recentDeliveries;
   final bool isLoadingDeliveries;
+
+  bool get temNotificacao =>
+      despachoRecebido != null ||
+      (!inboxVista && notificacoes.any((n) => n.recente));
 
   bool get isEmpty =>
       !isLoading && recentDeliveries.isEmpty && error == null;
@@ -160,6 +204,8 @@ class DashboardState {
     this.saldoBloqueado = 0.0,
     this.pedidoAtivo,
     this.despachoRecebido,
+    this.notificacoes = const [],
+    this.inboxVista = false,
     this.recentDeliveries = const [],
     this.isLoadingDeliveries = false,
   });
@@ -192,6 +238,8 @@ class DashboardState {
     bool clearPedidoAtivo = false,
     DespachoRecebido? despachoRecebido,
     bool clearDespacho = false,
+    List<EntregadorNotificacaoItem>? notificacoes,
+    bool? inboxVista,
     List<EntregaRecente>? recentDeliveries,
     bool? isLoadingDeliveries,
   }) {
@@ -221,6 +269,8 @@ class DashboardState {
       pedidoAtivo: clearPedidoAtivo ? null : (pedidoAtivo ?? this.pedidoAtivo),
       despachoRecebido:
           clearDespacho ? null : (despachoRecebido ?? this.despachoRecebido),
+      notificacoes: notificacoes ?? this.notificacoes,
+      inboxVista: inboxVista ?? this.inboxVista,
       recentDeliveries: recentDeliveries ?? this.recentDeliveries,
       isLoadingDeliveries: isLoadingDeliveries ?? this.isLoadingDeliveries,
     );

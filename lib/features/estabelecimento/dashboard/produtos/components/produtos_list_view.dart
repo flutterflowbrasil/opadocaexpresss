@@ -206,7 +206,16 @@ class _ProductListTile extends StatelessWidget {
                   Row(
                     children: [
                       // Preço
-                      if (produto.precoPromocional != null &&
+                      if (produto.temVariacoesDePreco)
+                        Text(
+                          'A partir de ${currencyFmt.format(produto.precoMinimo)}',
+                          style: GoogleFonts.publicSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFec5b13),
+                          ),
+                        )
+                      else if (produto.precoPromocional != null &&
                           produto.precoPromocional! > 0) ...[
                         Text(
                           currencyFmt.format(produto.preco),

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,7 +9,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/core/router/app_router.dart';
 import 'package:padoca_express/core/theme/theme_provider.dart';
-import 'package:padoca_express/core/maps_loader.dart';
 import 'package:padoca_express/services/notifications/onesignal_service.dart';
 import 'package:padoca_express/services/notifications/push_notification_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -32,19 +31,40 @@ void main() async {
 
   // Inicializa Supabase e Datas
   await initializeDateFormatting('pt_BR', null);
+  _installAuthErrorGuards();
   await SupabaseConfig.initialize();
   // OneSignal no Chrome pode rejeitar (SW, localhost, SDK defer).
   // Nunca bloquear nem derrubar o app por falha de push.
   unawaited(_initOneSignal());
 
-  // Carrega a Google Maps JavaScript API apenas na Web.
-  // A chave é obtida de forma segura via Edge Function `maps-config` (JWT).
-  // No Android/iOS a chave fica no AndroidManifest.xml / AppDelegate.swift.
-  if (kIsWeb) {
-    await MapsLoader.load();
-  }
+  // Maps na web: só depois de sessão válida (auth_repository).
+  // Carregar aqui dispara refreshSession() com token morto no localStorage.
 
   runApp(const ProviderScope(child: MyApp()));
+}
+
+void _installAuthErrorGuards() {
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (SupabaseConfig.isUnrecoverableAuthError(details.exception)) {
+      debugPrint('[Auth] sessão expirada: ${details.exception}');
+      return;
+    }
+    if (previous != null) {
+      previous(details);
+    } else {
+      FlutterError.presentError(details);
+    }
+  };
+
+  final previousPlatform = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (SupabaseConfig.isUnrecoverableAuthError(error)) {
+      debugPrint('[Auth] sessão expirada: $error');
+      return true;
+    }
+    return previousPlatform?.call(error, stack) ?? false;
+  };
 }
 
 Future<void> _initOneSignal() async {

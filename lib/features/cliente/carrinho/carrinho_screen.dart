@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/carrinho/componentes/item_carrinho_card.dart';
@@ -88,10 +89,20 @@ class CarrinhoScreen extends ConsumerWidget {
     }
 
     final estabelecimento = estadoCarrinho.estabelecimento!;
-    final taxaEntrega = estabelecimento.taxaEntregaValor;
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull ??
+        const PlataformaRuntimeConfig();
+    final cuponsAtivos = cfg.cuponsAtivos;
+    if (!cuponsAtivos && estadoCarrinho.cupomAplicado != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(carrinhoControllerProvider.notifier).removerCupom();
+      });
+    }
+    final taxaEntrega =
+        cfg.taxaEntrega(subtotal: estadoCarrinho.valorTotalProdutos);
     final subtotal = estadoCarrinho.valorTotalProdutos;
-    final desconto = estadoCarrinho.desconto;
-    final total = estadoCarrinho.valorTotal;
+    final desconto = estadoCarrinho.descontoCom(cfg);
+    final total =
+        (subtotal + taxaEntrega - desconto).clamp(0, double.infinity).toDouble();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -179,7 +190,7 @@ class CarrinhoScreen extends ConsumerWidget {
                   ObservacaoGeralSection(isDark: isDark),
 
                   // ── Cupom de desconto ────────────────────────────
-                  CupomSection(isDark: isDark),
+                  if (cuponsAtivos) CupomSection(isDark: isDark),
 
 
                   const SizedBox(height: 4),
@@ -187,7 +198,7 @@ class CarrinhoScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   _buildResumoRow('Taxa de entrega', taxaEntrega,
                       isDark: isDark),
-                  if (desconto > 0) ...[  
+                  if (cuponsAtivos && desconto > 0) ...[  
                     const SizedBox(height: 8),
                     _buildResumoRow('Desconto (cupom)', -desconto,
                         isDark: isDark, isDesconto: true),
@@ -263,10 +274,16 @@ class CarrinhoScreen extends ConsumerWidget {
                         }
                       }
                     } catch (e) {
-                      // Fallback: mostrar erro, mas para debug prosseguimos placeholder
                       debugPrint('Erro validando loja fechada: $e');
                       if (context.mounted) {
-                        context.push('/finalizar_pedido');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Não foi possível confirmar se a loja está aberta. Tente de novo.',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
                     }
                   }

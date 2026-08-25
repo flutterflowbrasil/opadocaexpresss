@@ -5,6 +5,7 @@
 // Mantem tipos simples para desacoplar o servico da implementacao visual do mapa.
 // ============================================================
 
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ── Tipos simples compatíveis com google_maps_flutter ───────────────────────
@@ -22,12 +23,73 @@ class RouteInfo {
   final List<LatLng> pontos;
   final String? distanciaTexto;
   final String? duracaoTexto;
+  final int? distanciaMetros;
+  final bool isRota;
 
   const RouteInfo({
     required this.pontos,
     this.distanciaTexto,
     this.duracaoTexto,
+    this.distanciaMetros,
+    this.isRota = false,
   });
+
+  double get distanciaKm =>
+      distanciaMetros == null ? 0 : distanciaMetros! / 1000.0;
+
+  /// Parse da resposta Google Directions (via geocode-proxy).
+  static RouteInfo? fromDirectionsJson(Map<String, dynamic> data) {
+    final routes = data['routes'];
+    if (routes is! List || routes.isEmpty) return null;
+    final route = routes.first;
+    if (route is! Map) return null;
+    final routeMap = Map<String, dynamic>.from(route);
+
+    final encoded = routeMap['overview_polyline'] is Map
+        ? (routeMap['overview_polyline'] as Map)['points'] as String?
+        : null;
+
+    final legs = routeMap['legs'];
+    Map<String, dynamic>? leg;
+    if (legs is List && legs.isNotEmpty && legs.first is Map) {
+      leg = Map<String, dynamic>.from(legs.first as Map);
+    }
+
+    final distance = leg?['distance'];
+    final duration = leg?['duration'];
+    final distanceValue =
+        distance is Map ? distance['value'] : null;
+    final distanciaMetros =
+        distanceValue is num ? distanceValue.round() : null;
+
+    if (encoded == null && distanciaMetros == null) return null;
+
+    return RouteInfo(
+      pontos: encoded != null ? MapService.decodePolyline(encoded) : const [],
+      distanciaTexto: distance is Map ? distance['text'] as String? : null,
+      duracaoTexto: duration is Map ? duration['text'] as String? : null,
+      distanciaMetros: distanciaMetros,
+      isRota: distanciaMetros != null && distanciaMetros > 0,
+    );
+  }
+
+  static RouteInfo fallbackHaversine(LatLng a, LatLng b) {
+    final km = distanciaKmCoords(
+      lat1: a.latitude,
+      lng1: a.longitude,
+      lat2: b.latitude,
+      lng2: b.longitude,
+    );
+    final metros = (km * 1000).round();
+    return RouteInfo(
+      pontos: [a, b],
+      distanciaMetros: metros > 0 ? metros : null,
+      distanciaTexto: km > 0
+          ? '${km.toStringAsFixed(1).replaceAll('.', ',')} km'
+          : null,
+      isRota: false,
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -59,29 +121,29 @@ class MapService {
         },
       );
 
-      if (resp.status != 200) return _rotaRetaInfo(origem, destino);
-
-      final data = resp.data as Map<String, dynamic>;
-      final routes = data['routes'] as List?;
-      if (routes == null || routes.isEmpty) {
-        return _rotaRetaInfo(origem, destino);
+      if (resp.status != 200) {
+        return RouteInfo.fallbackHaversine(origem, destino);
       }
 
-      final route = routes[0] as Map<String, dynamic>;
-      final pontos = route['overview_polyline']?['points'] as String?;
-      if (pontos == null) return _rotaRetaInfo(origem, destino);
-
-      final legs = route['legs'] as List?;
-      final leg =
-          legs != null && legs.isNotEmpty ? legs.first as Map<String, dynamic>? : null;
-
-      return RouteInfo(
-        pontos: _decodificarPolyline(pontos),
-        distanciaTexto: leg?['distance']?['text'] as String?,
-        duracaoTexto: leg?['duration']?['text'] as String?,
-      );
+      final data = resp.data is Map
+          ? Map<String, dynamic>.from(resp.data as Map)
+          : <String, dynamic>{};
+      final parsed = RouteInfo.fromDirectionsJson(data);
+      if (parsed == null || parsed.distanciaMetros == null) {
+        return RouteInfo.fallbackHaversine(origem, destino);
+      }
+      if (parsed.pontos.isEmpty) {
+        return RouteInfo(
+          pontos: [origem, destino],
+          distanciaTexto: parsed.distanciaTexto,
+          duracaoTexto: parsed.duracaoTexto,
+          distanciaMetros: parsed.distanciaMetros,
+          isRota: parsed.isRota,
+        );
+      }
+      return parsed;
     } catch (_) {
-      return _rotaRetaInfo(origem, destino);
+      return RouteInfo.fallbackHaversine(origem, destino);
     }
   }
 
@@ -108,7 +170,7 @@ class MapService {
   }
 
   // ── Decodifica encoded polyline do Google ────────────────────────────────
-  List<LatLng> _decodificarPolyline(String encoded) {
+  static List<LatLng> decodePolyline(String encoded) {
     final List<LatLng> pontos = [];
     int index = 0, len = encoded.length;
     int lat = 0, lng = 0;
@@ -135,12 +197,6 @@ class MapService {
     }
     return pontos;
   }
-
-  // ── Fallback: linha reta entre dois pontos ────────────────────────────────
-  List<LatLng> _rotaReta(LatLng a, LatLng b) => [a, b];
-
-  RouteInfo _rotaRetaInfo(LatLng a, LatLng b) =>
-      RouteInfo(pontos: _rotaReta(a, b));
 
   // ── Calcula bounds para encaixar todos os pontos na câmera ───────────────
   static LatLngBounds calcularBounds(List<LatLng> pontos) {

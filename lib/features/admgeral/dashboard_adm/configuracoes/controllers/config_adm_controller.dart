@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import '../data/config_adm_repository.dart';
 import 'config_adm_state.dart';
 
@@ -12,15 +13,19 @@ final configAdmRepositoryProvider = Provider<ConfigAdmRepository>((ref) {
 
 final configAdmControllerProvider = StateNotifierProvider.autoDispose<
     ConfigAdmController, ConfigAdmState>(
-  (ref) => ConfigAdmController(ref.watch(configAdmRepositoryProvider))..fetch(),
+  (ref) => ConfigAdmController(
+        ref.watch(configAdmRepositoryProvider),
+        ref,
+      )..fetch(),
 );
 
 // ── Controller ────────────────────────────────────────────────────────────────
 
 class ConfigAdmController extends StateNotifier<ConfigAdmState> {
   final ConfigAdmRepository _repo;
+  final Ref _ref;
 
-  ConfigAdmController(this._repo) : super(const ConfigAdmState());
+  ConfigAdmController(this._repo, this._ref) : super(const ConfigAdmState());
 
   // ── Leitura ──────────────────────────────────────────────────────────────────
 
@@ -115,6 +120,7 @@ class ConfigAdmController extends StateNotifier<ConfigAdmState> {
         modificacoes: {},
         lastSync: DateTime.now(),
       );
+      _ref.invalidate(plataformaRuntimeConfigProvider);
     } catch (e) {
       debugPrint('[ConfigAdmController] salvar erro: $e');
       if (!mounted) return;

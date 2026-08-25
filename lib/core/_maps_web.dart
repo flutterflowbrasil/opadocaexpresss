@@ -21,7 +21,7 @@ Future<void> loadMapsApi(String key) async {
   final script = html.ScriptElement()
     ..id = scriptId
     ..src = 'https://maps.googleapis.com/maps/api/js'
-        '?key=$key&libraries=places'
+        '?key=$key&libraries=places&loading=async'
     ..async = true
     ..defer = true;
 

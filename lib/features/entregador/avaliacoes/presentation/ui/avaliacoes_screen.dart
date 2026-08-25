@@ -121,22 +121,24 @@ class _AvaliacoesScreenState extends State<AvaliacoesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: _bg2,
-                        border: Border.all(color: _border),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.arrow_back_ios_new_rounded, color: _text1, size: 16),
+                  if (context.canPop()) ...[
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: _bg2,
+                          border: Border.all(color: _border),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.arrow_back_ios_new_rounded, color: _text1, size: 16),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
+                    const SizedBox(width: 14),
+                  ],
                   Text(
                     'Avaliações',
                     style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: _text1),

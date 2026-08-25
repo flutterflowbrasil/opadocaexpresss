@@ -4,6 +4,7 @@ enum PagamentoStatus {
   idle,
   submitting,
   aguardandoPix,
+  aguardandoConfirmacao,
   confirmado,
   expirado,
   erro,

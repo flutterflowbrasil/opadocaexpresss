@@ -160,13 +160,13 @@ class CarrinhoRepository {
     return criado['id'] as String;
   }
 
-  Future<void> salvarItem({
+  Future<ItemCarrinhoModel?> salvarItem({
     required String estabelecimentoId,
     required ItemCarrinhoModel item,
   }) async {
     final carrinhoId =
         await buscarOuCriarCarrinho(estabelecimentoId: estabelecimentoId);
-    if (carrinhoId == null) return;
+    if (carrinhoId == null) return null;
 
     final payload = {
       'carrinho_id': carrinhoId,
@@ -182,26 +182,43 @@ class CarrinhoRepository {
         'tamanho_produto_nome': item.tamanhoProdutoNome,
     };
 
+    Map<String, dynamic>? row;
     if (item.id != null) {
-      await _client
+      row = await _client
           .from('itens_carrinho')
           .update(payload)
           .eq('id', item.id!)
-          .eq('carrinho_id', carrinhoId);
-      return;
+          .eq('carrinho_id', carrinhoId)
+          .select('id, preco_unitario, quantidade')
+          .maybeSingle();
+    } else {
+      final existente = await _buscarItemEquivalente(
+        carrinhoId: carrinhoId,
+        item: item,
+      );
+
+      if (existente != null) {
+        row = await _client
+            .from('itens_carrinho')
+            .update(payload)
+            .eq('id', existente)
+            .select('id, preco_unitario, quantidade')
+            .maybeSingle();
+      } else {
+        row = await _client
+            .from('itens_carrinho')
+            .insert(payload)
+            .select('id, preco_unitario, quantidade')
+            .single();
+      }
     }
 
-    final existente = await _buscarItemEquivalente(
-      carrinhoId: carrinhoId,
-      item: item,
+    if (row == null) return null;
+    return item.copyWith(
+      id: row['id'] as String?,
+      precoUnitario:
+          (row['preco_unitario'] as num?)?.toDouble() ?? item.precoUnitario,
     );
-
-    if (existente != null) {
-      await _client.from('itens_carrinho').update(payload).eq('id', existente);
-      return;
-    }
-
-    await _client.from('itens_carrinho').insert(payload);
   }
 
   Future<void> removerItem(String? itemId) async {

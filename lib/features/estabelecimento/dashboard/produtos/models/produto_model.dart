@@ -1,3 +1,5 @@
+import 'produto_preco_tamanho_model.dart';
+
 class ProdutoModel {
   final String id;
   final String estabelecimentoId;
@@ -37,6 +39,7 @@ class ProdutoModel {
   final double? ultimaMordidaPreco;
   final String? ultimaMordidaChamada;
   final String? ultimaMordidaOrigem;
+  final List<ProdutoPrecoTamanhoModel> precosTamanhos;
 
   // Campo auxiliar para uso dinâmico em listagens
   final String? categoriaCardapioNome;
@@ -78,6 +81,7 @@ class ProdutoModel {
     this.ultimaMordidaPreco,
     this.ultimaMordidaChamada,
     this.ultimaMordidaOrigem,
+    this.precosTamanhos = const [],
   });
 
   ProdutoModel copyWith({
@@ -117,6 +121,7 @@ class ProdutoModel {
     double? ultimaMordidaPreco,
     String? ultimaMordidaChamada,
     String? ultimaMordidaOrigem,
+    List<ProdutoPrecoTamanhoModel>? precosTamanhos,
   }) {
     return ProdutoModel(
       id: id ?? this.id,
@@ -158,6 +163,7 @@ class ProdutoModel {
       ultimaMordidaPreco: ultimaMordidaPreco ?? this.ultimaMordidaPreco,
       ultimaMordidaChamada: ultimaMordidaChamada ?? this.ultimaMordidaChamada,
       ultimaMordidaOrigem: ultimaMordidaOrigem ?? this.ultimaMordidaOrigem,
+      precosTamanhos: precosTamanhos ?? this.precosTamanhos,
     );
   }
 
@@ -214,6 +220,11 @@ class ProdutoModel {
       ultimaMordidaPreco: (json['ultima_mordida_preco'] as num?)?.toDouble(),
       ultimaMordidaChamada: json['ultima_mordida_chamada'] as String?,
       ultimaMordidaOrigem: json['ultima_mordida_origem'] as String?,
+      precosTamanhos: (json['produto_precos_tamanhos'] as List? ?? [])
+          .whereType<Map>()
+          .map((t) => ProdutoPrecoTamanhoModel.fromJson(
+              Map<String, dynamic>.from(t)))
+          .toList(),
     );
   }
 
@@ -373,5 +384,21 @@ class ProdutoModel {
     }
 
     return true;
+  }
+
+  bool get temVariacoesDePreco =>
+      precosTamanhos.any((t) => t.ativo && t.preco > 0);
+
+  double get precoMinimo {
+    if (!temVariacoesDePreco) {
+      if (precoPromocional != null && precoPromocional! > 0) {
+        return precoPromocional!;
+      }
+      return preco;
+    }
+    return precosTamanhos
+        .where((t) => t.ativo && t.preco > 0)
+        .map((t) => t.preco)
+        .reduce((a, b) => a < b ? a : b);
   }
 }

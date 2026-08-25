@@ -122,13 +122,40 @@ class EntregadorEnderecoInfo {
     return EntregadorEnderecoInfo(
       id: json['id'] as String?,
       cep: (json['cep'] as String?) ?? '',
-      logradouro: (json['logradouro'] as String?) ?? '',
-      numero: (json['numero'] as String?) ?? '',
-      complemento: json['complemento'] as String?,
-      bairro: (json['bairro'] as String?) ?? '',
-      cidade: (json['cidade'] as String?) ?? '',
-      estado: ((json['estado'] as String?) ?? '').toUpperCase(),
+      logradouro: (json['logradouro'] as String?) ??
+          (json['address'] as String?) ??
+          '',
+      numero: (json['numero'] as String?) ??
+          (json['addressNumber'] as String?) ??
+          '',
+      complemento: json['complemento'] as String? ?? json['complement'] as String?,
+      bairro: (json['bairro'] as String?) ??
+          (json['province'] as String?) ??
+          '',
+      cidade: _asString(json['cidade']).isNotEmpty
+          ? _asString(json['cidade'])
+          : _asString(json['city']),
+      estado: ((json['estado'] as String?) ?? (json['state'] as String?) ?? '')
+          .toUpperCase(),
     );
+  }
+
+  static String _asString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    return '';
+  }
+
+  static EntregadorEnderecoInfo? tryParse(Map<String, dynamic>? json) {
+    if (json == null || json.isEmpty) return null;
+    final info = EntregadorEnderecoInfo.fromJson(json);
+    if (info.cep.isEmpty &&
+        info.logradouro.isEmpty &&
+        info.bairro.isEmpty &&
+        info.cidade.isEmpty) {
+      return null;
+    }
+    return info;
   }
 
   Map<String, dynamic> toJson() {
@@ -158,6 +185,31 @@ class EntregadorEnderecoInfo {
         : '';
     return '$logradouro, $numero$comp, $bairro - $cidade/$estado';
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is EntregadorEnderecoInfo &&
+        other.id == id &&
+        other.cep == cep &&
+        other.logradouro == logradouro &&
+        other.numero == numero &&
+        other.complemento == complemento &&
+        other.bairro == bairro &&
+        other.cidade == cidade &&
+        other.estado == estado;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        cep,
+        logradouro,
+        numero,
+        complemento,
+        bairro,
+        cidade,
+        estado,
+      );
 }
 
 class EntregadorAdmModel {
@@ -264,6 +316,8 @@ class EntregadorAdmModel {
       selfieRevisao?.status == 'revisao_manual' ||
       (selfieRevisao == null && docEnviado('selfie'));
 
+  bool get temCarteiraAsaas => (asaasWalletId ?? '').trim().isNotEmpty;
+
   factory EntregadorAdmModel.fromJson(Map<String, dynamic> json) {
     final usuarioJson = json['usuarios'] as Map<String, dynamic>?;
     final enderecosArr = (json['entregador_enderecos'] as List?) ?? [];
@@ -273,6 +327,7 @@ class EntregadorAdmModel {
         : (json['endereco'] is Map
             ? (json['endereco'] as Map).cast<String, dynamic>()
             : null);
+    final enderecoParsed = EntregadorEnderecoInfo.tryParse(enderecoJson);
 
     // Monta docs: key=tipo, value=status_validacao ou null se não enviado
     final docsArr = (json['entregador_documentos'] as List?) ?? [];
@@ -349,9 +404,7 @@ class EntregadorAdmModel {
       nome: (usuarioJson?['nome_completo_fantasia'] as String?) ?? '—',
       email: usuarioJson?['email'] as String?,
       telefone: usuarioJson?['telefone'] as String?,
-      endereco: enderecoJson != null
-          ? EntregadorEnderecoInfo.fromJson(enderecoJson)
-          : null,
+      endereco: enderecoParsed,
       docs: docs,
       documentos: documentos,
       selfieRevisao: kycInfo,

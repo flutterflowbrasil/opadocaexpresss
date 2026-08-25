@@ -16,6 +16,7 @@ import 'package:padoca_express/features/cliente/componentes/produto_simples_dial
 import 'package:padoca_express/features/cliente/componentes/produto_variavel_dialog.dart';
 import 'package:padoca_express/features/cliente/componentes/produto_com_tamanho_dialog.dart';
 import 'package:padoca_express/features/estabelecimento/models/produto_model.dart';
+import 'package:padoca_express/features/cliente/carrinho/opcoes_selecionadas_codec.dart';
 
 class EstabelecimentoScreen extends ConsumerWidget {
   final EstabelecimentoModel estabelecimento;
@@ -168,19 +169,6 @@ class EstabelecimentoScreen extends ConsumerWidget {
                       produto: produto,
                       estabelecimento: modelAtualizado,
                       onAddTap: (qtd, obs, selecoes, tamanhoSelecionado) {
-                        final adicionais =
-                            selecoes.fold<double>(0, (total, grupo) {
-                          final itens = grupo['itens'] as List? ?? [];
-                          return total +
-                              itens.fold<double>(
-                                0,
-                                (subtotal, item) =>
-                                    subtotal +
-                                    ((item as Map)['preco'] as num? ?? 0)
-                                        .toDouble(),
-                              );
-                        });
-
                         ref
                             .read(carrinhoControllerProvider.notifier)
                             .adicionarProduto(
@@ -189,7 +177,10 @@ class EstabelecimentoScreen extends ConsumerWidget {
                               observacao: obs,
                               estabelecimento: modelAtualizado,
                               precoBaseProduto: tamanhoSelecionado.preco,
-                              precoUnitario: tamanhoSelecionado.preco + adicionais,
+                              precoUnitario: precoUnitarioComAdicionais(
+                                precoBase: tamanhoSelecionado.preco,
+                                opcoesSelecionadas: selecoes,
+                              ),
                               opcoesSelecionadas: selecoes,
                               tamanhoProdutoId: tamanhoSelecionado.id,
                               tamanhoProdutoNome: tamanhoSelecionado.nomeTamanho,
@@ -197,27 +188,13 @@ class EstabelecimentoScreen extends ConsumerWidget {
                       },
                     ),
                   );
-                } else if (produto.tipoProduto == 'variavel' ||
-                    produto.opcoes.isNotEmpty) {
+                } else if (produto.opcoes.isNotEmpty) {
                   showDialog(
                     context: context,
                     builder: (context) => ProdutoVariavelDialog(
                       produto: produto,
                       estabelecimento: modelAtualizado,
                       onAddTap: (qtd, obs, selecoes) {
-                        final adicionais =
-                            selecoes.fold<double>(0, (total, grupo) {
-                          final itens = grupo['itens'] as List? ?? [];
-                          return total +
-                              itens.fold<double>(
-                                0,
-                                (subtotal, item) =>
-                                    subtotal +
-                                    ((item as Map)['preco'] as num? ?? 0)
-                                        .toDouble(),
-                              );
-                        });
-
                         ref
                             .read(carrinhoControllerProvider.notifier)
                             .adicionarProduto(
@@ -226,7 +203,10 @@ class EstabelecimentoScreen extends ConsumerWidget {
                               observacao: obs,
                               estabelecimento: modelAtualizado,
                               precoBaseProduto: produto.precoAtual,
-                              precoUnitario: produto.precoAtual + adicionais,
+                              precoUnitario: precoUnitarioComAdicionais(
+                                precoBase: produto.precoAtual,
+                                opcoesSelecionadas: selecoes,
+                              ),
                               opcoesSelecionadas: selecoes,
                             );
                       },

@@ -1,15 +1,19 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import {
+  approveSandboxAccount,
+  asaasHeaders,
+  assertAsaasMasterKey,
+  errorToResponse,
+  HttpError,
+  jsonResponse,
+  loadAsaasCredentials,
+  requiredEnv,
+} from '../_shared/asaas_client.ts';
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405);
+  if (req.method === 'OPTIONS') return jsonResponse({ ok: true });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Metodo nao permitido.' }, 405);
 
   try {
     const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -17,17 +21,16 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
     });
-    const asaasBaseUrl = resolveAsaasBaseUrl();
-    const asaasApiKey = sanitizeAsaasApiKey(requiredEnv('ASAAS_API_KEY'));
+    const { baseUrl: asaasBaseUrl, apiKey: asaasApiKey, isSandbox } = loadAsaasCredentials();
     await assertAsaasMasterKey(asaasBaseUrl, asaasApiKey);
-    await approveSandboxAccount(asaasBaseUrl, asaasApiKey);
+    if (isSandbox) await approveSandboxAccount(asaasBaseUrl, asaasApiKey);
 
     const user = await authenticatedUser(req, supabase);
     const body = await req.json().catch(() => ({}));
     const pedidoId = text(body.pedido_id);
     const metodoPagamento = text(body.metodo_pagamento) || undefined;
     const cartao = body.cartao as Record<string, unknown> | undefined;
-    if (!pedidoId) return json({ error: 'pedido_id obrigatorio.' }, 400);
+    if (!pedidoId) return jsonResponse({ error: 'pedido_id obrigatorio.' }, 400);
 
     // Nao embedar entregadores(*) — ha duas FKs (pedidos.entregador_id e
     // entregadores.pedido_atual_id) e o PostgREST retorna erro de relacionamento.
@@ -55,14 +58,14 @@ serve(async (req) => {
     const clienteUsuario = firstRelation(pedidoCliente?.usuarios);
     const clienteUsuarioId = clienteUsuario?.id;
     if (clienteUsuarioId !== user.id) {
-      return json({ error: 'Pedido nao pertence ao cliente autenticado.' }, 403);
+      return jsonResponse({ error: 'Pedido nao pertence ao cliente autenticado.' }, 403);
     }
 
     if (pedido.asaas_payment_id) {
       const pix = pedido.pagamento_metodo === 'pix'
         ? await getPixQrCode(asaasBaseUrl, asaasApiKey, pedido.asaas_payment_id)
         : null;
-      return json({
+      return jsonResponse({
         paymentId: pedido.asaas_payment_id,
         invoiceUrl: pedido.asaas_invoice_url,
         pixQrCode: pix?.encodedImage,
@@ -73,7 +76,7 @@ serve(async (req) => {
 
     const metodo = normalizeMetodo(metodoPagamento ?? pedido.pagamento_metodo);
     if (metodo === 'cartao_debito') {
-      return json({ error: 'Cartao de debito ainda nao esta habilitado no contrato Asaas deste fluxo.' }, 400);
+      return jsonResponse({ error: 'Cartao de debito nao esta habilitado.' }, 400);
     }
 
     const { data: estabelecimento, error: estabError } = await supabase
@@ -90,24 +93,46 @@ serve(async (req) => {
     if (!clienteUsuario) throw new Error('Usuario do cliente nao encontrado.');
 
     const { data: cfgFin } = await supabase.rpc('fn_get_config_financeira');
+    if (cfgFin?.pagamentos_online_ativos === false) {
+      return jsonResponse({
+        error: 'Pagamentos temporariamente indisponiveis.',
+        code: 'PAGAMENTOS_OFFLINE',
+      }, 503);
+    }
     const modoRepasse = String(cfgFin?.modo_repasse ?? 'pos_entrega');
     const splitNoCheckout = Boolean(cfgFin?.split_automatico_ativo) && modoRepasse === 'checkout_imediato';
+    const exigirHomologada = cfgFin?.exigir_subconta_homologada !== false;
 
-    const estabelecimentoSubconta = await ensureSandboxSubcontaAtiva(
-      asaasBaseUrl,
-      supabase,
-      await findSubaccount(supabase, 'estabelecimento', pedido.estabelecimento_id),
-    );
-    if (splitNoCheckout && !estabelecimentoSubconta?.asaas_wallet_id) {
-      return json({ error: 'Estabelecimento ainda nao possui conta Asaas ativa para recebimento.' }, 409);
-    }
-
-    const entregadorSubconta = pedido.entregador_id
+    const estabelecimentoSubconta = isSandbox
       ? await ensureSandboxSubcontaAtiva(
         asaasBaseUrl,
         supabase,
-        await findSubaccount(supabase, 'entregador', pedido.entregador_id),
+        await findSubaccount(supabase, 'estabelecimento', pedido.estabelecimento_id),
       )
+      : await findSubaccount(supabase, 'estabelecimento', pedido.estabelecimento_id);
+
+    const estabHomologada = estabelecimentoSubconta?.homologada === true
+      && estabelecimentoSubconta?.status_conta === 'active'
+      && Boolean(estabelecimentoSubconta?.asaas_wallet_id);
+
+    if (exigirHomologada && !estabHomologada) {
+      return jsonResponse({
+        error: 'Estabelecimento ainda nao possui conta Asaas homologada para receber.',
+        code: 'SUBCONTA_NAO_HOMOLOGADA',
+      }, 409);
+    }
+    if (splitNoCheckout && !estabelecimentoSubconta?.asaas_wallet_id) {
+      return jsonResponse({ error: 'Estabelecimento ainda nao possui conta Asaas ativa para recebimento.' }, 409);
+    }
+
+    const entregadorSubconta = pedido.entregador_id
+      ? (isSandbox
+        ? await ensureSandboxSubcontaAtiva(
+          asaasBaseUrl,
+          supabase,
+          await findSubaccount(supabase, 'entregador', pedido.entregador_id),
+        )
+        : await findSubaccount(supabase, 'entregador', pedido.entregador_id))
       : null;
 
     const customerId = await ensureCustomer(
@@ -140,8 +165,20 @@ serve(async (req) => {
     }
 
     if (metodo === 'cartao_credito') {
+      const token = text(cartao?.creditCardToken) || await tokenizeCreditCard(
+        asaasBaseUrl,
+        asaasApiKey,
+        customerId,
+        cartao,
+      );
+      if (token) {
+        paymentPayload.creditCardToken = token;
+      } else {
+        Object.assign(paymentPayload, {
+          creditCard: buildCreditCard(cartao),
+        });
+      }
       Object.assign(paymentPayload, {
-        creditCard: buildCreditCard(cartao),
         creditCardHolderInfo: buildCreditCardHolder(cartao, clienteUsuario, pedido),
         remoteIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1',
       });
@@ -155,7 +192,7 @@ serve(async (req) => {
     });
     const asaasData = await asaasResponse.json().catch(() => ({}));
     if (!asaasResponse.ok) {
-      return json({ error: 'Asaas recusou a criacao da cobranca.', details: asaasData }, 502);
+      return jsonResponse({ error: 'Asaas recusou a criacao da cobranca.', details: asaasData }, 502);
     }
 
     const paymentId = text(asaasData.id);
@@ -223,7 +260,7 @@ serve(async (req) => {
       processado_em: new Date().toISOString(),
     });
 
-    return json({
+    return jsonResponse({
       paymentId,
       status: statusFromAsaas(text(asaasData.status)),
       invoiceUrl,
@@ -232,30 +269,9 @@ serve(async (req) => {
       pixCopiaECola: pix?.payload,
     });
   } catch (error) {
-    console.error('[asaas-criar-pagamento-pedido]', error);
-    const status = error instanceof HttpError ? error.status : 500;
-    return json({ error: error instanceof Error ? error.message : 'Erro inesperado.' }, status);
+    return errorToResponse(error, '[asaas-criar-pagamento-pedido]');
   }
 });
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-function requiredEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`Secret ${name} nao configurado.`);
-  return value;
-}
-
-class HttpError extends Error {
-  constructor(message: string, public status = 400) {
-    super(message);
-  }
-}
 
 async function authenticatedUser(req: Request, supabase: ReturnType<typeof createClient>) {
   const authHeader = req.headers.get('Authorization');
@@ -282,93 +298,22 @@ async function activeSubaccount(supabase: ReturnType<typeof createClient>, tipo:
   return row;
 }
 
-function resolveAsaasBaseUrl(): string {
-  const raw = (Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3')
-    .trim()
-    .replace(/\/$/, '');
-  const lower = raw.toLowerCase();
-  if (lower.includes('sandbox.asaas.com') && !lower.includes('api-sandbox')) {
-    return 'https://api-sandbox.asaas.com/v3';
-  }
-  return raw || 'https://api-sandbox.asaas.com/v3';
-}
-
-function sanitizeAsaasApiKey(raw: string): string {
-  let key = raw.trim().replace(/^\uFEFF/, '');
-  if (
-    (key.startsWith('"') && key.endsWith('"')) ||
-    (key.startsWith("'") && key.endsWith("'"))
-  ) {
-    key = key.slice(1, -1).trim();
-  }
-  return key;
-}
-
-function asaasHeaders(apiKey: string, json = true): Record<string, string> {
-  const headers: Record<string, string> = {
-    access_token: apiKey,
-    Accept: 'application/json',
-    'User-Agent': 'OpadocaExpress/1.0 (Deno; sandbox)',
-  };
-  if (json) headers['Content-Type'] = 'application/json';
-  return headers;
-}
-
-function asaasAuthHint(baseUrl: string, apiKey: string): string {
-  const sandboxUrl = baseUrl.includes('sandbox');
-  const sandboxKey = apiKey.includes('_hmlg_');
-  const prodKey = apiKey.includes('_prod_');
-  if (sandboxUrl && prodKey) {
-    return ' A chave ASAAS_API_KEY parece de producao, mas a URL e sandbox.';
-  }
-  if (!sandboxUrl && sandboxKey) {
-    return ' A chave ASAAS_API_KEY parece de sandbox, mas a URL e de producao.';
-  }
-  if (!apiKey.startsWith('$aact_')) {
-    return ' A chave nao comeca com $aact_ — no PowerShell use aspas para nao perder o $.';
-  }
-  return ' Gere uma nova chave em sandbox.asaas.com > Integracoes > API Key e atualize o secret ASAAS_API_KEY no Supabase.';
-}
-
-async function assertAsaasMasterKey(asaasBaseUrl: string, apiKey: string) {
-  const response = await fetch(`${asaasBaseUrl}/myAccount`, {
-    headers: asaasHeaders(apiKey, false),
-  });
-  if (response.ok) return;
-  const data = await response.json().catch(() => ({}));
-  const host = (() => {
-    try {
-      return new URL(asaasBaseUrl).host;
-    } catch {
-      return asaasBaseUrl;
-    }
-  })();
-  console.error('[asaas-criar-pagamento-pedido] myAccount', response.status, {
-    host,
-    startsDollar: apiKey.startsWith('$'),
-    sandboxKey: apiKey.includes('_hmlg_'),
-    prodKey: apiKey.includes('_prod_'),
-    body: data,
-  });
-  throw new HttpError(
-    `Chave Asaas invalida para ${host}.${asaasAuthHint(asaasBaseUrl, apiKey)}`,
-    503,
-  );
-}
-
-async function approveSandboxAccount(asaasBaseUrl: string, apiKey: string) {
-  if (!asaasBaseUrl.includes('sandbox') || !apiKey) return null;
-  const response = await fetch(`${asaasBaseUrl}/sandbox/myAccount/approve`, {
+async function tokenizeCreditCard(
+  baseUrl: string,
+  apiKey: string,
+  customerId: string,
+  cartao?: Record<string, unknown>,
+): Promise<string> {
+  if (text(cartao?.creditCardToken)) return text(cartao?.creditCardToken);
+  const card = buildCreditCard(cartao);
+  const response = await fetch(`${baseUrl}/creditCard/tokenizeCreditCard`, {
     method: 'POST',
     headers: asaasHeaders(apiKey),
-    body: '{}',
+    body: JSON.stringify({ customer: customerId, creditCard: card }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error('[asaas-criar-pagamento-pedido] sandbox approve', response.status, data);
-    return null;
-  }
-  return data;
+  if (!response.ok) return '';
+  return text(data.creditCardToken);
 }
 
 async function ensureSandboxSubcontaAtiva(

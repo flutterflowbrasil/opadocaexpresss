@@ -7,6 +7,7 @@ class CobrancaAsaasModel {
   final String? pixCopiaECola; // texto para copia-e-cola PIX
   final String? invoiceUrl;    // link de fatura
   final String? bankSlipUrl;   // link do boleto, quando houver
+  final String? status;
 
   const CobrancaAsaasModel({
     required this.paymentId,
@@ -14,6 +15,7 @@ class CobrancaAsaasModel {
     this.pixCopiaECola,
     this.invoiceUrl,
     this.bankSlipUrl,
+    this.status,
   });
 
   factory CobrancaAsaasModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class CobrancaAsaasModel {
         pixCopiaECola: json['pixCopiaECola'] as String?,
         invoiceUrl: json['invoiceUrl'] as String?,
         bankSlipUrl: json['bankSlipUrl'] as String?,
+        status: json['status'] as String?,
       );
     } catch (e, st) {
       debugPrint('[CobrancaAsaasModel.fromJson] ERRO: $e\nJSON: $json\n$st');

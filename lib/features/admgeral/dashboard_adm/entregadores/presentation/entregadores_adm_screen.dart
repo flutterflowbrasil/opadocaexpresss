@@ -164,6 +164,9 @@ class _EntregadoresAdmScreenState extends ConsumerState<EntregadoresAdmScreen> {
               onSalvarEndereco: (e, endereco) async {
                 await ctrl.salvarEndereco(e.id, endereco);
               },
+              onRecuperarEnderecoAsaas: (e) {
+                return ctrl.recuperarEnderecoAsaas(e.id);
+              },
             ),
           ),
 

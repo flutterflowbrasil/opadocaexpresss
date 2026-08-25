@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/shared/widgets/responsive_layout.dart';
 import 'package:flutter/foundation.dart';
 
-class PreCadastroScreen extends StatelessWidget {
+class PreCadastroScreen extends ConsumerWidget {
   const PreCadastroScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Colors based on design
     final primaryColor = const Color(0xFFFF7034);
     final burgundyColor = const Color(0xFF7D2D35);
@@ -20,6 +22,8 @@ class PreCadastroScreen extends StatelessWidget {
     final cardDark = const Color(0xFF292524);
 
     final textColor = isDark ? const Color(0xFFFFE0B2) : burgundyColor;
+    final cfg = ref.watch(plataformaRuntimeConfigProvider).valueOrNull ??
+        const PlataformaRuntimeConfig();
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
@@ -32,6 +36,7 @@ class PreCadastroScreen extends StatelessWidget {
             textColor: textColor,
             isDark: isDark,
             cardColor: isDark ? cardDark : cardLight,
+            cfg: cfg,
           ),
           desktop: (context) => _buildContent(
             context,
@@ -40,6 +45,7 @@ class PreCadastroScreen extends StatelessWidget {
             textColor: textColor,
             isDark: isDark,
             cardColor: isDark ? cardDark : cardLight,
+            cfg: cfg,
           ),
         ),
       ),
@@ -53,6 +59,7 @@ class PreCadastroScreen extends StatelessWidget {
     required Color textColor,
     required bool isDark,
     required Color cardColor,
+    required PlataformaRuntimeConfig cfg,
   }) {
     final bool isWebDesktop = kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.windows ||
@@ -214,7 +221,7 @@ class PreCadastroScreen extends StatelessWidget {
                         textColor: textColor,
                         primaryColor: primaryColor,
                       ),
-                      if (isWebDesktop) ...[
+                      if (isWebDesktop && cfg.permiteCadastroEstab) ...[
                         const SizedBox(height: 16),
                         _buildOptionCard(
                           context: context,
@@ -231,6 +238,7 @@ class PreCadastroScreen extends StatelessWidget {
                           primaryColor: primaryColor,
                         ),
                       ],
+                      if (cfg.permiteCadastroEntregador) ...[
                       const SizedBox(height: 16),
                       _buildOptionCard(
                         context: context,
@@ -249,6 +257,7 @@ class PreCadastroScreen extends StatelessWidget {
                         textColor: textColor,
                         primaryColor: primaryColor,
                       ),
+                      ],
                     ],
                   ),
                 ),

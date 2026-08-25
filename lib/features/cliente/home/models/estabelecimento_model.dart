@@ -1,3 +1,5 @@
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
+
 class EstabelecimentoModel {
   final String id;
   final String nome; // mapeado de razao_social ou nome fantasia
@@ -72,14 +74,20 @@ class EstabelecimentoModel {
     return '$tempo min';
   }
 
-  /// Taxa de entrega como double — seguro para int e double vindos do JSON.
+  /// Fallback legado. Preferir [taxaEntregaDaPlataforma].
   double get taxaEntregaValor {
     final taxa = configEntrega?['taxa_entrega_fixa'];
     if (taxa == null) return 0.0;
     return (taxa as num).toDouble();
   }
 
-  String get taxaEntregaFormatada {
+  double taxaEntregaDaPlataforma(PlataformaRuntimeConfig cfg,
+      {double distanciaKm = 0, double subtotal = 0}) {
+    return cfg.taxaEntrega(distanciaKm: distanciaKm, subtotal: subtotal);
+  }
+
+  String taxaEntregaFormatada([PlataformaRuntimeConfig? cfg]) {
+    if (cfg != null) return cfg.taxaAPartirDeLabel;
     final valor = taxaEntregaValor;
     if (configEntrega?['taxa_entrega_fixa'] == null) return 'Consultar';
     if (valor == 0) return 'Grátis';

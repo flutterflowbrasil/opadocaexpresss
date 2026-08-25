@@ -16,15 +16,37 @@ class FinanceiroRepository {
   // De acordo com as outras telas, geralmente filtramos pelo user id ou simplesmente limit 1.
   Future<EstabelecimentoFinanceiro?> buscarEstabelecimento() async {
     try {
+      final uid = _supabase.auth.currentUser?.id;
+      if (uid == null) return null;
       final response = await _supabase
           .from('estabelecimentos')
           .select(
               'id, nome_fantasia, faturamento_total, total_pedidos, dados_bancarios')
-          .limit(1)
+          .eq('usuario_id', uid)
           .maybeSingle();
 
       if (response != null) {
-        return EstabelecimentoFinanceiro.fromJson(response);
+        final estab = EstabelecimentoFinanceiro.fromJson(response);
+        try {
+          final sub = await _supabase
+              .from('v_asaas_subcontas_app')
+              .select('status_conta, homologada')
+              .eq('entidade_tipo', 'estabelecimento')
+              .eq('entidade_id', estab.id)
+              .maybeSingle();
+          if (sub != null) {
+            return EstabelecimentoFinanceiro(
+              id: estab.id,
+              nomeFantasia: estab.nomeFantasia,
+              faturamentoTotal: estab.faturamentoTotal,
+              totalPedidos: estab.totalPedidos,
+              dadosBancarios: estab.dadosBancarios,
+              asaasStatus: sub['status_conta'] as String?,
+              asaasHomologada: sub['homologada'] == true,
+            );
+          }
+        } catch (_) {}
+        return estab;
       }
       return null;
     } catch (_) {
@@ -39,7 +61,7 @@ class FinanceiroRepository {
       final response = await _supabase
           .from('pedidos')
           .select(
-              'id, numero_pedido, status, total, subtotal_produtos, taxa_entrega, desconto_cupom, pagamento_metodo, pagamento_status, created_at')
+              'id, numero_pedido, status, total, subtotal_produtos, taxa_entrega, desconto_cupom, pagamento_metodo, pagamento_status, repasse_processado, created_at')
           .eq('estabelecimento_id', estabelecimentoId)
           .gte('created_at', inicio.toIso8601String())
           .lte('created_at', fim.toIso8601String())
@@ -61,7 +83,7 @@ class FinanceiroRepository {
       final response = await _supabase
           .from('splits_pagamento')
           .select(
-              'id, status, estabelecimento_valor, pedidos!inner(numero_pedido, created_at, estabelecimento_id)')
+              'id, status, estabelecimento_valor, repasse_estab_processado, asaas_transfer_ids, pedidos!inner(numero_pedido, created_at, estabelecimento_id)')
           .eq('pedidos.estabelecimento_id', estabelecimentoId)
           .gte('pedidos.created_at', inicio.toIso8601String())
           .lte('pedidos.created_at', fim.toIso8601String())

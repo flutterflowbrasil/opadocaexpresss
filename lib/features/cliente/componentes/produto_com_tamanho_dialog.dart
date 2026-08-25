@@ -4,6 +4,7 @@ import 'package:padoca_express/features/estabelecimento/models/produto_model.dar
 import 'package:padoca_express/features/estabelecimento/models/produto_opcao_model.dart';
 import 'package:padoca_express/features/estabelecimento/dashboard/produtos/models/produto_preco_tamanho_model.dart';
 import 'package:padoca_express/features/cliente/home/models/estabelecimento_model.dart';
+import 'package:padoca_express/features/cliente/carrinho/opcoes_selecionadas_codec.dart';
 
 class ProdutoComTamanhoDialog extends StatefulWidget {
   final ProdutoModel produto;
@@ -105,24 +106,11 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
   }
 
   List<Map<String, dynamic>> _buildOpcoesSelecionadas() {
-    final result = <Map<String, dynamic>>[];
-    for (final grupo in widget.produto.opcoes) {
-      final itensSelecionados = _selecoes[_grupoKey(grupo)] ?? [];
-      if (itensSelecionados.isEmpty) continue;
-      result.add({
-        'grupo_id': grupo.id ?? grupo.nome,
-        'grupo_nome': grupo.nome,
-        'tipo': grupo.tipo,
-        'itens': itensSelecionados
-            .map((item) => {
-                  'item_id': item.id ?? item.nome,
-                  'nome': item.nome,
-                  'preco': item.precoAdicional ?? 0,
-                })
-            .toList(),
-      });
-    }
-    return result;
+    return OpcoesSelecionadasCodec.fromSelecoes(
+      grupos: widget.produto.opcoes,
+      selecoes: _selecoes,
+      grupoKey: _grupoKey,
+    );
   }
 
   @override
@@ -369,7 +357,7 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
 
                         // Opções Adicionais
                         ...widget.produto.opcoes.map((opcao) {
-                          final isRadio = opcao.tipo == 'radio';
+                          final isRadio = opcao.isEscolhaUnica;
                           final selecionados =
                               _selecoes[_grupoKey(opcao)]?.length ?? 0;
                           final maxAtingido = selecionados >= opcao.maximo;

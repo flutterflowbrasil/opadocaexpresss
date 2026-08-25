@@ -1050,6 +1050,25 @@ class _FinanceiroScreenState extends ConsumerState<FinanceiroScreen> {
       child: Column(
         children: [
           const CardHead(
+              title: 'Recebimento Asaas',
+              icon: Icons.account_balance_wallet_outlined,
+              sub: 'KYC e saques acontecem no portal Asaas'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                state.estabelecimento?.asaasHomologada == true
+                    ? 'Conta homologada (${state.estabelecimento?.asaasStatus ?? 'active'}). Saques no portal Asaas.'
+                    : (state.estabelecimento?.asaasStatus == null
+                        ? 'Conta Asaas ainda não criada. O admin da plataforma precisa concluir o onboarding.'
+                        : 'Conta Asaas: ${state.estabelecimento!.asaasStatus}. Conclua a validação para receber o repasse.'),
+                style: GoogleFonts.publicSans(
+                    fontSize: 12, color: const Color(0xFF6B7280)),
+              ),
+            ),
+          ),
+          const CardHead(
               title: 'Dados bancários cadastrados',
               icon: Icons.account_balance_outlined,
               sub: 'Usados para repasse financeiro'),

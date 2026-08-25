@@ -22,8 +22,53 @@ class ConfigTabEntrega extends ConsumerWidget {
     return Column(
       children: [
         ConfigSection(
-          titulo: 'Taxas de Entrega',
-          subtitulo: 'Valores cobrados ao cliente na entrega',
+          titulo: 'Modelo ativo no checkout',
+          subtitulo:
+              'Taxa do checkout usa faixa + km excedente da plataforma. Estabelecimentos herdam estes valores.',
+          rows: [
+            ConfigRow(
+              label: 'Km incluídos na taxa base',
+              descricao: 'Distância coberta pelo valor base',
+              editavel: editable('entrega_base_km'),
+              control: ConfigNumInput(
+                value: val('entrega_base_km'),
+                suffix: 'km',
+                onChanged: editable('entrega_base_km')
+                    ? (v) => set('entrega_base_km', v)
+                    : null,
+              ),
+            ),
+            ConfigRow(
+              label: 'Valor base da corrida',
+              descricao: 'Taxa até a quilometragem base',
+              editavel: editable('entrega_base_valor'),
+              control: ConfigNumInput(
+                value: val('entrega_base_valor'),
+                prefix: 'R\$ ',
+                onChanged: editable('entrega_base_valor')
+                    ? (v) => set('entrega_base_valor', v)
+                    : null,
+              ),
+            ),
+            ConfigRow(
+              label: 'Valor por km extra',
+              descricao: 'Cobrado acima da quilometragem base',
+              editavel: editable('entrega_valor_km_excedente'),
+              control: ConfigNumInput(
+                value: val('entrega_valor_km_excedente'),
+                prefix: 'R\$ ',
+                suffix: '/km',
+                onChanged: editable('entrega_valor_km_excedente')
+                    ? (v) => set('entrega_valor_km_excedente', v)
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        ConfigSection(
+          titulo: 'Taxas de Entrega (legado)',
+          subtitulo:
+              'Não entram no checkout. Use o modelo ativo acima (faixa + km excedente).',
           rows: [
             ConfigRow(
               label: 'Taxa de entrega fixa padrão',

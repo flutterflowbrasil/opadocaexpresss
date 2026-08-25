@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:padoca_express/core/config/plataforma_runtime_config.dart';
 import 'package:padoca_express/core/supabase/supabase_config.dart';
 import 'package:padoca_express/features/cliente/carrinho/controllers/carrinho_controller.dart';
 import 'package:padoca_express/features/cliente/localizacao/endereco_model.dart';
@@ -12,11 +13,12 @@ import 'package:padoca_express/features/cliente/pagamento/state/pagamento_state.
 class PagamentoController extends StateNotifier<PagamentoState> {
   final PagamentoRepository _repository;
   final SupabaseClient _supabase;
+  final Ref _ref;
   RealtimeChannel? _realtimeChannel;
 
-  static const int _pixExpiracaoSegundos = 300; // 5 minutos
+  static const int _pixExpiracaoSegundos = 24 * 60 * 60; // alinhado ao dueDate Asaas
 
-  PagamentoController(this._repository, this._supabase)
+  PagamentoController(this._repository, this._supabase, this._ref)
       : super(const PagamentoState());
 
   @override
@@ -63,7 +65,7 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         segundosRestantes: segundosRestantes,
       );
 
-      _iniciarRealtimePix(pedidoId);
+      _iniciarRealtimePagamento(pedidoId);
       return true;
     } catch (e) {
       debugPrint('[PagamentoController] verificarPixPendente erro: $e');
@@ -77,6 +79,7 @@ class PagamentoController extends StateNotifier<PagamentoState> {
     required EnderecoCliente endereco,
     required String metodoPagamento,
     DadosCartaoModel? dadosCartao,
+    double? distanciaRotaKm,
   }) async {
     state = state.copyWith(
       isSubmitting: true,
@@ -105,8 +108,15 @@ class PagamentoController extends StateNotifier<PagamentoState> {
           estabelecimentoId: estabelecimento.id,
           enderecoEntregaId: enderecoId,
           pagamentoMetodo: metodoPagamento,
-          cupomCodigo: carrinho.cupomAplicado?.codigo,
+          cupomCodigo: (_ref
+                      .read(plataformaRuntimeConfigProvider)
+                      .valueOrNull
+                      ?.cuponsAtivos ??
+                  true)
+              ? carrinho.cupomAplicado?.codigo
+              : null,
           observacaoGeral: carrinho.observacaoGeral,
+          distanciaRotaKm: distanciaRotaKm,
         );
       } catch (e) {
         final msg = e.toString();
@@ -130,20 +140,23 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         dadosCartao: dadosCartao?.toJson(),
       );
 
-      // 3. Atualizar estado baseado no método
       final isPix = metodoPagamento == 'pix';
+      final jaConfirmado = cobranca.status == 'confirmado';
+      final status = isPix
+          ? PagamentoStatus.aguardandoPix
+          : (jaConfirmado
+              ? PagamentoStatus.confirmado
+              : PagamentoStatus.aguardandoConfirmacao);
 
       state = state.copyWith(
         isSubmitting: false,
         pedidoCriadoId: pedidoId,
         cobranca: cobranca,
-        status: isPix
-            ? PagamentoStatus.aguardandoPix
-            : PagamentoStatus.confirmado,
+        status: status,
         segundosRestantes: isPix ? _pixExpiracaoSegundos : null,
       );
 
-      if (isPix) _iniciarRealtimePix(pedidoId);
+      if (!jaConfirmado) _iniciarRealtimePagamento(pedidoId);
     } catch (e) {
       debugPrint('[PagamentoController] finalizarPedido erro: $e');
       state = state.copyWith(
@@ -157,10 +170,10 @@ class PagamentoController extends StateNotifier<PagamentoState> {
   }
 
   // ── Realtime: escutar confirmação do pagamento ────────────────────────────
-  void _iniciarRealtimePix(String pedidoId) {
+  void _iniciarRealtimePagamento(String pedidoId) {
     _realtimeChannel?.unsubscribe();
     _realtimeChannel = _supabase
-        .channel('pix_pagamento_$pedidoId')
+        .channel('pagamento_$pedidoId')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -222,5 +235,5 @@ final pagamentoControllerProvider = StateNotifierProvider.autoDispose<
     PagamentoController, PagamentoState>((ref) {
   final repo = ref.watch(pagamentoRepositoryProvider);
   final supabase = ref.watch(supabaseClientProvider);
-  return PagamentoController(repo, supabase);
+  return PagamentoController(repo, supabase, ref);
 });
