@@ -294,63 +294,76 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              ...widget.produto.precosTamanhos
-                                  .where((t) => t.ativo)
-                                  .map((tamanho) {
-                                final isSelected = _tamanhoSelecionado?.id == tamanho.id;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _tamanhoSelecionado = tamanho;
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: surfaceColor,
-                                      border: Border.all(
-                                          color: isSelected
-                                              ? primaryColor
-                                              : borderColor),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Radio<String>(
-                                          value: tamanho.id,
-                                          groupValue: _tamanhoSelecionado?.id,
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _tamanhoSelecionado = tamanho;
-                                            });
-                                          },
-                                          activeColor: primaryColor,
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                        Expanded(
-                                          child: Text(tamanho.nomeTamanho,
-                                              style: GoogleFonts.outfit(
-                                                  fontWeight: FontWeight.w500,
-                                                  color: textColor,
-                                                  fontSize: 14)),
-                                        ),
-                                        Text(
-                                          _formatMoney(tamanho.preco),
-                                          style: GoogleFonts.outfit(
+                              RadioGroup<String>(
+                                groupValue: _tamanhoSelecionado?.id,
+                                onChanged: (val) {
+                                  if (val == null) return;
+                                  setState(() {
+                                    _tamanhoSelecionado = widget
+                                        .produto.precosTamanhos
+                                        .where((t) => t.ativo)
+                                        .firstWhere((t) => t.id == val);
+                                  });
+                                },
+                                child: Column(
+                                  children: widget.produto.precosTamanhos
+                                      .where((t) => t.ativo)
+                                      .map((tamanho) {
+                                    final isSelected =
+                                        _tamanhoSelecionado?.id == tamanho.id;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _tamanhoSelecionado = tamanho;
+                                        });
+                                      },
+                                      child: Container(
+                                        margin:
+                                            const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: surfaceColor,
+                                          border: Border.all(
                                               color: isSelected
                                                   ? primaryColor
-                                                  : Colors.grey[500],
-                                              fontSize: 14,
-                                              fontWeight: isSelected
-                                                  ? FontWeight.bold
-                                                  : FontWeight.w500),
+                                                  : borderColor),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
+                                        child: Row(
+                                          children: [
+                                            Radio<String>(
+                                              value: tamanho.id,
+                                              activeColor: primaryColor,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            Expanded(
+                                              child: Text(tamanho.nomeTamanho,
+                                                  style: GoogleFonts.outfit(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: textColor,
+                                                      fontSize: 14)),
+                                            ),
+                                            Text(
+                                              _formatMoney(tamanho.preco),
+                                              style: GoogleFonts.outfit(
+                                                  color: isSelected
+                                                      ? primaryColor
+                                                      : Colors.grey[500],
+                                                  fontSize: 14,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -426,7 +439,9 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                Column(
+                                Builder(
+                                  builder: (context) {
+                                    final itemsColumn = Column(
                                   children: opcao.itens.map((item) {
                                     final isSelected =
                                         _selecoes[_grupoKey(opcao)]?.any((i) =>
@@ -470,12 +485,6 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
                                             isRadio
                                                 ? Radio<String>(
                                                     value: item.nome,
-                                                    groupValue: isSelected
-                                                        ? item.nome
-                                                        : null,
-                                                    onChanged: (val) =>
-                                                        _atualizarRadio(
-                                                            opcao, item),
                                                     activeColor: primaryColor,
                                                     visualDensity:
                                                         VisualDensity.compact,
@@ -537,7 +546,26 @@ class _ProdutoComTamanhoDialogState extends State<ProdutoComTamanhoDialog> {
                                       ),
                                     );
                                   }).toList(),
-                                )
+                                );
+                                    if (!isRadio) return itemsColumn;
+                                    final selected = _selecoes[_grupoKey(opcao)];
+                                    return RadioGroup<String>(
+                                      groupValue: (selected != null &&
+                                              selected.isNotEmpty)
+                                          ? selected.first.nome
+                                          : null,
+                                      onChanged: (val) {
+                                        if (val == null) return;
+                                        _atualizarRadio(
+                                          opcao,
+                                          opcao.itens
+                                              .firstWhere((i) => i.nome == val),
+                                        );
+                                      },
+                                      child: itemsColumn,
+                                    );
+                                  },
+                                ),
                               ],
                             ),
                           );

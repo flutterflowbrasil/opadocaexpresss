@@ -220,7 +220,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
           style: GoogleFonts.dmSans(
             fontSize: 14,
             height: 1.5,
-            color: _textColor.withOpacity(0.6),
+            color: _textColor.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 32),
@@ -251,7 +251,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: _orange.withOpacity(0.10),
+              color: _orange.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -259,7 +259,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: _orange.withOpacity(0.16),
+                  color: _orange.withValues(alpha: 0.16),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -293,7 +293,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 14,
-              color: _textColor.withOpacity(0.52),
+              color: _textColor.withValues(alpha: 0.52),
               height: 1.5,
             ),
           ),
@@ -307,7 +307,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Campo: Nova senha ──
-              _Label('Nova senha'),
+              _label('Nova senha'),
               const SizedBox(height: 8),
               _buildInput(
                 controller: _senhaController,
@@ -350,7 +350,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
               const SizedBox(height: 22),
 
               // ── Campo: Confirmar senha ──
-              _Label('Confirmar senha'),
+              _label('Confirmar senha'),
               const SizedBox(height: 8),
               _buildInput(
                 controller: _confirmarSenhaController,
@@ -413,7 +413,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _orange,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: _orange.withOpacity(0.50),
+              disabledBackgroundColor: _orange.withValues(alpha: 0.50),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -462,7 +462,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: _green.withOpacity(0.10),
+              color: _green.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -470,7 +470,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
                 width: 68,
                 height: 68,
                 decoration: BoxDecoration(
-                  color: _green.withOpacity(0.18),
+                  color: _green.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -502,7 +502,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
           textAlign: TextAlign.center,
           style: GoogleFonts.dmSans(
             fontSize: 14,
-            color: _textColor.withOpacity(0.52),
+            color: _textColor.withValues(alpha: 0.52),
             height: 1.6,
           ),
         ),
@@ -514,9 +514,9 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _green.withOpacity(0.06),
+            color: _green.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _green.withOpacity(0.22)),
+            border: Border.all(color: _green.withValues(alpha: 0.22)),
           ),
           child: Row(
             children: [
@@ -528,7 +528,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _green.withOpacity(0.85),
+                    color: _green.withValues(alpha: 0.85),
                     height: 1.4,
                   ),
                 ),
@@ -616,7 +616,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: matchOk ? green.withOpacity(0.5) : _borderColor,
+            color: matchOk ? green.withValues(alpha: 0.5) : _borderColor,
           ),
         ),
         focusedBorder: focusedBorder,
@@ -633,7 +633,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
   }
 
   // Label padrão
-  Widget _Label(String text) => Text(
+  Widget _label(String text) => Text(
         text,
         style: GoogleFonts.dmSans(
           fontSize: 14,

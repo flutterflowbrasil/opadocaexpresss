@@ -447,7 +447,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           _StatItem(
                             icon: Icons.star_rounded,
                             valor:
-                                '${(_perfil['avaliacao_media'] as num?)?.toStringAsFixed(1) ?? '5.0'}',
+                                (_perfil['avaliacao_media'] as num?)?.toStringAsFixed(1) ?? '5.0',
                             label: 'Avaliação',
                           ),
                           _StatItem(
@@ -632,7 +632,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             cor: _red,
                             onTap: () async {
                               await Supabase.instance.client.auth.signOut();
-                              if (mounted) context.go('/login');
+                              if (!context.mounted) return;
+                              context.go('/login');
                             },
                           ),
                         ],

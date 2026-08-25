@@ -1974,10 +1974,7 @@ class _TabBasico extends StatelessWidget {
           const SizedBox(height: 8),
 
           DropdownButtonFormField<String>(
-
-            // ignore: deprecated_member_use
-
-            value: tipoProduto,
+            initialValue: tipoProduto,
 
             style: GoogleFonts.publicSans(
 
@@ -2553,9 +2550,9 @@ class _TabPreco extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 24),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.06),
+                color: Colors.blue.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [

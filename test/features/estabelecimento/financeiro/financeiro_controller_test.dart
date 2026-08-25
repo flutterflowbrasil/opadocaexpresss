@@ -109,8 +109,6 @@ void main() {
 
       await controller.carregarDadosIniciais();
 
-      print('DEBUG ERROR MESSAGE: ${controller.state.error}');
-
       expect(controller.state.error?.contains('Falha de Rede'), isTrue);
       expect(controller.state.isLoading, isFalse);
     });

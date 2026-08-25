@@ -238,7 +238,7 @@ class _CategoriaFormModalState extends ConsumerState<CategoriaFormModal> {
                                 value: _ativa,
                                 onChanged: (val) => setState(() => _ativa = val),
                                 contentPadding: EdgeInsets.zero,
-                                activeColor: const Color(0xFFF97316),
+                                activeThumbColor: const Color(0xFFF97316),
                               ),
                             ),
                           ],

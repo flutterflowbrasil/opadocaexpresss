@@ -8,7 +8,7 @@
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// conditional import: dart:html no Web, no-op em mobile/desktop
+// conditional import: package:web no Web, no-op em mobile/desktop
 import '_maps_loader_impl.dart';
 
 void _log(String msg) {
@@ -39,7 +39,7 @@ class MapsLoader {
       }
 
       // loadMapsApi é resolvido por _maps_loader_impl.dart:
-      // → _maps_web.dart  no browser (injeta <script> via dart:html)
+      // → _maps_web.dart  no browser (injeta <script> via package:web)
       // → _maps_stub.dart no mobile (no-op)
       await loadMapsApi(key);
       _loaded = true;

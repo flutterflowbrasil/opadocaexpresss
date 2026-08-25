@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:padoca_express/core/app/app_update_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BaixarAppEntregadorScreen extends StatelessWidget {
   const BaixarAppEntregadorScreen({super.key});
@@ -80,9 +82,7 @@ class BaixarAppEntregadorScreen extends StatelessWidget {
                       icon: Icons.android,
                       title: 'Disponível no',
                       store: 'Google Play',
-                      onTap: () {
-                        // TODO: Adicionar link do Google Play fornecido pelo usuário
-                      },
+                      onTap: _abrirGooglePlay,
                     ),
                   ],
                 ),
@@ -105,6 +105,16 @@ class BaixarAppEntregadorScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static Future<void> _abrirGooglePlay() async {
+    final uri = Uri.parse(
+      'https://play.google.com/store/apps/details?id=$kPlayStorePackageId',
+    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    }
   }
 
   Widget _buildStoreButton({

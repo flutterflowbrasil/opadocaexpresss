@@ -327,7 +327,9 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                                     ),
                                   ),
                                 const SizedBox(height: 12),
-                                Column(
+                                Builder(
+                                  builder: (context) {
+                                    final itemsColumn = Column(
                                   children: opcao.itens.map((item) {
                                     final listSelecionada =
                                         _selecoes[_grupoKey(opcao)] ?? [];
@@ -374,12 +376,6 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                                             isRadio
                                                 ? Radio<String>(
                                                     value: item.nome,
-                                                    groupValue: isSelected
-                                                        ? item.nome
-                                                        : null,
-                                                    onChanged: (val) =>
-                                                        _atualizarRadio(
-                                                            opcao, item),
                                                     activeColor: primaryColor,
                                                     visualDensity:
                                                         VisualDensity.compact,
@@ -441,7 +437,26 @@ class _ProdutoVariavelDialogState extends State<ProdutoVariavelDialog> {
                                       ),
                                     );
                                   }).toList(),
-                                )
+                                );
+                                    if (!isRadio) return itemsColumn;
+                                    final selected = _selecoes[_grupoKey(opcao)];
+                                    return RadioGroup<String>(
+                                      groupValue: (selected != null &&
+                                              selected.isNotEmpty)
+                                          ? selected.first.nome
+                                          : null,
+                                      onChanged: (val) {
+                                        if (val == null) return;
+                                        _atualizarRadio(
+                                          opcao,
+                                          opcao.itens
+                                              .firstWhere((i) => i.nome == val),
+                                        );
+                                      },
+                                      child: itemsColumn,
+                                    );
+                                  },
+                                ),
                               ],
                             ),
                           );

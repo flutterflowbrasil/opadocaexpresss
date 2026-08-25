@@ -401,7 +401,7 @@ class _ToggleRow extends StatelessWidget {
             Switch(
               value: value,
               onChanged: onChanged,
-              activeColor: _orange,
+              activeThumbColor: _orange,
               activeTrackColor: _orange.withValues(alpha: .3),
               inactiveTrackColor: _bg3,
               inactiveThumbColor: _text3,

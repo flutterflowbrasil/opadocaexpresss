@@ -17,7 +17,6 @@ class ClienteAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final bool showSearch;
 
   static const _primaryColor = Color(0xFFFF7034);
-  static const _secondaryColor = Color(0xFF7D2D35);
 
   const ClienteAppBar({
     super.key,

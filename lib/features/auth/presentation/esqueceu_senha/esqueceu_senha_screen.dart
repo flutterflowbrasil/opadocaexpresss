@@ -96,7 +96,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: _orange.withOpacity(0.12),
+                      color: _orange.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -104,7 +104,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: _orange.withOpacity(0.18),
+                          color: _orange.withValues(alpha: 0.18),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -139,7 +139,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      color: _textColor.withOpacity(0.55),
+                      color: _textColor.withValues(alpha: 0.55),
                       height: 1.5,
                     ),
                   ),
@@ -191,7 +191,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                           'Não recebeu? ',
                           style: GoogleFonts.dmSans(
                             fontSize: 13,
-                            color: _textColor.withOpacity(0.5),
+                            color: _textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         MouseRegion(
@@ -304,21 +304,21 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                     Container(
                       padding: const EdgeInsets.all(13),
                       decoration: BoxDecoration(
-                        color: _orange.withOpacity(0.07),
+                        color: _orange.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _orange.withOpacity(0.18)),
+                        border: Border.all(color: _orange.withValues(alpha: 0.18)),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.info_outline_rounded,
-                              size: 16, color: _orange.withOpacity(0.8)),
+                              size: 16, color: _orange.withValues(alpha: 0.8)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Você receberá um link válido por 1 hora.',
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
-                                color: _orange.withOpacity(0.85),
+                                color: _orange.withValues(alpha: 0.85),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -338,7 +338,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _orange,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: _orange.withOpacity(0.55),
+                          disabledBackgroundColor: _orange.withValues(alpha: 0.55),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -373,7 +373,7 @@ class _EsqueceuSenhaScreenState extends ConsumerState<EsqueceuSenhaScreen> {
                           'Lembrou a senha? ',
                           style: GoogleFonts.dmSans(
                             fontSize: 13,
-                            color: _textColor.withOpacity(0.5),
+                            color: _textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         MouseRegion(
@@ -435,7 +435,7 @@ class _EmailSentCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.12),
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -471,7 +471,7 @@ class _EmailSentCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 12,
-              color: textColor.withOpacity(0.45),
+              color: textColor.withValues(alpha: 0.45),
               height: 1.5,
             ),
           ),

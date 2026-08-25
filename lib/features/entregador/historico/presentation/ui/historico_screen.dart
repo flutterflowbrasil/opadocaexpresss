@@ -265,7 +265,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: concluida ? _green.withOpacity(.1) : _red.withOpacity(.1),
+                              color: concluida ? _green.withValues(alpha: .1) : _red.withValues(alpha: .1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Center(

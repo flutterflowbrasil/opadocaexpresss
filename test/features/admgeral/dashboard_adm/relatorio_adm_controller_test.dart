@@ -59,7 +59,7 @@ void main() {
     mockRepo = MockRelatorioAdmRepository();
   });
 
-  ProviderContainer _makeContainer() {
+  ProviderContainer makeContainer() {
     final container = ProviderContainer(
       overrides: [
         relatorioAdmRepositoryProvider.overrideWithValue(mockRepo),
@@ -75,7 +75,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenAnswer((_) async => _buildSnapshot());
 
-      final container = _makeContainer();
+      final container = makeContainer();
       final state = container.read(relatorioAdmControllerProvider);
 
       expect(state.isLoading, isTrue);
@@ -91,7 +91,7 @@ void main() {
       final snap = _buildSnapshot(pedidosCount: 10, usuariosCount: 5);
       when(() => mockRepo.fetchSnapshot(any())).thenAnswer((_) async => snap);
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
 
       await pumpEventQueue();
@@ -109,7 +109,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenThrow(Exception('Falha de conexão'));
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
 
       await pumpEventQueue();
@@ -127,7 +127,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenAnswer((_) async => _buildSnapshot());
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
       await pumpEventQueue();
 
@@ -144,7 +144,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenAnswer((_) async => _buildSnapshot());
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
       await pumpEventQueue();
 
@@ -162,7 +162,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenAnswer((_) async => _buildSnapshot());
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
       await pumpEventQueue();
 
@@ -178,7 +178,7 @@ void main() {
       when(() => mockRepo.fetchSnapshot(any()))
           .thenAnswer((_) async => _buildSnapshot());
 
-      final container = _makeContainer();
+      final container = makeContainer();
       container.listen(relatorioAdmControllerProvider, (_, __) {});
       await pumpEventQueue();
 

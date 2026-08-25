@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:padoca_express/core/utils/account_uniqueness_validator.dart';
 import 'package:padoca_express/core/utils/brazilian_document_validator.dart';
@@ -305,9 +303,8 @@ class AuthRepository {
           .eq('estabelecimento_id', estabelecimentoId)
           .eq('tipo', tipo)
           .limit(1);
-      final existing = existingRows is List && existingRows.isNotEmpty
-          ? existingRows.first
-          : null;
+      final existing =
+          existingRows.isNotEmpty ? existingRows.first : null;
 
       if (existing == null) {
         await _supabase.from('estabelecimento_documentos').insert(payload);
@@ -898,9 +895,8 @@ class AuthRepository {
         .eq('estabelecimento_id', estabelecimentoId)
         .eq('tipo', tipo)
         .limit(1);
-    final existing = existingRows is List && existingRows.isNotEmpty
-        ? existingRows.first
-        : null;
+    final existing =
+        existingRows.isNotEmpty ? existingRows.first : null;
 
     final payload = {
       'estabelecimento_id': estabelecimentoId,

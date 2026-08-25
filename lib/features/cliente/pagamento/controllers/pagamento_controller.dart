@@ -129,10 +129,6 @@ class PagamentoController extends StateNotifier<PagamentoState> {
         if (pedidoId == null) rethrow;
       }
 
-      if (pedidoId == null) {
-        throw Exception('Carrinho vazio.');
-      }
-
       // 2. Criar cobrança no Asaas via Edge Function
       final cobranca = await _repository.criarCobrancaAsaas(
         pedidoId: pedidoId,

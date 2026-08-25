@@ -3,7 +3,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_repository.dart';
 import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_controller.dart';
-import 'package:padoca_express/features/auth/presentation/nova_senha/nova_senha_state.dart';
 
 class MockNovaSenhaRepository extends Mock implements NovaSenhaRepository {}
 

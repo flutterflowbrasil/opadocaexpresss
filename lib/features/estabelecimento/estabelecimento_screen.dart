@@ -259,11 +259,7 @@ class EstabelecimentoScreen extends ConsumerWidget {
                 produto: produto,
                 isDark: isDark,
                 isGrid: isGrid,
-                onTap: () {
-                  // TODO: Screen de detalhes do produto standalone, por enquanto usamos o mesmo dialog visualmente para exibir, ou ignoramos e exigimos tap no +?
-                  // Deixarei chamando a mesma action de handleAddToCart temporariamente.
-                  handleAddToCart();
-                },
+                onTap: handleAddToCart,
                 onAddTap: handleAddToCart,
               );
             },

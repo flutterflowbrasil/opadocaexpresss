@@ -163,11 +163,11 @@ class _AvaliacoesScreenState extends State<AvaliacoesScreen> {
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [_yellow.withOpacity(.12), _orange.withOpacity(.06)],
+                            colors: [_yellow.withValues(alpha: .12), _orange.withValues(alpha: .06)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          border: Border.all(color: _yellow.withOpacity(.2)),
+                          border: Border.all(color: _yellow.withValues(alpha: .2)),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -180,7 +180,7 @@ class _AvaliacoesScreenState extends State<AvaliacoesScreen> {
                                   style: GoogleFonts.dmSans(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
-                                    color: _yellow.withOpacity(.6),
+                                    color: _yellow.withValues(alpha: .6),
                                     letterSpacing: .8,
                                   ),
                                 ),

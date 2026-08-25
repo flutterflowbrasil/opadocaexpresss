@@ -140,10 +140,6 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
   String? _etaRotaTexto;
   String? _entregadorId;
 
-  // CÃ³digos de validaÃ§Ã£o do pedido
-  String? _codigoColeta;   // estabelecimento exibe ao entregador na retirada
-  String? _codigoEntrega;  // cliente informa ao entregador na entrega
-
   double? _estabelecimentoLat;
   double? _estabelecimentoLng;
   double? _clienteLat;
@@ -252,9 +248,6 @@ class _EntregaAndamentoScreenState extends State<EntregaAndamentoScreen>
         _estabelecimentoLng = (estab['longitude'] as num?)?.toDouble();
         _clienteLat = (snap['latitude'] as num?)?.toDouble();
         _clienteLng = (snap['longitude'] as num?)?.toDouble();
-
-        _codigoColeta = row['codigo_coleta_balcao'] as String?;
-        _codigoEntrega = row['codigo_confirmacao_entrega'] as String?;
 
         if (row['em_entrega_em'] != null) {
           _inicioEntrega = DateTime.tryParse(row['em_entrega_em']);

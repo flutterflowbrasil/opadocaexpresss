@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -67,21 +69,47 @@ class MockAuthRepository implements AuthRepository {
       required dynamic storageService}) async {}
 
   @override
-  Future<Map<String, dynamic>?> getMeuCadastroEntregador(String userId) async => null;
+  Future<Map<String, dynamic>?> getMeuCadastroEntregador() async => null;
 
   @override
-  Future<void> reenviarDocumentoEntregador(String userId, String url) async {}
+  Future<void> reenviarDocumentoEntregador({
+    required String tipo,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {}
+
+  @override
+  Future<Map<String, dynamic>?> getMeuCadastroEstabelecimento() async => null;
+
+  @override
+  Future<void> reenviarDocumentoEstabelecimento({
+    required String tipo,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {}
 
   @override
   Future<void> signUpEntregador({
+    required String nome,
+    required String telefone,
+    required String cpf,
+    required String dataNascimento,
+    required String tipoVeiculo,
+    required String placaVeiculo,
+    required String modeloVeiculo,
     required String email,
-    required String password,
-    required Map<String, dynamic> dadosCadastro,
-    required String selfiePath,
-    required String selfieNome,
-    required String documentoPath,
-    required String documentoNome,
-    required dynamic storageService,
+    required String senha,
+    required Map<String, dynamic> endereco,
+    Uint8List? identidadeFrenteBytes,
+    String? identidadeFrenteFileName,
+    Uint8List? identidadeVersoBytes,
+    String? identidadeVersoFileName,
+    Uint8List? cnhFrenteBytes,
+    String? cnhFrenteFileName,
+    Uint8List? cnhVersoBytes,
+    String? cnhVersoFileName,
+    required Uint8List fotoPerfilBytes,
+    required String fotoPerfilFileName,
   }) async {}
 
   @override

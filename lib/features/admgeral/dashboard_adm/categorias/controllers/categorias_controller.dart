@@ -127,8 +127,9 @@ class CategoriasController extends StateNotifier<CategoriasState> {
           final finalBytes = img.encodeJpg(canvas, quality: 85);
           
           // Salvar temporariamente para upload
-          final tempDir = Directory.systemTemp;
-          final tempFile = File('\${tempDir.path}/cat_temp_\${DateTime.now().millisecondsSinceEpoch}.jpg');
+          final tempFile = File(
+            '${Directory.systemTemp.path}/cat_temp_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          );
           await tempFile.writeAsBytes(finalBytes);
           
           // ID fictício para upload novo. Se tiver ID, usa ele. Se não, gera um temporario.

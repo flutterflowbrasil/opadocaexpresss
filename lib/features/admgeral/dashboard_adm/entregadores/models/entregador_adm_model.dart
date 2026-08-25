@@ -359,15 +359,15 @@ class EntregadorAdmModel {
             ? EntregadorKycInfo(
                 status: 'revisao_manual',
                 fotoSelfieUrl:
-                    (selfieDoc?['signed_url'] ?? selfieDoc?['url']) as String?,
+                    (selfieDoc['signed_url'] ?? selfieDoc['url']) as String?,
               )
             : kycManual != null
                 ? EntregadorKycInfo.fromJson(kycManual)
                 : selfieDoc != null
                     ? EntregadorKycInfo(
                         status: 'revisao_manual',
-                        fotoSelfieUrl: (selfieDoc?['signed_url'] ??
-                            selfieDoc?['url']) as String?,
+                        fotoSelfieUrl: (selfieDoc['signed_url'] ??
+                            selfieDoc['url']) as String?,
                       )
                     : null;
 

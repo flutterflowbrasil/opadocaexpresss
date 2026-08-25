@@ -1,30 +1,36 @@
-// Implementação real para Flutter Web usando dart:html.
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:async';
+import 'dart:js_interop';
+
+import 'package:web/web.dart' as web;
 
 Future<void> loadMapsApi(String key) async {
   // Evitar carregar o script múltiplas vezes durante hot restart
-  final isLoaded = html.document.querySelectorAll('script').any((element) {
-    final src = (element as html.ScriptElement).src;
-    return src.contains('maps.googleapis.com/maps/api/js');
-  });
-
-  if (isLoaded) {
+  if (web.document.querySelector(
+        'script[src*="maps.googleapis.com/maps/api/js"]',
+      ) !=
+      null) {
     return;
   }
 
-  final scriptId = 'google-maps-js-api';
-  if (html.document.getElementById(scriptId) != null) {
+  const scriptId = 'google-maps-js-api';
+  if (web.document.getElementById(scriptId) != null) {
     return;
   }
 
-  final script = html.ScriptElement()
+  final loaded = Completer<void>();
+  final script = web.HTMLScriptElement()
     ..id = scriptId
     ..src = 'https://maps.googleapis.com/maps/api/js'
         '?key=$key&libraries=places&loading=async'
     ..async = true
     ..defer = true;
+  script.addEventListener(
+    'load',
+    (web.Event _) {
+      if (!loaded.isCompleted) loaded.complete();
+    }.toJS,
+  );
 
-  html.document.head!.append(script);
-  await script.onLoad.first;
+  web.document.head?.append(script);
+  await loaded.future;
 }

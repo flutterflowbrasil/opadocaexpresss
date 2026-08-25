@@ -115,7 +115,7 @@ class _SuporteScreenState extends State<SuporteScreen>
                 ),
                 const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
-                  value: categoria,
+                  initialValue: categoria,
                   dropdownColor: _bg3,
                   style: GoogleFonts.dmSans(color: _text1),
                   decoration: InputDecoration(
@@ -141,7 +141,7 @@ class _SuporteScreenState extends State<SuporteScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: prioridade,
+                  initialValue: prioridade,
                   dropdownColor: _bg3,
                   style: GoogleFonts.dmSans(color: _text1),
                   decoration: InputDecoration(

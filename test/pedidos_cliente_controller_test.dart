@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/features/cliente/pedidos/data/pedidos_cliente_repository.dart';
 import 'package:padoca_express/features/cliente/pedidos/controllers/pedidos_cliente_controller.dart';
 import 'package:padoca_express/features/cliente/pedidos/models/pedido_cliente_model.dart';
-import 'package:gotrue/src/types/user.dart' as gotrue;
 
 // Mocks
 class MockRepository extends Mock implements PedidosClienteRepository {}
@@ -50,7 +49,7 @@ void main() {
     test('carregarPedidos - separa corretamente pedidos ativos e anteriores',
         () async {
       // Arrange
-      final fakeUser = gotrue.User(
+      final fakeUser = User(
         id: 'user_123',
         appMetadata: {},
         userMetadata: {},

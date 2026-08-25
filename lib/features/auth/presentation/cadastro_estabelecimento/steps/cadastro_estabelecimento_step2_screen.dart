@@ -120,6 +120,7 @@ class _CadastroEstabelecimentoStep2ScreenState
             horarioFuncionamento: _horarios,
           );
 
+      if (!mounted) return;
       context.push('/cadastro-estabelecimento/step3');
     }
   }
@@ -254,9 +255,11 @@ class _CadastroEstabelecimentoStep2ScreenState
         );
       }
       if (coords != null && mounted) {
+        final lat = coords['lat'];
+        final lng = coords['lng'];
         setState(() {
-          _latitude = coords!['lat'];
-          _longitude = coords!['lng'];
+          _latitude = lat;
+          _longitude = lng;
         });
       }
     } catch (_) {

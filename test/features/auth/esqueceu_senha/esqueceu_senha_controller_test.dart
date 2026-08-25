@@ -3,7 +3,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_repository.dart';
 import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_controller.dart';
-import 'package:padoca_express/features/auth/presentation/esqueceu_senha/esqueceu_senha_state.dart';
 
 class MockEsqueceuSenhaRepository extends Mock implements EsqueceuSenhaRepository {}
 

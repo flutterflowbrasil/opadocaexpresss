@@ -158,7 +158,7 @@ class AccountUniquenessValidator {
       }
 
       final response = await query.limit(1);
-      return response is List && response.isNotEmpty;
+      return response.isNotEmpty;
     } on PostgrestException catch (e) {
       // Se RLS impedir a leitura anonima, o banco ainda garante a unicidade.
       if (e.code == '42501') return false;

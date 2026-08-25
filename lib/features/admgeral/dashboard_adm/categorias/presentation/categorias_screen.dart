@@ -169,7 +169,7 @@ class _CategoriasScreenState extends ConsumerState<CategoriasScreen> {
                                   Switch(
                                     value: cat.ativa,
                                     onChanged: (_) => controller.toggleAtiva(cat),
-                                    activeColor: const Color(0xFFF97316),
+                                    activeThumbColor: const Color(0xFFF97316),
                                   ),
                                   const SizedBox(width: 8),
                                   IconButton(
